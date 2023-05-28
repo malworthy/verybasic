@@ -21,6 +21,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use crate::scanner::TokenType;
+
     #[test]
     fn it_works() {
         let file_path = "c:\\tmp\\test.vb";
@@ -28,5 +30,27 @@ mod tests {
             std::fs::read_to_string(file_path).expect("Should have been able to read the file");
 
         let tokens = crate::scanner::tokenize(&contents);
+    }
+
+    #[test]
+    fn test_tokenize() {
+        let code = "
+            function test(a,b)
+              x = 1
+              if x == 1 then
+                x = 1+2-3*4/5
+              end
+            end
+            z=\"string\"
+        ";
+        let tokens = crate::scanner::tokenize(code);
+        assert_eq!(tokens.len(), 31);
+        let t = &tokens[10]; // if
+        dbg!(t);
+        if let TokenType::If(token) = t {
+            assert_eq!(token.line_number, 4);
+        } else {
+            assert!(false);
+        }
     }
 }
