@@ -1,6 +1,9 @@
+mod compiler;
 mod scanner;
 
 use std::{env, fs, process};
+
+use crate::compiler::Compiler;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -12,7 +15,10 @@ fn main() {
             fs::read_to_string(file_path).expect("Should have been able to read the file");
 
         let tokens = scanner::tokenize(&contents);
-        dbg!(tokens);
+        let mut instructions: Vec<compiler::OpCode> = Vec::new();
+        let mut compiler = Compiler::new(&tokens, &mut instructions);
+        compiler.compile();
+        //dbg!(tokens);
     } else {
         println!("No filename passed as argument");
         process::exit(1);
@@ -21,15 +27,20 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use crate::compiler;
     use crate::scanner::TokenType;
 
     #[test]
     fn it_works() {
-        let file_path = "c:\\tmp\\test.vb";
-        let contents =
-            std::fs::read_to_string(file_path).expect("Should have been able to read the file");
+        let contents = "+2+3+4+5";
 
         let tokens = crate::scanner::tokenize(&contents);
+
+        let mut instructions: Vec<compiler::OpCode> = Vec::new();
+        let mut compiler = compiler::Compiler::new(&tokens, &mut instructions);
+        compiler.compile();
+
+        dbg!(&instructions);
     }
 
     #[test]

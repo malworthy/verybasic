@@ -1,7 +1,22 @@
+pub mod precedence {
+    pub const NONE: u8 = 0;
+    pub const ASSIGNMENT: u8 = 1;
+    pub const OR: u8 = 2;
+    pub const AND: u8 = 3;
+    pub const EQUALITY: u8 = 4;
+    pub const COMPARISON: u8 = 5;
+    pub const TERM: u8 = 6;
+    pub const FACTOR: u8 = 7;
+    pub const UNARY: u8 = 8;
+    pub const CALL: u8 = 9;
+    pub const PRIMARY: u8 = 10;
+}
+
 #[derive(Debug)]
 pub struct Token {
     pub lexeme: String,
     pub line_number: u32,
+    pub precedence: u8,
 }
 
 #[derive(Debug)]
@@ -66,6 +81,7 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                 tokens.push(TokenType::Number(Token {
                     lexeme,
                     line_number,
+                    precedence: precedence::NONE,
                 }));
             // Strings
             } else if current_char == '"' {
@@ -86,6 +102,7 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                 tokens.push(TokenType::String(Token {
                     lexeme,
                     line_number,
+                    precedence: precedence::NONE,
                 }));
                 i += 1;
             } else if current_char.is_ascii_alphabetic() {
@@ -103,6 +120,7 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                 tokens.push(TokenType::Identifier(Token {
                     lexeme,
                     line_number,
+                    precedence: precedence::NONE,
                 }));
             } else {
                 i += 1;
@@ -112,6 +130,7 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
             i += len;
         }
     }
+    tokens.push(TokenType::Eof);
     tokens
 }
 
@@ -121,6 +140,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::Function(Token {
                 lexeme: String::from("function"),
                 line_number,
+                precedence: precedence::NONE,
             }),
             8,
         )
@@ -129,6 +149,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::Return(Token {
                 lexeme: String::from("return"),
                 line_number,
+                precedence: precedence::NONE,
             }),
             6,
         )
@@ -137,6 +158,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::While(Token {
                 lexeme: String::from("while"),
                 line_number,
+                precedence: precedence::NONE,
             }),
             5,
         )
@@ -145,6 +167,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::Then(Token {
                 lexeme: String::from("then"),
                 line_number,
+                precedence: precedence::NONE,
             }),
             4,
         )
@@ -153,6 +176,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::Else(Token {
                 lexeme: String::from("else"),
                 line_number,
+                precedence: precedence::NONE,
             }),
             4,
         )
@@ -161,6 +185,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::And(Token {
                 lexeme: String::from("and"),
                 line_number,
+                precedence: precedence::AND,
             }),
             3,
         )
@@ -169,6 +194,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::Not(Token {
                 lexeme: String::from("not"),
                 line_number,
+                precedence: precedence::NONE,
             }),
             3,
         )
@@ -177,6 +203,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::End(Token {
                 lexeme: String::from("end"),
                 line_number,
+                precedence: precedence::NONE,
             }),
             3,
         )
@@ -185,6 +212,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::If(Token {
                 lexeme: String::from("if"),
                 line_number,
+                precedence: precedence::NONE,
             }),
             2,
         )
@@ -193,6 +221,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::Or(Token {
                 lexeme: String::from("or"),
                 line_number,
+                precedence: precedence::OR,
             }),
             2,
         )
@@ -201,6 +230,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::NotEquals(Token {
                 lexeme: String::from("<>"),
                 line_number,
+                precedence: precedence::COMPARISON,
             }),
             2,
         )
@@ -209,6 +239,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::LessThanOrEqual(Token {
                 lexeme: String::from("<="),
                 line_number,
+                precedence: precedence::COMPARISON,
             }),
             2,
         )
@@ -217,6 +248,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::GreaterThanOrEqual(Token {
                 lexeme: String::from(">="),
                 line_number,
+                precedence: precedence::COMPARISON,
             }),
             2,
         )
@@ -225,6 +257,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::Equality(Token {
                 lexeme: String::from("=="),
                 line_number,
+                precedence: precedence::EQUALITY,
             }),
             2,
         )
@@ -238,42 +271,52 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                 "<" => TokenType::LessThan(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::COMPARISON,
                 }),
                 ">" => TokenType::GreaterThan(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::COMPARISON,
                 }),
                 "=" => TokenType::Equals(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::NONE,
                 }),
                 "+" => TokenType::Plus(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::TERM,
                 }),
                 "-" => TokenType::Minus(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::TERM,
                 }),
                 "*" => TokenType::Times(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::FACTOR,
                 }),
                 "/" => TokenType::Divide(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::COMPARISON,
                 }),
                 "(" => TokenType::LeftParan(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::CALL,
                 }),
                 ")" => TokenType::RightParan(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::NONE,
                 }),
                 "," => TokenType::Comma(Token {
                     lexeme: single_char.to_string(),
                     line_number,
+                    precedence: precedence::NONE,
                 }),
                 _ => TokenType::None,
             },
