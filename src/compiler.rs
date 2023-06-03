@@ -23,6 +23,10 @@ impl Compiler<'_> {
         }
     }
 
+    fn add_instr(&mut self, op: OpCode, line_number: u32) {
+        self.instructions.push(op);
+    }
+
     fn number(&mut self, token: &Token) -> u8 {
         // let mut number: f64;
         // let x = token.lexeme.parse::<f64>();
@@ -31,13 +35,13 @@ impl Compiler<'_> {
             Ok(v) => v,
             Err(e) => 0.0,
         };
-        self.instructions.push(OpCode::ConstantNum(number));
+        self.add_instr(OpCode::ConstantNum(number), token.line_number);
         token.precedence
     }
 
     fn binary(&mut self, token: &Token) {
         self.parse_precedence(token.precedence + 1);
-        self.instructions.push(OpCode::Add);
+        self.add_instr(OpCode::Add, token.line_number);
     }
 
     fn run_infix(&mut self, token: &TokenType) -> bool {

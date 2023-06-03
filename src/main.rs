@@ -1,5 +1,6 @@
 mod compiler;
 mod scanner;
+mod vm;
 
 use std::{env, fs, process};
 
@@ -16,7 +17,7 @@ fn main() {
 
         let tokens = scanner::tokenize(&contents);
         let mut instructions: Vec<compiler::OpCode> = Vec::new();
-        let mut compiler = Compiler::new(&tokens, &mut instructions);
+        let mut compiler = compiler::Compiler::new(&tokens, &mut instructions);
         compiler.compile();
         //dbg!(tokens);
     } else {
@@ -27,12 +28,12 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::compiler;
     use crate::scanner::TokenType;
+    use crate::{compiler, vm};
 
     #[test]
     fn it_works() {
-        let contents = "+2+3+4+5";
+        let contents = "1+2+3+4+5";
 
         let tokens = crate::scanner::tokenize(&contents);
 
@@ -41,6 +42,8 @@ mod tests {
         compiler.compile();
 
         dbg!(&instructions);
+
+        vm::run(&instructions);
     }
 
     #[test]
