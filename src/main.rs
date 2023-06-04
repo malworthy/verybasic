@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let contents = "1+2+3+4+5";
+        let contents = "-20+1-8+9";
 
         let tokens = crate::scanner::tokenize(&contents);
 
@@ -58,7 +58,8 @@ mod tests {
             z=\"string\"
         ";
         let tokens = crate::scanner::tokenize(code);
-        assert_eq!(tokens.len(), 31);
+        dbg!(tokens.len());
+        assert_eq!(tokens.len(), 32);
         let t = &tokens[10]; // if
         dbg!(t);
         if let TokenType::If(token) = t {

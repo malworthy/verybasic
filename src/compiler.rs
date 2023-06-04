@@ -3,9 +3,11 @@ use crate::scanner::{precedence, Token, TokenType};
 
 #[derive(Debug)]
 pub enum OpCode {
-    ConstantNum(f64),
-    ConstantStr(String),
-    Add,
+    ConstantNum(f64, u32),
+    ConstantStr(String, u32),
+    Add(u32),
+    Subtract(u32),
+    Negate(u32),
 }
 
 pub struct Compiler<'a> {
@@ -23,31 +25,37 @@ impl Compiler<'_> {
         }
     }
 
-    fn add_instr(&mut self, op: OpCode, line_number: u32) {
+    fn add_instr(&mut self, op: OpCode) {
         self.instructions.push(op);
     }
 
-    fn number(&mut self, token: &Token) -> u8 {
-        // let mut number: f64;
-        // let x = token.lexeme.parse::<f64>();
-
+    fn number(&mut self, token: &Token) {
         let number = match token.lexeme.parse::<f64>() {
             Ok(v) => v,
             Err(e) => 0.0,
         };
-        self.add_instr(OpCode::ConstantNum(number), token.line_number);
-        token.precedence
+        self.add_instr(OpCode::ConstantNum(number, token.line_number));
     }
 
-    fn binary(&mut self, token: &Token) {
-        self.parse_precedence(token.precedence + 1);
-        self.add_instr(OpCode::Add, token.line_number);
+    fn string(&mut self, token: &Token) {
+        self.add_instr(OpCode::ConstantStr(token.lexeme.clone(), token.line_number));
     }
+
+    // fn binary(&mut self, token: &Token) {
+    //     self.parse_precedence(token.precedence + 1);
+    //     self.add_instr(OpCode::Add(token.line_number));
+    // }
 
     fn run_infix(&mut self, token: &TokenType) -> bool {
         match token {
             TokenType::Plus(t) => {
-                self.binary(&t);
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::Add(t.line_number));
+                true
+            }
+            TokenType::Minus(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::Subtract(t.line_number));
                 true
             }
             _ => false,
@@ -57,6 +65,7 @@ impl Compiler<'_> {
     fn get_precedence(&mut self, token: &TokenType) -> u8 {
         match token {
             TokenType::Plus(t) => t.precedence,
+            TokenType::Minus(t) => t.precedence,
             _ => precedence::NONE,
         }
     }
@@ -66,6 +75,10 @@ impl Compiler<'_> {
         self.token_pointer < self.tokens.len()
     }
 
+    fn compile_error(message: &str, token: &Token) {
+        panic!("Compile error: {}, line {}", message, token.line_number);
+    }
+
     fn parse_precedence(&mut self, precedence: u8) {
         self.advance();
 
@@ -73,10 +86,21 @@ impl Compiler<'_> {
         let token = &self.tokens[self.token_pointer - 1];
         match token {
             TokenType::Number(t) => self.number(t),
-            _ => _ = panic!("Unexpected Statement"),
+            TokenType::String(t) => self.string(t),
+            TokenType::Minus(t) => {
+                self.parse_precedence(precedence::UNARY);
+                self.add_instr(OpCode::Negate(t.line_number))
+            }
+            _ => {
+                dbg!(token);
+                panic!("Unexpected Statement:")
+            }
         };
 
-        while precedence < self.get_precedence(&self.tokens[self.token_pointer]) {
+        let test = self.get_precedence(&self.tokens[self.token_pointer]);
+        println!("prec: {precedence} < {test}");
+
+        while precedence <= self.get_precedence(&self.tokens[self.token_pointer]) {
             if !self.advance() {
                 break;
             };
@@ -90,8 +114,17 @@ impl Compiler<'_> {
             //dbg!(&token);
             match token {
                 TokenType::Number(t) => self.parse_precedence(t.precedence),
-                TokenType::Plus(t) => self.parse_precedence(t.precedence),
-                _ => _ = self.advance(),
+                TokenType::String(t) => self.parse_precedence(t.precedence),
+                TokenType::Minus(t) => self.parse_precedence(t.precedence),
+                //TokenType::Plus(t) => self.parse_precedence(t.precedence),
+                TokenType::Eof => break,
+                _ => {
+                    _ = {
+                        dbg!(&self.instructions);
+                        dbg!(token);
+                        panic!("Unexpected token, or no code written for token yet");
+                    }
+                }
             };
         }
     }

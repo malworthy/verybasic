@@ -12,8 +12,9 @@ struct Value<'a> {
 #[derive(Debug)]
 enum ValueType<'a> {
     Number(f64),
-    String(&'a str),
+    Str(&'a str),
     Boolean(bool),
+    String(String),
 }
 
 #[derive(Debug)]
@@ -33,7 +34,47 @@ impl Frame<'_> {
         self.ip < self.instructions.len()
     }
 }
-fn binary(stack: &mut Vec<ValueType>, op: &OpCode) -> bool {
+
+fn subtract(stack: &mut Vec<ValueType>, op: &OpCode, line_number: u32) -> bool {
+    let b = stack.pop().unwrap();
+    let a = stack.pop().unwrap();
+    let result = match a {
+        ValueType::Number(a) => {
+            if let ValueType::Number(b) = b {
+                ValueType::Number(a - b)
+            } else {
+                runtime_error("type mismatch", line_number);
+                return false;
+            }
+        }
+        _ => {
+            runtime_error("type mismatch", line_number);
+            return false;
+        }
+    };
+
+    stack.push(result);
+    true
+}
+
+fn negate(stack: &mut Vec<ValueType>, line_number: u32) -> bool {
+    let a = stack.pop().unwrap();
+    let result = match a {
+        ValueType::Number(a) => ValueType::Number(-a),
+        _ => {
+            runtime_error(
+                "Type mismatch. '-' can only be used on numbers.",
+                line_number,
+            );
+            return false;
+        }
+    };
+
+    stack.push(result);
+    true
+}
+
+fn add(stack: &mut Vec<ValueType>, op: &OpCode, line_number: u32) -> bool {
     let b = stack.pop().unwrap();
     let a = stack.pop().unwrap();
     let result = match a {
@@ -41,12 +82,34 @@ fn binary(stack: &mut Vec<ValueType>, op: &OpCode) -> bool {
             if let ValueType::Number(b) = b {
                 ValueType::Number(a + b)
             } else {
-                runtime_error("type mismatch", 0);
+                runtime_error("type mismatch", line_number);
                 return false;
             }
         }
-        _ => {
-            runtime_error("Not implemented", 0);
+        ValueType::Str(a) => {
+            let joined = match b {
+                ValueType::Str(b) => format!("{}{}", a, b),
+                ValueType::String(b) => format!("{}{}", a, b),
+                _ => {
+                    runtime_error("type mismatch", line_number);
+                    return false;
+                }
+            };
+            ValueType::String(joined.clone())
+        }
+        ValueType::String(a) => {
+            let joined = match b {
+                ValueType::Str(b) => format!("{}{}", a, b),
+                ValueType::String(b) => format!("{}{}", a, b),
+                _ => {
+                    runtime_error("type mismatch", line_number);
+                    return false;
+                }
+            };
+            ValueType::String(joined.clone())
+        }
+        ValueType::Boolean(_) => {
+            runtime_error("Cannot add a boolean", line_number);
             return false;
         }
     };
@@ -74,10 +137,16 @@ pub fn run(instructions: &Vec<OpCode>) {
         let frame = &mut call_frames.last_mut().unwrap(); //TODO: make safer
         let instr = &frame.instructions[frame.ip];
         match instr {
-            OpCode::ConstantNum(num) => stack.push(ValueType::Number(*num)),
-            OpCode::ConstantStr(str) => stack.push(ValueType::String(&str)),
-            OpCode::Add => {
-                binary(&mut stack, &instr);
+            OpCode::ConstantNum(num, _) => stack.push(ValueType::Number(*num)),
+            OpCode::ConstantStr(str, _) => stack.push(ValueType::Str(str)),
+            OpCode::Subtract(line_number) => {
+                subtract(&mut stack, &instr, *line_number);
+            }
+            OpCode::Add(line_number) => {
+                add(&mut stack, &instr, *line_number);
+            }
+            OpCode::Negate(line_number) => {
+                negate(&mut stack, *line_number);
             }
         }
 
