@@ -35,13 +35,45 @@ impl Frame<'_> {
     }
 }
 
-fn subtract(stack: &mut Vec<ValueType>, op: &OpCode, line_number: u32) -> bool {
+fn comparison(stack: &mut Vec<ValueType>, op: &OpCode, line_number: u32) -> bool {
     let b = stack.pop().unwrap();
     let a = stack.pop().unwrap();
     let result = match a {
         ValueType::Number(a) => {
             if let ValueType::Number(b) = b {
-                ValueType::Number(a - b)
+                match op {
+                    OpCode::GreaterThan(_) => ValueType::Boolean(a > b),
+                    _ => panic!("Non-comparison opcode processed in comparison()"),
+                }
+            } else {
+                runtime_error("type mismatch", line_number);
+                return false;
+            }
+        }
+        ValueType::Str(a) => panic!("String comparison not yet implemented"),
+        ValueType::String(a) => panic!("String comparison not yet implemented"),
+        ValueType::Boolean(_) => {
+            runtime_error("boolean not valid for comparison operation", line_number);
+            return false;
+        }
+    };
+
+    stack.push(result);
+    true
+}
+
+fn binary(stack: &mut Vec<ValueType>, op: &OpCode, line_number: u32) -> bool {
+    let b = stack.pop().unwrap();
+    let a = stack.pop().unwrap();
+    let result = match a {
+        ValueType::Number(a) => {
+            if let ValueType::Number(b) = b {
+                match op {
+                    OpCode::Subtract(_) => ValueType::Number(a - b),
+                    OpCode::Multiply(_) => ValueType::Number(a * b),
+                    OpCode::Divide(_) => ValueType::Number(a / b),
+                    _ => panic!("Non-binary opcode processed in binary()"),
+                }
             } else {
                 runtime_error("type mismatch", line_number);
                 return false;
@@ -120,10 +152,10 @@ fn add(stack: &mut Vec<ValueType>, op: &OpCode, line_number: u32) -> bool {
 
 pub fn runtime_error(message: &str, line_number: u32) {
     eprintln!("runtime error: {message} in line {line_number}");
-    std::process::exit(1);
+    
 }
 
-pub fn run(instructions: &Vec<OpCode>) {
+pub fn run(instructions: &Vec<OpCode>) -> bool {
     let mut call_frames: Vec<Frame> = Vec::new();
     let mut stack: Vec<ValueType> = Vec::new();
     let main_frame = Frame {
@@ -140,13 +172,34 @@ pub fn run(instructions: &Vec<OpCode>) {
             OpCode::ConstantNum(num, _) => stack.push(ValueType::Number(*num)),
             OpCode::ConstantStr(str, _) => stack.push(ValueType::Str(str)),
             OpCode::Subtract(line_number) => {
-                subtract(&mut stack, &instr, *line_number);
+                if !binary(&mut stack, &instr, *line_number) {
+                    return false;
+                };
+            }
+            OpCode::Multiply(line_number) => {
+                if !binary(&mut stack, &instr, *line_number) {
+                    return false;
+                };
+            }
+            OpCode::Divide(line_number) => {
+                if !binary(&mut stack, &instr, *line_number) {
+                    return false;
+                };
             }
             OpCode::Add(line_number) => {
-                add(&mut stack, &instr, *line_number);
+                if !add(&mut stack, &instr, *line_number) {
+                    return false;
+                };
             }
             OpCode::Negate(line_number) => {
-                negate(&mut stack, *line_number);
+                if !negate(&mut stack, *line_number) {
+                    return false;
+                };
+            }
+            OpCode::GreaterThan(line_number) => {
+                if !comparison(&mut stack, &instr, *line_number) {
+                    return false;
+                };
             }
         }
 
@@ -155,4 +208,5 @@ pub fn run(instructions: &Vec<OpCode>) {
         }
     }
     dbg!(stack);
+    true
 }

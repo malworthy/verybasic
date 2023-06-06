@@ -8,6 +8,9 @@ pub enum OpCode {
     Add(u32),
     Subtract(u32),
     Negate(u32),
+    Multiply(u32),
+    Divide(u32),
+    GreaterThan(u32),
 }
 
 pub struct Compiler<'a> {
@@ -41,6 +44,18 @@ impl Compiler<'_> {
         self.add_instr(OpCode::ConstantStr(token.lexeme.clone(), token.line_number));
     }
 
+    fn grouping(&mut self, token: &Token) {
+        self.expression();
+
+        let end_token = &self.tokens[self.token_pointer];
+        if let TokenType::RightParan(_) = end_token {
+            self.advance();
+        } else {
+            dbg!(end_token);
+            Compiler::compile_error("Expected )", token);
+        }
+    }
+
     // fn binary(&mut self, token: &Token) {
     //     self.parse_precedence(token.precedence + 1);
     //     self.add_instr(OpCode::Add(token.line_number));
@@ -58,6 +73,21 @@ impl Compiler<'_> {
                 self.add_instr(OpCode::Subtract(t.line_number));
                 true
             }
+            TokenType::Times(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::Multiply(t.line_number));
+                true
+            }
+            TokenType::Divide(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::Divide(t.line_number));
+                true
+            }
+            TokenType::GreaterThan(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::GreaterThan(t.line_number));
+                true
+            }
             _ => false,
         }
     }
@@ -66,6 +96,9 @@ impl Compiler<'_> {
         match token {
             TokenType::Plus(t) => t.precedence,
             TokenType::Minus(t) => t.precedence,
+            TokenType::Times(t) => t.precedence,
+            TokenType::Divide(t) => t.precedence,
+            TokenType::GreaterThan(t) => t.precedence,
             _ => precedence::NONE,
         }
     }
@@ -91,40 +124,40 @@ impl Compiler<'_> {
                 self.parse_precedence(precedence::UNARY);
                 self.add_instr(OpCode::Negate(t.line_number))
             }
+            TokenType::LeftParan(t) => self.grouping(t),
             _ => {
                 dbg!(token);
                 panic!("Unexpected Statement:")
             }
         };
 
+        // let xx = &self.tokens.get(self.token_pointer);
+
         let test = self.get_precedence(&self.tokens[self.token_pointer]);
         println!("prec: {precedence} < {test}");
 
-        while precedence <= self.get_precedence(&self.tokens[self.token_pointer]) {
+        while self.token_pointer < self.tokens.len()
+            && precedence <= self.get_precedence(&self.tokens[self.token_pointer])
+        {
             if !self.advance() {
                 break;
             };
-            self.run_infix(&self.tokens[self.token_pointer - 1]);
+            if !self.run_infix(&self.tokens[self.token_pointer - 1]) {
+                break;
+            }
         }
+    }
+
+    fn expression(&mut self) {
+        self.parse_precedence(precedence::ASSIGNMENT);
     }
 
     pub fn compile(&mut self) {
         while self.token_pointer < self.tokens.len() {
             let token = &self.tokens[self.token_pointer];
-            //dbg!(&token);
             match token {
-                TokenType::Number(t) => self.parse_precedence(t.precedence),
-                TokenType::String(t) => self.parse_precedence(t.precedence),
-                TokenType::Minus(t) => self.parse_precedence(t.precedence),
-                //TokenType::Plus(t) => self.parse_precedence(t.precedence),
                 TokenType::Eof => break,
-                _ => {
-                    _ = {
-                        dbg!(&self.instructions);
-                        dbg!(token);
-                        panic!("Unexpected token, or no code written for token yet");
-                    }
-                }
+                _ => self.expression(),
             };
         }
     }

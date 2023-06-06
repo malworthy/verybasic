@@ -301,7 +301,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                 "/" => TokenType::Divide(Token {
                     lexeme: single_char.to_string(),
                     line_number,
-                    precedence: precedence::COMPARISON,
+                    precedence: precedence::FACTOR,
                 }),
                 "(" => TokenType::LeftParan(Token {
                     lexeme: single_char.to_string(),

@@ -15,35 +15,43 @@ fn main() {
         let contents =
             fs::read_to_string(file_path).expect("Should have been able to read the file");
 
-        let tokens = scanner::tokenize(&contents);
-        let mut instructions: Vec<compiler::OpCode> = Vec::new();
-        let mut compiler = compiler::Compiler::new(&tokens, &mut instructions);
-        compiler.compile();
-        //dbg!(tokens);
+        interpret(&contents);
     } else {
         println!("No filename passed as argument");
         process::exit(1);
     }
 }
 
+fn interpret(contents: &str) {
+    let tokens = crate::scanner::tokenize(&contents);
+
+    let mut instructions: Vec<compiler::OpCode> = Vec::new();
+    let mut compiler = Compiler::new(&tokens, &mut instructions);
+    compiler.compile();
+
+    dbg!(&instructions);
+
+    let result = vm::run(&instructions);
+    if !result {
+        std::process::exit(1);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::scanner::TokenType;
-    use crate::{compiler, vm};
+    use crate::{compiler, interpret, vm};
 
     #[test]
     fn it_works() {
-        let contents = "-20+1-8+9";
+        let contents = "-((1+1)*(1+1)) * (10-6) -20+1-8+9*10/5/9-2*7+1";
 
-        let tokens = crate::scanner::tokenize(&contents);
+        interpret(contents);
+    }
 
-        let mut instructions: Vec<compiler::OpCode> = Vec::new();
-        let mut compiler = compiler::Compiler::new(&tokens, &mut instructions);
-        compiler.compile();
-
-        dbg!(&instructions);
-
-        vm::run(&instructions);
+    #[test]
+    fn it_works2() {
+        interpret("3 > (2-2)");
     }
 
     #[test]
