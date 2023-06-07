@@ -2,13 +2,14 @@ mod compiler;
 mod scanner;
 mod vm;
 
-use std::{env, fs, process};
+use colored::Colorize;
+use std::{env, fs, io, process};
 
 use crate::compiler::Compiler;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    println!("Very Basic Version 0.0");
+    println!("{}", "Very Basic Version 0.0".yellow());
     dbg!(&args);
 
     if let Some(file_path) = args.get(1) {
@@ -17,8 +18,13 @@ fn main() {
 
         interpret(&contents);
     } else {
-        println!("No filename passed as argument");
-        process::exit(1);
+        loop {
+            let mut line = String::new();
+            io::stdin()
+                .read_line(&mut line)
+                .expect("Failed to read line");
+            interpret(&line);
+        }
     }
 }
 
@@ -43,15 +49,20 @@ mod tests {
     use crate::{compiler, interpret, vm};
 
     #[test]
-    fn it_works() {
+    fn arithmatic() {
         let contents = "-((1+1)*(1+1)) * (10-6) -20+1-8+9*10/5/9-2*7+1";
 
         interpret(contents);
     }
 
     #[test]
-    fn it_works2() {
+    fn comparisons() {
         interpret("3 > (2-2)");
+        interpret("3 >= (2-2)");
+        interpret("3 < (2-2)");
+        interpret("3 <= (2-2)");
+        interpret("3 == (2-2)");
+        interpret("3 <> (2-2)");
     }
 
     #[test]

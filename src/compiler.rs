@@ -11,6 +11,11 @@ pub enum OpCode {
     Multiply(u32),
     Divide(u32),
     GreaterThan(u32),
+    GreaterThanEq(u32),
+    LessThan(u32),
+    LessThanEq(u32),
+    Equal(u32),
+    NotEqual(u32),
 }
 
 pub struct Compiler<'a> {
@@ -88,6 +93,31 @@ impl Compiler<'_> {
                 self.add_instr(OpCode::GreaterThan(t.line_number));
                 true
             }
+            TokenType::GreaterThanOrEqual(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::GreaterThanEq(t.line_number));
+                true
+            }
+            TokenType::LessThan(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::LessThan(t.line_number));
+                true
+            }
+            TokenType::LessThanOrEqual(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::LessThanEq(t.line_number));
+                true
+            }
+            TokenType::Equality(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::Equal(t.line_number));
+                true
+            }
+            TokenType::NotEquals(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::NotEqual(t.line_number));
+                true
+            }
             _ => false,
         }
     }
@@ -99,6 +129,12 @@ impl Compiler<'_> {
             TokenType::Times(t) => t.precedence,
             TokenType::Divide(t) => t.precedence,
             TokenType::GreaterThan(t) => t.precedence,
+            TokenType::LessThan(t) => t.precedence,
+            TokenType::GreaterThanOrEqual(t) => t.precedence,
+            TokenType::LessThanOrEqual(t) => t.precedence,
+            TokenType::Equality(t) => t.precedence,
+            TokenType::NotEquals(t) => t.precedence,
+
             _ => precedence::NONE,
         }
     }

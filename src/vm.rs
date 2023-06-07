@@ -3,14 +3,7 @@ use std::os::windows::process;
 use crate::{compiler::OpCode, main};
 
 #[derive(Debug)]
-struct Value<'a> {
-    number: f64,
-    string: &'a str,
-    boolean: bool,
-}
-
-#[derive(Debug)]
-enum ValueType<'a> {
+pub enum ValueType<'a> {
     Number(f64),
     Str(&'a str),
     Boolean(bool),
@@ -43,6 +36,11 @@ fn comparison(stack: &mut Vec<ValueType>, op: &OpCode, line_number: u32) -> bool
             if let ValueType::Number(b) = b {
                 match op {
                     OpCode::GreaterThan(_) => ValueType::Boolean(a > b),
+                    OpCode::GreaterThanEq(_) => ValueType::Boolean(a >= b),
+                    OpCode::LessThan(_) => ValueType::Boolean(a < b),
+                    OpCode::LessThanEq(_) => ValueType::Boolean(a <= b),
+                    OpCode::Equal(_) => ValueType::Boolean(a == b),
+                    OpCode::NotEqual(_) => ValueType::Boolean(a != b),
                     _ => panic!("Non-comparison opcode processed in comparison()"),
                 }
             } else {
@@ -152,7 +150,20 @@ fn add(stack: &mut Vec<ValueType>, op: &OpCode, line_number: u32) -> bool {
 
 pub fn runtime_error(message: &str, line_number: u32) {
     eprintln!("runtime error: {message} in line {line_number}");
-    
+}
+
+pub struct Vm<'a> {
+    pub stack: Vec<ValueType<'a>>,
+}
+
+impl Vm<'_> {
+    pub fn new() -> Self {
+        Vm { stack: Vec::new() }
+    }
+
+    pub fn test(&mut self) {
+        self.stack.push(ValueType::Number(123.0))
+    }
 }
 
 pub fn run(instructions: &Vec<OpCode>) -> bool {
@@ -201,6 +212,31 @@ pub fn run(instructions: &Vec<OpCode>) -> bool {
                     return false;
                 };
             }
+            OpCode::GreaterThanEq(line_number) => {
+                if !comparison(&mut stack, &instr, *line_number) {
+                    return false;
+                };
+            }
+            OpCode::LessThan(line_number) => {
+                if !comparison(&mut stack, &instr, *line_number) {
+                    return false;
+                };
+            }
+            OpCode::LessThanEq(line_number) => {
+                if !comparison(&mut stack, &instr, *line_number) {
+                    return false;
+                };
+            }
+            OpCode::Equal(line_number) => {
+                if !comparison(&mut stack, &instr, *line_number) {
+                    return false;
+                };
+            }
+            OpCode::NotEqual(line_number) => {
+                if !comparison(&mut stack, &instr, *line_number) {
+                    return false;
+                };
+            }
         }
 
         if !frame.inc() {
@@ -208,5 +244,6 @@ pub fn run(instructions: &Vec<OpCode>) -> bool {
         }
     }
     dbg!(stack);
+
     true
 }
