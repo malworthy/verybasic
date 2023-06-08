@@ -5,7 +5,7 @@ mod vm;
 use colored::Colorize;
 use std::{env, fs, io, process};
 
-use crate::compiler::Compiler;
+use crate::{compiler::Compiler, vm::Vm};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -28,7 +28,7 @@ fn main() {
     }
 }
 
-fn interpret(contents: &str) {
+fn interpret(contents: &str) -> String {
     let tokens = crate::scanner::tokenize(&contents);
 
     let mut instructions: Vec<compiler::OpCode> = Vec::new();
@@ -36,10 +36,16 @@ fn interpret(contents: &str) {
     compiler.compile();
 
     dbg!(&instructions);
-
-    let result = vm::run(&instructions);
+    let mut vm = Vm::new();
+    let result = vm.run(&instructions);
     if !result {
         std::process::exit(1);
+    }
+
+    if let Some(val) = vm.stack.pop() {
+        format!("{:?}", val)
+    } else {
+        String::new()
     }
 }
 
@@ -52,7 +58,9 @@ mod tests {
     fn arithmatic() {
         let contents = "-((1+1)*(1+1)) * (10-6) -20+1-8+9*10/5/9-2*7+1";
 
-        interpret(contents);
+        let result = interpret(contents);
+
+        assert_eq!(result, "Number(-54.0)");
     }
 
     #[test]
