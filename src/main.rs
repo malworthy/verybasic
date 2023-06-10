@@ -34,15 +34,20 @@ fn interpret(contents: &str) -> String {
     let mut instructions: Vec<compiler::OpCode> = Vec::new();
     let mut compiler = Compiler::new(&tokens, &mut instructions);
     compiler.compile();
+    if compiler.in_error {
+        return String::from("Compile Error");
+    }
 
     dbg!(&instructions);
     let mut vm = Vm::new();
+    vm.init();
+
     let result = vm.run(&instructions);
     if !result {
         std::process::exit(1);
     }
 
-    if let Some(val) = vm.stack.pop() {
+    if let Some(val) = vm.return_value {
         format!("{:?}", val)
     } else {
         String::new()
@@ -55,6 +60,12 @@ mod tests {
     use crate::{compiler, interpret, vm};
 
     #[test]
+    fn calling() {
+        assert_eq!(interpret("print("), "Compile Error");
+        assert_eq!(interpret("print(\"hello\")"), "String(\"hello\")");
+    }
+
+    #[test]
     fn arithmatic() {
         let contents = "-((1+1)*(1+1)) * (10-6) -20+1-8+9*10/5/9-2*7+1";
 
@@ -65,12 +76,36 @@ mod tests {
 
     #[test]
     fn comparisons() {
-        interpret("3 > (2-2)");
-        interpret("3 >= (2-2)");
-        interpret("3 < (2-2)");
-        interpret("3 <= (2-2)");
-        interpret("3 == (2-2)");
-        interpret("3 <> (2-2)");
+        assert_eq!(interpret("3 > (2-2)"), "Boolean(true)");
+        assert_eq!(interpret("3 >= (2-2)"), "Boolean(true)");
+        assert_eq!(interpret("3 < (2-2)"), "Boolean(false)");
+        assert_eq!(interpret("3 <= (2-2)"), "Boolean(false)");
+        assert_eq!(interpret("3 == (2-2)"), "Boolean(false)");
+        assert_eq!(interpret("3 <> (2-2)"), "Boolean(true)");
+    }
+
+    #[test]
+    fn not() {
+        let result = interpret("not (1==1)");
+        assert_eq!(result, "Boolean(false)");
+
+        let result = interpret("not 0");
+        assert_eq!(result, "Boolean(true)");
+
+        let result = interpret("not \"\"");
+        assert_eq!(result, "Boolean(true)");
+
+        let result = interpret("not (\"hello\" + \"world\") ");
+        assert_eq!(result, "Boolean(false)");
+
+        let result = interpret("not (1==0)");
+        assert_eq!(result, "Boolean(true)");
+
+        let result = interpret("not 1");
+        assert_eq!(result, "Boolean(false)");
+
+        let result = interpret("not \"hi\"");
+        assert_eq!(result, "Boolean(false)");
     }
 
     #[test]

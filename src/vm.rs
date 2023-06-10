@@ -1,14 +1,17 @@
-use std::os::windows::process;
+use std::collections::HashMap;
+//use std::os::windows::process;
 
 use crate::{compiler::OpCode, main};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ValueType<'a> {
     Number(f64),
     Str(&'a str),
     Boolean(bool),
     String(String),
 }
+
+//impl Copy for ValueType<'_> {}
 
 #[derive(Debug)]
 struct Frame<'a> {
@@ -33,12 +36,40 @@ fn runtime_error(message: &str, line_number: u32) {
 }
 
 pub struct Vm<'a> {
-    pub stack: Vec<ValueType<'a>>,
+    stack: Vec<ValueType<'a>>,
+    globals: HashMap<&'a String, ValueType<'a>>,
+    //natives: Vec<fn(Vec<ValueType>) -> Result<ValueType, &str>>,
+    natives: HashMap<&'a str, fn(Vec<ValueType>) -> Result<ValueType, &str>>,
+    pub return_value: Option<ValueType<'a>>,
+}
+
+fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if let Some(val) = params.first() {
+        let s = match val {
+            ValueType::Number(n) => format!("{n}"),
+            ValueType::Boolean(b) => format!("{b}"),
+            ValueType::Str(str) => str.to_string(),
+            ValueType::String(str) => str.to_string(),
+        };
+        println!("{s}");
+        Result::Ok(ValueType::String(s))
+    } else {
+        Err("No parameters passed to function")
+    }
 }
 
 impl<'a> Vm<'a> {
     pub fn new() -> Self {
-        Vm { stack: Vec::new() }
+        Vm {
+            stack: Vec::new(),
+            globals: HashMap::new(),
+            natives: HashMap::new(), //vec![print],
+            return_value: Option::None,
+        }
+    }
+
+    pub fn init(&mut self) {
+        self.natives.insert("print", print);
     }
 
     fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {
@@ -111,6 +142,19 @@ impl<'a> Vm<'a> {
                 );
                 return false;
             }
+        };
+
+        self.stack.push(result);
+        true
+    }
+
+    fn not(&mut self, line_number: u32) -> bool {
+        let a = self.stack.pop().unwrap();
+        let result = match a {
+            ValueType::Number(a) => ValueType::Boolean(a == 0.0),
+            ValueType::Boolean(a) => ValueType::Boolean(!a),
+            ValueType::Str(a) => ValueType::Boolean(a.len() == 0),
+            ValueType::String(a) => ValueType::Boolean(a.len() == 0),
         };
 
         self.stack.push(result);
@@ -206,6 +250,11 @@ impl<'a> Vm<'a> {
                         return false;
                     };
                 }
+                OpCode::Not(line_number) => {
+                    if !self.not(*line_number) {
+                        return false;
+                    };
+                }
                 OpCode::GreaterThan(line_number) => {
                     if !self.comparison(&instr, *line_number) {
                         return false;
@@ -235,6 +284,41 @@ impl<'a> Vm<'a> {
                     if !self.comparison(&instr, *line_number) {
                         return false;
                     };
+                }
+                OpCode::SetGlobal(name, line_number) => {
+                    let v = self.stack.last().unwrap();
+                    self.globals.insert(name, v.clone());
+                }
+                OpCode::GetGlobal(name, line_number) => {
+                    if let Some(value) = self.globals.get(&name) {
+                        self.stack.push(value.clone());
+                    } else {
+                        let message = format!("Global variable {name} does not exist.");
+                        runtime_error(&message, *line_number);
+                        return false;
+                    }
+                }
+                OpCode::Call(name, argc, line_number) => {
+                    println!("calling function {name}");
+                    let mut args: Vec<ValueType> = Vec::new();
+                    for _i in 0..*argc {
+                        let v = self.stack.pop().unwrap();
+                        args.insert(0, v);
+                        //args.push(v);
+                    }
+                    if let Some(func) = self.natives.get(&name.as_str()) {
+                        let result = func(args);
+                        if let Ok(value) = result {
+                            self.stack.push(value);
+                        } else {
+                            let message = format!("Function {name} does not exist.");
+                            runtime_error(&message, *line_number);
+                            return false;
+                        }
+                    }
+                }
+                OpCode::Pop => {
+                    self.return_value = self.stack.pop();
                 }
             }
 
