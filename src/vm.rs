@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ffi::OsStr, process::Command};
 //use std::os::windows::process;
 
 use crate::{compiler::OpCode, main};
@@ -9,6 +9,17 @@ pub enum ValueType<'a> {
     Str(&'a str),
     Boolean(bool),
     String(String),
+}
+
+impl ValueType<'_> {
+    pub fn to_string(&self) -> String {
+        match self {
+            ValueType::Number(n) => format!("{n}"),
+            ValueType::Boolean(b) => format!("{b}"),
+            ValueType::Str(str) => str.to_string(),
+            ValueType::String(str) => str.to_string(),
+        }
+    }
 }
 
 //impl Copy for ValueType<'_> {}
@@ -45,17 +56,37 @@ pub struct Vm<'a> {
 
 fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
     if let Some(val) = params.first() {
-        let s = match val {
-            ValueType::Number(n) => format!("{n}"),
-            ValueType::Boolean(b) => format!("{b}"),
-            ValueType::Str(str) => str.to_string(),
-            ValueType::String(str) => str.to_string(),
-        };
+        // let s = match val {
+        //     ValueType::Number(n) => format!("{n}"),
+        //     ValueType::Boolean(b) => format!("{b}"),
+        //     ValueType::Str(str) => str.to_string(),
+        //     ValueType::String(str) => str.to_string(),
+        // };
+        let s = val.to_string();
         println!("{s}");
         Result::Ok(ValueType::String(s))
     } else {
         Err("No parameters passed to function")
     }
+}
+
+fn system_command<'a>(
+    command: &'a String,
+    params: Vec<ValueType<'a>>,
+) -> Result<ValueType<'a>, &'a str> {
+    let mut args: Vec<String> = Vec::new();
+    for param in params {
+        args.push(param.to_string());
+    }
+
+    let output = Command::new(command)
+        .args(args)
+        .output()
+        .expect("failed to execute process");
+
+    let result = String::from_utf8_lossy(&output.stdout).to_string();
+
+    Result::Ok(ValueType::String(result))
 }
 
 impl<'a> Vm<'a> {
@@ -311,7 +342,16 @@ impl<'a> Vm<'a> {
                         if let Ok(value) = result {
                             self.stack.push(value);
                         } else {
-                            let message = format!("Function {name} does not exist.");
+                            let message = format!("Error running {name}.");
+                            runtime_error(&message, *line_number);
+                            return false;
+                        }
+                    } else {
+                        let result = system_command(name, args);
+                        if let Ok(value) = result {
+                            self.stack.push(value);
+                        } else {
+                            let message = format!("Error running {name}.");
                             runtime_error(&message, *line_number);
                             return false;
                         }
@@ -320,6 +360,8 @@ impl<'a> Vm<'a> {
                 OpCode::Pop => {
                     self.return_value = self.stack.pop();
                 }
+                OpCode::GetLocal(i, line_number) => panic!("GetLocal Not implemented"),
+                OpCode::SetLocal(i, Line_number) => panic!("SetLocal Not implemented"),
             }
 
             if !frame.inc() {

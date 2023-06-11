@@ -21,17 +21,41 @@ pub enum OpCode {
     GetGlobal(String, u32),
     Call(String, u32, u32),
     Pop,
+    SetLocal(usize, u32),
+    GetLocal(usize, u32),
+}
+
+pub enum DataType {
+    Any,
+    Text,
+    Number,
+    Boolean,
+    List,
 }
 
 pub struct Variable {
-    depth: u32,
+    depth: u8,
+    name: String,
+    data_type: DataType,
+}
+
+impl Variable {
+    pub fn new(name: String, depth: u8) -> Self {
+        Variable {
+            depth,
+            name,
+            data_type: DataType::Any,
+        }
+    }
 }
 
 pub struct Compiler<'a> {
     instructions: &'a mut Vec<OpCode>,
     tokens: &'a Vec<TokenType>,
+    variables: Vec<Variable>,
     token_pointer: usize,
     pub in_error: bool,
+    depth: u8,
 }
 
 impl Compiler<'_> {
@@ -39,8 +63,10 @@ impl Compiler<'_> {
         Compiler {
             instructions,
             tokens,
+            variables: Vec::new(),
             token_pointer: 0,
             in_error: false,
+            depth: 0,
         }
     }
 
@@ -114,6 +140,17 @@ impl Compiler<'_> {
         true
     }
 
+    fn add_variable(&mut self, name: String) -> usize {
+        let index: usize;
+        if let Some(i) = self.variables.iter().position(|x| x.name == name) {
+            index = i;
+        } else {
+            self.variables.push(Variable::new(name, self.depth));
+            index = self.variables.len() - 1;
+        }
+        index
+    }
+
     fn variable(&mut self, token: &Token, can_assign: bool) {
         //check to see if this is a function call
         if let TokenType::LeftParan(_) = self.tokens[self.token_pointer] {
@@ -121,18 +158,35 @@ impl Compiler<'_> {
             return;
         };
 
-        //match_
+        //check to see if we are setting a variable
         let matched_equal = if let TokenType::Equals(_) = self.tokens[self.token_pointer] {
             self.advance();
             true
         } else {
             false
         };
+
         if can_assign && matched_equal {
+            // Setting a variable
             self.expression();
-            self.add_instr(OpCode::SetGlobal(token.lexeme.clone(), token.line_number));
+            let index = self.add_variable(token.lexeme.clone());
+            if self.depth == 0 {
+                self.add_instr(OpCode::SetGlobal(token.lexeme.clone(), token.line_number));
+            } else {
+                self.add_instr(OpCode::SetLocal(index, token.line_number))
+            }
         } else {
-            self.add_instr(OpCode::GetGlobal(token.lexeme.clone(), token.line_number));
+            // Getting value from a variable
+            if let Some(index) = self.variables.iter().position(|x| x.name == token.lexeme) {
+                if self.variables[index].depth == 0 {
+                    self.add_instr(OpCode::GetGlobal(token.lexeme.clone(), token.line_number));
+                } else {
+                    self.add_instr(OpCode::GetLocal(index, token.line_number))
+                }
+            } else {
+                // compile error - can't find variable
+                self.compile_error("Variable not found", token)
+            }
         }
     }
 

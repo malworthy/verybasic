@@ -66,8 +66,15 @@ mod tests {
     }
 
     #[test]
+    fn variables() {
+        assert_eq!(interpret("x = 1000"), "Number(1000.0)");
+        assert_eq!(interpret("print(x)"), "Compile Error");
+        assert_eq!(interpret("x = 1000; x / 100"), "Number(10.0)");
+    }
+
+    #[test]
     fn arithmatic() {
-        let contents = "-((1+1)*(1+1)) * (10-6) -20+1-8+9*10/5/9-2*7+1";
+        let contents = "-((1+1)*(1+1)) * (10.0-6) -20+1-8+9*10/5/9-2*7+1";
 
         let result = interpret(contents);
 
