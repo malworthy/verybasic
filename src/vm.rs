@@ -324,12 +324,10 @@ impl<'a> Vm<'a> {
                     }
                 }
                 OpCode::Call(name, argc, line_number) => {
-                    println!("calling function {name}");
                     let mut args: Vec<ValueType> = Vec::new();
                     for _i in 0..*argc {
                         let v = self.stack.pop().unwrap();
                         args.insert(0, v);
-                        //args.push(v);
                     }
                     if let Some(func) = self.natives.get(&name.as_str()) {
                         let result = func(args);
@@ -365,7 +363,11 @@ impl<'a> Vm<'a> {
                         }
                     }
                 }
-                OpCode::Jump(to_jump) => frame.ip += to_jump,
+                OpCode::Jump(to_jump) => {
+                    let current: i32 = frame.ip.try_into().unwrap();
+                    let new_ip: usize = (current + to_jump).try_into().unwrap();
+                    frame.ip = new_ip;
+                }
             }
 
             if !frame.inc() {

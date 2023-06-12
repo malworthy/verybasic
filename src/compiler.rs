@@ -24,7 +24,7 @@ pub enum OpCode {
     SetLocal(usize, u32),
     GetLocal(usize, u32),
     JumpIfFalse(usize),
-    Jump(usize),
+    Jump(i32),
 }
 
 pub enum DataType {
@@ -333,25 +333,6 @@ impl Compiler<'_> {
         self.add_instr(OpCode::Pop);
     }
 
-    // const ifStatement = () => {
-    //     writeByte(OpCode.OpWaBlockStart);
-    //     writeByte(OpCode.OpWaBlockStart);
-    //     expression();
-    //     consume(TokenType.Then, "if without then");
-    //     const jumpIndex = writeByte(OpCode.OpJumpIfFalse, 0);
-
-    //     block();
-    //     const elseJump = writeByte(OpCode.OpJump, 1);
-
-    //     writeByte(OpCode.OpWaBlockEnd);
-
-    //     patchJump(jumpIndex);
-    //     if (match(TokenType.Else)) block();
-    //     patchJump(elseJump);
-    //     consume(TokenType.End, "if statement without 'end'");
-    //     writeByte(OpCode.OpWaBlockEnd);
-    //   };
-
     fn if_statement(&mut self, if_token: &Token) {
         self.advance();
         self.expression();
@@ -366,8 +347,11 @@ impl Compiler<'_> {
             if let TokenType::Else(_) = self.tokens[self.token_pointer] {
                 self.advance();
                 self.block();
-                self.instructions[else_index] =
-                    OpCode::Jump(self.instructions.len() - else_index - 1);
+                self.instructions[else_index] = OpCode::Jump(
+                    (self.instructions.len() - else_index - 1)
+                        .try_into()
+                        .unwrap(),
+                );
             }
             if let TokenType::End(_) = self.tokens[self.token_pointer] {
                 self.advance();
@@ -376,6 +360,36 @@ impl Compiler<'_> {
             }
         } else {
             self.compile_error("If without then", if_token);
+        }
+    }
+
+    // const whileStatement = () => {
+    //     writeByte(OpCode.OpWaLoopStart);
+    //     const loopStart = currentInstructions().length - 1;
+    //     expression();
+    //     const jumpIndex = writeByte(OpCode.OpJumpIfFalse, 1);
+    //     block();
+    //     writeByte(OpCode.OpJump, loopStart - currentInstructions().length);
+    //     patchJump(jumpIndex);
+    //     writeByte(OpCode.OpWaLoopEnd);
+    //     consume(TokenType.End, "while statement without 'end'");
+    //   };
+
+    fn while_statement(&mut self, while_token: &Token) {
+        let loop_start: i32 = (self.instructions.len() - 1).try_into().unwrap();
+        self.advance();
+        self.expression();
+        let jump_index = self.add_instr(OpCode::JumpIfFalse(0));
+        self.block();
+        let len: i32 = self.instructions.len().try_into().unwrap();
+        self.add_instr(OpCode::Jump((loop_start - len).try_into().unwrap()));
+        self.instructions[jump_index] =
+            OpCode::JumpIfFalse(self.instructions.len() - jump_index - 1);
+        let token = &self.tokens[self.token_pointer];
+        if let TokenType::End(_) = token {
+            self.advance();
+        } else {
+            self.compile_error("while without end", while_token)
         }
     }
 
@@ -394,6 +408,7 @@ impl Compiler<'_> {
         let token = &self.tokens[self.token_pointer];
         match token {
             TokenType::If(t) => self.if_statement(t),
+            TokenType::While(t) => self.while_statement(t),
             _ => self.expression_statement(),
         }
     }
