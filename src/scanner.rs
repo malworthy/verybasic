@@ -171,7 +171,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             4,
         )
-    } else if code.len() >= 4 && &code[..4] == "then" {
+    } else if code.len() >= 4 && &code[..4] == "else" {
         (
             TokenType::Else(Token {
                 lexeme: String::from("else"),

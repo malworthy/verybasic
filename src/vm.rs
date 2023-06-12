@@ -56,12 +56,6 @@ pub struct Vm<'a> {
 
 fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
     if let Some(val) = params.first() {
-        // let s = match val {
-        //     ValueType::Number(n) => format!("{n}"),
-        //     ValueType::Boolean(b) => format!("{b}"),
-        //     ValueType::Str(str) => str.to_string(),
-        //     ValueType::String(str) => str.to_string(),
-        // };
         let s = val.to_string();
         println!("{s}");
         Result::Ok(ValueType::String(s))
@@ -362,6 +356,16 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::GetLocal(i, line_number) => panic!("GetLocal Not implemented"),
                 OpCode::SetLocal(i, Line_number) => panic!("SetLocal Not implemented"),
+                OpCode::JumpIfFalse(to_jump) => {
+                    if let Some(result) = self.stack.pop() {
+                        if let ValueType::Boolean(val) = result {
+                            if !val {
+                                frame.ip += to_jump;
+                            }
+                        }
+                    }
+                }
+                OpCode::Jump(to_jump) => frame.ip += to_jump,
             }
 
             if !frame.inc() {

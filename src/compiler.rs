@@ -23,6 +23,8 @@ pub enum OpCode {
     Pop,
     SetLocal(usize, u32),
     GetLocal(usize, u32),
+    JumpIfFalse(usize),
+    Jump(usize),
 }
 
 pub enum DataType {
@@ -70,8 +72,9 @@ impl Compiler<'_> {
         }
     }
 
-    fn add_instr(&mut self, op: OpCode) {
+    fn add_instr(&mut self, op: OpCode) -> usize {
         self.instructions.push(op);
+        self.instructions.len() - 1
     }
 
     fn number(&mut self, token: &Token) {
@@ -173,7 +176,7 @@ impl Compiler<'_> {
             if self.depth == 0 {
                 self.add_instr(OpCode::SetGlobal(token.lexeme.clone(), token.line_number));
             } else {
-                self.add_instr(OpCode::SetLocal(index, token.line_number))
+                self.add_instr(OpCode::SetLocal(index, token.line_number));
             }
         } else {
             // Getting value from a variable
@@ -181,11 +184,12 @@ impl Compiler<'_> {
                 if self.variables[index].depth == 0 {
                     self.add_instr(OpCode::GetGlobal(token.lexeme.clone(), token.line_number));
                 } else {
-                    self.add_instr(OpCode::GetLocal(index, token.line_number))
+                    self.add_instr(OpCode::GetLocal(index, token.line_number));
                 }
             } else {
                 // compile error - can't find variable
-                self.compile_error("Variable not found", token)
+                let message = format!("Variable {} not found", token.lexeme);
+                self.compile_error(&message, token);
             }
         }
     }
@@ -288,11 +292,11 @@ impl Compiler<'_> {
             TokenType::String(t) => self.string(t),
             TokenType::Minus(t) => {
                 self.parse_precedence(precedence::UNARY);
-                self.add_instr(OpCode::Negate(t.line_number))
+                self.add_instr(OpCode::Negate(t.line_number));
             }
             TokenType::Not(t) => {
                 self.parse_precedence(precedence::UNARY);
-                self.add_instr(OpCode::Not(t.line_number))
+                self.add_instr(OpCode::Not(t.line_number));
             }
             TokenType::LeftParan(t) => self.grouping(t),
             TokenType::Identifier(t) => self.variable(t, can_assign),
@@ -329,12 +333,77 @@ impl Compiler<'_> {
         self.add_instr(OpCode::Pop);
     }
 
+    // const ifStatement = () => {
+    //     writeByte(OpCode.OpWaBlockStart);
+    //     writeByte(OpCode.OpWaBlockStart);
+    //     expression();
+    //     consume(TokenType.Then, "if without then");
+    //     const jumpIndex = writeByte(OpCode.OpJumpIfFalse, 0);
+
+    //     block();
+    //     const elseJump = writeByte(OpCode.OpJump, 1);
+
+    //     writeByte(OpCode.OpWaBlockEnd);
+
+    //     patchJump(jumpIndex);
+    //     if (match(TokenType.Else)) block();
+    //     patchJump(elseJump);
+    //     consume(TokenType.End, "if statement without 'end'");
+    //     writeByte(OpCode.OpWaBlockEnd);
+    //   };
+
+    fn if_statement(&mut self, if_token: &Token) {
+        self.advance();
+        self.expression();
+        let token = &self.tokens[self.token_pointer];
+        if let TokenType::Then(t) = token {
+            self.advance();
+            let if_index = self.add_instr(OpCode::JumpIfFalse(0));
+            self.block();
+            let else_index = self.add_instr(OpCode::Jump(0));
+            self.instructions[if_index] =
+                OpCode::JumpIfFalse(self.instructions.len() - if_index - 1);
+            if let TokenType::Else(_) = self.tokens[self.token_pointer] {
+                self.advance();
+                self.block();
+                self.instructions[else_index] =
+                    OpCode::Jump(self.instructions.len() - else_index - 1);
+            }
+            if let TokenType::End(_) = self.tokens[self.token_pointer] {
+                self.advance();
+            } else {
+                self.compile_error("If without end", t);
+            }
+        } else {
+            self.compile_error("If without then", if_token);
+        }
+    }
+
+    fn block(&mut self) {
+        loop {
+            match self.tokens[self.token_pointer] {
+                TokenType::Else(_) | TokenType::End(_) | TokenType::Eof => break,
+                _ => {
+                    self.statement();
+                }
+            }
+        }
+    }
+
+    fn statement(&mut self) {
+        let token = &self.tokens[self.token_pointer];
+        match token {
+            TokenType::If(t) => self.if_statement(t),
+            _ => self.expression_statement(),
+        }
+    }
+
     pub fn compile(&mut self) {
         while self.token_pointer < self.tokens.len() {
             let token = &self.tokens[self.token_pointer];
             match token {
                 TokenType::Eof => break,
-                _ => self.expression_statement(),
+                _ => self.statement(),
             };
         }
     }

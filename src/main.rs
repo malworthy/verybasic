@@ -66,6 +66,15 @@ mod tests {
     }
 
     #[test]
+    fn ifthenelse() {
+        assert_eq!(interpret("if 1==1 then 666 end"), "Number(666.0)");
+        assert_eq!(interpret("if 1==1 then 666 else 555 end"), "Number(666.0)");
+        assert_eq!(interpret("if 1==2 then 666 else 555 end"), "Number(555.0)");
+        assert_eq!(interpret("if 1==1 then x=1; x+5 else x=6; x+5 end"), "Number(6.0)");
+        assert_eq!(interpret("if 1==2 then x=1; x+5 else x=6; x+5 end"), "Number(11.0)");
+    }
+
+    #[test]
     fn variables() {
         assert_eq!(interpret("x = 1000"), "Number(1000.0)");
         assert_eq!(interpret("print(x)"), "Compile Error");
