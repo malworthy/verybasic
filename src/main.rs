@@ -66,6 +66,25 @@ mod tests {
     }
 
     #[test]
+    fn define_function() {
+        assert_eq!(
+            interpret("function test() print(45) end; test(); print(66);"),
+            "String(\"66\")"
+        );
+        assert_eq!(interpret("function test(a,b,c) print(45) end"), "");
+
+        assert_eq!(
+            interpret("function test() 45 end; test(); "),
+            "Number(45.0)"
+        );
+
+        assert_eq!(
+            interpret("function test(x) x * 2 end; test(20); "),
+            "Number(40.0)"
+        );
+    }
+
+    #[test]
     fn ifthenelse() {
         assert_eq!(interpret("if 1==1 then 666 end"), "Number(666.0)");
         assert_eq!(interpret("if 1==1 then 666 else 555 end"), "Number(666.0)");
@@ -82,10 +101,7 @@ mod tests {
 
     #[test]
     fn while_loop() {
-        assert_eq!(
-            interpret("x = 0; while x < 10 x=x+1 end x"),
-            "Number(10.0)"
-        );
+        assert_eq!(interpret("x = 0; while x < 10 x=x+1 end x"), "Number(10.0)");
     }
 
     #[test]

@@ -25,6 +25,8 @@ pub enum OpCode {
     GetLocal(usize, u32),
     JumpIfFalse(usize),
     Jump(i32),
+    DefFn(String, usize, i32), //ip pointer, arity
+    Return,
 }
 
 pub enum DataType {
@@ -363,18 +365,6 @@ impl Compiler<'_> {
         }
     }
 
-    // const whileStatement = () => {
-    //     writeByte(OpCode.OpWaLoopStart);
-    //     const loopStart = currentInstructions().length - 1;
-    //     expression();
-    //     const jumpIndex = writeByte(OpCode.OpJumpIfFalse, 1);
-    //     block();
-    //     writeByte(OpCode.OpJump, loopStart - currentInstructions().length);
-    //     patchJump(jumpIndex);
-    //     writeByte(OpCode.OpWaLoopEnd);
-    //     consume(TokenType.End, "while statement without 'end'");
-    //   };
-
     fn while_statement(&mut self, while_token: &Token) {
         let loop_start: i32 = (self.instructions.len() - 1).try_into().unwrap();
         self.advance();
@@ -393,6 +383,86 @@ impl Compiler<'_> {
         }
     }
 
+    fn def_fn(&mut self, fn_token: &Token) {
+        if self.depth > 0 {
+            self.compile_error("Can't define a function within a function", fn_token);
+            return;
+        }
+        let jump_index = self.add_instr(OpCode::Jump(0));
+        let fn_start = self.instructions.len();
+        self.depth += 1;
+        self.advance();
+
+        // get function name
+        let name: String;
+        if let TokenType::Identifier(t) = &self.tokens[self.token_pointer] {
+            name = t.lexeme.clone();
+            self.advance();
+        } else {
+            self.compile_error("missing function name", fn_token);
+            return;
+        }
+        // consume (
+        if let TokenType::LeftParan(t) = &self.tokens[self.token_pointer] {
+            self.advance();
+        } else {
+            self.compile_error("missing '(' after function name", fn_token);
+            return;
+        }
+
+        // define params and local variables
+        let mut arity = 0;
+        loop {
+            match &self.tokens[self.token_pointer] {
+                TokenType::RightParan(_) => {
+                    self.advance();
+                    break;
+                }
+                TokenType::Comma(_) => {
+                    if !self.advance() {
+                        self.compile_error("Expected )", fn_token);
+                        return;
+                    }
+                }
+                TokenType::Eof => {
+                    self.compile_error("Expected )", fn_token);
+                    return;
+                }
+                TokenType::Identifier(param) => {
+                    let index = self.add_variable(param.lexeme.clone());
+                    arity += 1;
+                    self.advance();
+                }
+                _ => {
+                    self.compile_error("Function parameter expected", fn_token);
+                    return;
+                }
+            }
+        }
+        // The function body
+        self.block();
+
+        // Check for end
+        if let TokenType::End(_) = &self.tokens[self.token_pointer] {
+            self.advance();
+        } else {
+            self.compile_error("Function without end", fn_token);
+            return;
+        }
+
+        // add return in case there isn't one
+        self.add_instr(OpCode::Return);
+
+        self.depth -= 1;
+
+        let to_jump: i32 = (self.instructions.len() - fn_start).try_into().unwrap();
+        self.add_instr(OpCode::DefFn(name, fn_start, arity));
+
+        // patch jump so we jump of the function if not calling it
+
+        self.instructions[jump_index] = OpCode::Jump(to_jump);
+    }
+
     fn block(&mut self) {
         loop {
             match self.tokens[self.token_pointer] {
@@ -409,6 +479,7 @@ impl Compiler<'_> {
         match token {
             TokenType::If(t) => self.if_statement(t),
             TokenType::While(t) => self.while_statement(t),
+            TokenType::Function(t) => self.def_fn(t),
             _ => self.expression_statement(),
         }
     }

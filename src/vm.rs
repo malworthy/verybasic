@@ -24,26 +24,31 @@ impl ValueType<'_> {
 
 //impl Copy for ValueType<'_> {}
 
-#[derive(Debug)]
-struct Frame<'a> {
-    instructions: &'a Vec<OpCode>,
+#[derive(Copy, Clone, Debug)]
+struct Frame {
+    //instructions: &'a Vec<OpCode>,
     ip: usize,
     frame_pointer: usize,
 }
 
-impl Frame<'_> {
-    pub fn current(&self) -> &OpCode {
-        &self.instructions[self.ip]
-    }
+impl Frame {
+    // pub fn current(&self) -> &OpCode {
+    //     &self.instructions[self.ip]
+    // }
 
-    pub fn inc(&mut self) -> bool {
-        self.ip += 1;
-        self.ip < self.instructions.len()
-    }
+    // pub fn inc(&mut self) -> bool {
+    //     self.ip += 1;
+    //     self.ip < self.instructions.len()
+    // }
 }
 
 fn runtime_error(message: &str, line_number: u32) {
     eprintln!("runtime error: {message} in line {line_number}");
+}
+
+struct Function {
+    pointer: usize,
+    arity: i32,
 }
 
 pub struct Vm<'a> {
@@ -51,6 +56,7 @@ pub struct Vm<'a> {
     globals: HashMap<&'a String, ValueType<'a>>,
     //natives: Vec<fn(Vec<ValueType>) -> Result<ValueType, &str>>,
     natives: HashMap<&'a str, fn(Vec<ValueType>) -> Result<ValueType, &str>>,
+    functions: HashMap<&'a str, Function>,
     pub return_value: Option<ValueType<'a>>,
 }
 
@@ -89,6 +95,7 @@ impl<'a> Vm<'a> {
             stack: Vec::new(),
             globals: HashMap::new(),
             natives: HashMap::new(), //vec![print],
+            functions: HashMap::new(),
             return_value: Option::None,
         }
     }
@@ -234,15 +241,16 @@ impl<'a> Vm<'a> {
         let mut call_frames: Vec<Frame> = Vec::new();
         //let mut stack: Vec<ValueType> = Vec::new();
         let main_frame = Frame {
-            instructions,
+            //instructions,
             ip: 0,
             frame_pointer: 0,
         };
-        call_frames.push(main_frame);
+        //call_frames.push(main_frame);
+        let mut frame = main_frame;
         loop {
             //let frame = &mut call_frames[call_frames.len() - 1]; //  callFrames.last().unwrap(); //TODO: make safer
-            let frame = &mut call_frames.last_mut().unwrap(); //TODO: make safer
-            let instr = &frame.instructions[frame.ip];
+            //let mut frame = call_frames.last_mut().unwrap(); //TODO: make safer
+            let instr = &instructions[frame.ip];
             match instr {
                 OpCode::ConstantNum(num, _) => {
                     self.stack.push(ValueType::Number(*num));
@@ -325,11 +333,12 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::Call(name, argc, line_number) => {
                     let mut args: Vec<ValueType> = Vec::new();
-                    for _i in 0..*argc {
-                        let v = self.stack.pop().unwrap();
-                        args.insert(0, v);
-                    }
+
                     if let Some(func) = self.natives.get(&name.as_str()) {
+                        for _i in 0..*argc {
+                            let v = self.stack.pop().unwrap();
+                            args.insert(0, v);
+                        }
                         let result = func(args);
                         if let Ok(value) = result {
                             self.stack.push(value);
@@ -338,6 +347,14 @@ impl<'a> Vm<'a> {
                             runtime_error(&message, *line_number);
                             return false;
                         }
+                    } else if let Some(func) = self.functions.get(&name.as_str()) {
+                        // call user defined func
+                        call_frames.push(frame); // save current frame
+                        let argc = usize::try_from(*argc).unwrap();
+                        frame = Frame {
+                            ip: func.pointer - 1,
+                            frame_pointer: self.stack.len() - argc,
+                        };
                     } else {
                         let result = system_command(name, args);
                         if let Ok(value) = result {
@@ -352,8 +369,13 @@ impl<'a> Vm<'a> {
                 OpCode::Pop => {
                     self.return_value = self.stack.pop();
                 }
-                OpCode::GetLocal(i, line_number) => panic!("GetLocal Not implemented"),
-                OpCode::SetLocal(i, Line_number) => panic!("SetLocal Not implemented"),
+                OpCode::GetLocal(i, line_number) => {
+                    self.stack.push(self.stack[i + frame.frame_pointer].clone());
+                }
+                OpCode::SetLocal(i, Line_number) => {
+                    let value = self.stack.last().unwrap().clone();
+                    self.stack[i + frame.frame_pointer] = value;
+                }
                 OpCode::JumpIfFalse(to_jump) => {
                     if let Some(result) = self.stack.pop() {
                         if let ValueType::Boolean(val) = result {
@@ -368,9 +390,31 @@ impl<'a> Vm<'a> {
                     let new_ip: usize = (current + to_jump).try_into().unwrap();
                     frame.ip = new_ip;
                 }
+                OpCode::Return => {
+                    // pop the frame
+                    // if no frames left, then break
+                    if let Some(value) = call_frames.pop() {
+                        frame = value;
+                        let val = self.return_value.clone();
+                        self.stack.push(val.unwrap());
+                    } else {
+                        break;
+                    }
+                    //panic!("return not implemented");
+                }
+                OpCode::DefFn(name, index, arity) => {
+                    self.functions.insert(
+                        name,
+                        Function {
+                            pointer: *index,
+                            arity: *arity,
+                        },
+                    );
+                    //panic!("DefFn not implemented");
+                }
             }
-
-            if !frame.inc() {
+            frame.ip += 1;
+            if frame.ip >= instructions.len() {
                 break;
             }
         }
