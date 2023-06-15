@@ -64,6 +64,13 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
             line_number += 1;
         }
 
+        if current_char == '\'' {
+            while i < code.len() && code.chars().nth(i).unwrap() != '\n' {
+                i += 1
+            }
+            line_number += 1;
+        }
+
         let (token, len) = make_keyword(&code[i..], line_number);
         if let TokenType::None = token {
             //Numbers
@@ -108,7 +115,11 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
             } else if current_char.is_ascii_alphabetic() {
                 // Identifier
                 let mut lexeme = String::new();
-                while i < code.len() && (current_char.is_ascii_alphabetic()) {
+                while i < code.len()
+                    && (current_char.is_ascii_alphabetic()
+                        || current_char == '_'
+                        || current_char.is_numeric())
+                {
                     lexeme.push(current_char);
                     i += 1;
                     if let Some(char) = code.chars().nth(i) {
@@ -144,15 +155,6 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             8,
         )
-    } else if code.len() >= 6 && &code[..6] == "return" {
-        (
-            TokenType::Return(Token {
-                lexeme: String::from("return"),
-                line_number,
-                precedence: precedence::NONE,
-            }),
-            6,
-        )
     } else if code.len() >= 5 && &code[..5] == "while" {
         (
             TokenType::While(Token {
@@ -161,6 +163,15 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                 precedence: precedence::NONE,
             }),
             5,
+        )
+    } else if code.len() >= 4 && &code[..4] == "exit" {
+        (
+            TokenType::Return(Token {
+                lexeme: String::from("exit"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            4,
         )
     } else if code.len() >= 4 && &code[..4] == "then" {
         (

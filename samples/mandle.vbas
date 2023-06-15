@@ -1,0 +1,62 @@
+' mandlebot
+
+width = 800
+height = 800
+max_iteration = 10
+
+ function setgraphics(x)
+     0
+ end
+
+function plot(x,y,c)
+     0
+end
+
+function getColor(c)
+    if c < max_iteration * 0.1 then  "darkblue" exit end
+    if c < max_iteration * 0.2 then  "blue" exit end
+    if c < max_iteration * 0.4 then  "purple" exit end
+    if c < max_iteration * 0.6 then  "yellow" exit end
+    if c < max_iteration * 0.8 then  "pink" exit end
+    if c < max_iteration * 0.9 then  "red" exit end
+    "black"
+end
+
+function mandlebotPoint(Px, Py)
+    x0 = (Px * (2.47 / width)) - 2 'scaled x coordinate of pixel (scaled to lie in the Mandelbrot X scale (-2.00, 0.47))
+    y0 = (Py * (2.24 / height)) - 1.12 'scaled y coordinate of pixel (scaled to lie in the Mandelbrot Y scale (-1.12, 1.12))
+    x = 0.0 '4
+    y = 0.0 '5
+    iteration = 0 '6
+    
+    x2= 0 '7
+    y2= 0 '8
+
+    while (x2 + y2 <= 4 and iteration < max_iteration)
+        y = 2 * x * y + y0
+        x = x2 - y2 + x0
+        x2 = x * x
+        y2 = y * y
+        iteration = iteration + 1
+    end
+    color = getColor(iteration) '9
+    plot(Px, Py, color)
+end
+
+function mandlebot()
+    x = 0
+    y = 0
+    while x < width
+        y = 0
+        while y < height
+            mandlebotPoint(x,y)
+            y=y+1
+        end
+        x=x+1
+    end
+end
+
+print("starting program") 
+setgraphics(1)
+mandlebot()
+print("finished")

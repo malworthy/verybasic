@@ -10,7 +10,7 @@ use crate::{compiler::Compiler, vm::Vm};
 fn main() {
     let args: Vec<String> = env::args().collect();
     println!("{}", "Very Basic Version 0.0".yellow());
-    dbg!(&args);
+    //dbg!(&args);
 
     if let Some(file_path) = args.get(1) {
         let contents =
@@ -38,7 +38,7 @@ fn interpret(contents: &str) -> String {
         return String::from("Compile Error");
     }
 
-    dbg!(&instructions);
+    //dbg!(&instructions);
     let mut vm = Vm::new();
     vm.init();
 
@@ -63,6 +63,48 @@ mod tests {
     fn calling() {
         assert_eq!(interpret("print("), "Compile Error");
         assert_eq!(interpret("print(\"hello\")"), "String(\"hello\")");
+    }
+
+    #[test]
+    fn and() {
+        //assert_eq!(interpret("1==1 and 2==2"), "Boolean(true)");
+        //assert_eq!(interpret("1==1 and 1==2"), "Boolean(false)");
+        assert_eq!(interpret("x2=1:y2=1:iteration=1:max_iteration=1 x2 + y2 <= 4 and iteration < max_iteration"), "Boolean(false)");
+        //
+    }
+
+    #[test]
+    fn multiple_fns() {
+        let code = "function setgraphics(x)
+                        0
+                    end
+                    
+                    function plot(x,y,c)
+                        0
+                    end";
+        assert_eq!(interpret(code), "");
+    }
+
+    #[test]
+    fn shadowing() {
+        assert_eq!(
+            interpret("x = 5.5; function test(x) x * 2 end; test(20); "),
+            "Number(40.0)"
+        );
+        assert_eq!(
+            interpret("x = 5.5; function test(y) y * 2 end; test(20); "),
+            "Number(40.0)"
+        );
+    }
+
+    #[test]
+    fn locals() {
+        assert_eq!(
+            interpret(
+                "x = 5.5; y = 6.6; function test(x,y,z) a=1 b=2 a+b+x+y+z end; test(3,4,5); "
+            ),
+            "Number(15.0)"
+        );
     }
 
     #[test]
@@ -166,10 +208,10 @@ mod tests {
             z=\"string\"
         ";
         let tokens = crate::scanner::tokenize(code);
-        dbg!(tokens.len());
+        //dbg!(tokens.len());
         assert_eq!(tokens.len(), 32);
         let t = &tokens[10]; // if
-        dbg!(t);
+                             //dbg!(t);
         if let TokenType::If(token) = t {
             assert_eq!(token.line_number, 4);
         } else {

@@ -30,17 +30,31 @@ end
 
 ## Functions
 
-Functions must be declared before you call them in the top level script. If you don't explicitly return a value, the function will return zero.
+Functions must be declared before you call them in the top level script.
+Functions will return the result of the last expression executed. All functions must return a value. An empty function body will be a compile error.
 
 Example:
 
 ```
 function addNumbers(a,b)
-    return a+b
+    a+b
 end
 
 ' prints '2'
 print(addNumbers(1,1))
+```
+
+To exit a function, use the keyword exit as below.
+
+```
+' the function below returns zero if x is less than zero.  Otherwise returns the value of x.
+function foo(x)
+    if x < 0 then
+        0 exit
+    end if
+    x
+end
+
 ```
 
 ## Data types

@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 //mod scanner;
 use crate::scanner::{precedence, Token, TokenType};
 
@@ -17,11 +19,14 @@ pub enum OpCode {
     Equal(u32),
     NotEqual(u32),
     Not(u32),
+    And(u32),
+    Or(u32),
     SetGlobal(String, u32),
     GetGlobal(String, u32),
     Call(String, u32, u32),
     Pop,
     SetLocal(usize, u32),
+    DefineLocal(usize, u32),
     GetLocal(usize, u32),
     JumpIfFalse(usize),
     Jump(i32),
@@ -115,9 +120,9 @@ impl Compiler<'_> {
             self.compile_error("Syntax Error", token);
             return false;
         }
-        dbg!(&self.instructions);
-        println!("parsing call() {name}");
-        dbg!(token);
+        //dbg!(&self.instructions);
+        //println!("parsing call() {name}");
+        //dbg!(token);
         let mut arguments = 0;
         loop {
             match &self.tokens[self.token_pointer] {
@@ -145,15 +150,55 @@ impl Compiler<'_> {
         true
     }
 
-    fn add_variable(&mut self, name: String) -> usize {
+    fn add_variable(&mut self, name: String) -> (usize, bool) {
         let index: usize;
+        let mut added = false;
         if let Some(i) = self.variables.iter().position(|x| x.name == name) {
-            index = i;
+            if self.variables[i].depth > 0 {
+                let start = self
+                    .variables
+                    .iter()
+                    .position(|x| x.depth == self.depth)
+                    .unwrap();
+                index = i - start;
+            } else {
+                index = 0; // global, so we don't use index.
+            }
         } else {
             self.variables.push(Variable::new(name, self.depth));
-            index = self.variables.len() - 1;
+            let start = self
+                .variables
+                .iter()
+                .position(|x| x.depth == self.depth)
+                .unwrap();
+
+            index = self.variables.len() - start - 1;
+            added = true;
         }
-        index
+        (index, added)
+    }
+
+    fn add_fn_param(&mut self, name: String) -> bool {
+        // let index: usize;
+        let mut added = false;
+        if let Some(_) = self
+            .variables
+            .iter()
+            .position(|x| x.name == name && x.depth == self.depth)
+        {
+            let message = format!("Duplicate parameters in function {name}");
+            self.compile_error_message(&message);
+        } else {
+            // let start = if let Some(i) = self.variables.iter().position(|x| x.depth == self.depth) {
+            //     i
+            // } else {
+            //     self.variables.len()
+            // };
+            self.variables.push(Variable::new(name, self.depth));
+            // index = self.variables.len() - start - 1;
+            added = true;
+        }
+        added
     }
 
     fn variable(&mut self, token: &Token, can_assign: bool) {
@@ -174,18 +219,34 @@ impl Compiler<'_> {
         if can_assign && matched_equal {
             // Setting a variable
             self.expression();
-            let index = self.add_variable(token.lexeme.clone());
+            let (index, added) = self.add_variable(token.lexeme.clone());
             if self.depth == 0 {
                 self.add_instr(OpCode::SetGlobal(token.lexeme.clone(), token.line_number));
             } else {
-                self.add_instr(OpCode::SetLocal(index, token.line_number));
+                if added {
+                    self.add_instr(OpCode::DefineLocal(index, token.line_number));
+                } else {
+                    self.add_instr(OpCode::SetLocal(index, token.line_number));
+                }
             }
         } else {
             // Getting value from a variable
-            if let Some(index) = self.variables.iter().position(|x| x.name == token.lexeme) {
+            if let Some(index) = self
+                .variables
+                .iter()
+                .rev()
+                .position(|x| x.name == token.lexeme)
+            {
+                let index = self.variables.len() - 1 - index;
                 if self.variables[index].depth == 0 {
                     self.add_instr(OpCode::GetGlobal(token.lexeme.clone(), token.line_number));
                 } else {
+                    let start = self
+                        .variables
+                        .iter()
+                        .position(|x| x.depth == self.depth)
+                        .unwrap();
+                    let index = index - start;
                     self.add_instr(OpCode::GetLocal(index, token.line_number));
                 }
             } else {
@@ -195,7 +256,10 @@ impl Compiler<'_> {
             }
         }
     }
-
+    // 0 1 2 3 4 5
+    // 0 0 0 1 1 1
+    // x y z x y z
+    // x = 1
     fn run_infix(&mut self, token: &TokenType) -> bool {
         match token {
             TokenType::Plus(t) => {
@@ -248,6 +312,16 @@ impl Compiler<'_> {
                 self.add_instr(OpCode::NotEqual(t.line_number));
                 true
             }
+            TokenType::And(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::And(t.line_number));
+                true
+            }
+            TokenType::Or(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::Or(t.line_number));
+                true
+            }
             TokenType::LeftParan(t) => self.call(t),
             _ => false,
         }
@@ -265,7 +339,7 @@ impl Compiler<'_> {
             TokenType::LessThanOrEqual(t) => t.precedence,
             TokenType::Equality(t) => t.precedence,
             TokenType::NotEquals(t) => t.precedence,
-            TokenType::LeftParan(t) => t.precedence,
+            TokenType::LeftParan(t) | TokenType::And(t) | TokenType::Or(t) => t.precedence,
 
             _ => precedence::NONE,
         }
@@ -277,7 +351,16 @@ impl Compiler<'_> {
     }
 
     fn compile_error(&mut self, message: &str, token: &Token) {
-        eprintln!("Compile error: {}, line {}", message, token.line_number);
+        eprintln!(
+            "Compile error: {}, line {}",
+            message.red(),
+            token.line_number
+        );
+        self.in_error = true;
+    }
+
+    fn compile_error_message(&mut self, message: &str) {
+        eprintln!("Compile error: {}", message.red());
         self.in_error = true;
     }
 
@@ -429,7 +512,9 @@ impl Compiler<'_> {
                     return;
                 }
                 TokenType::Identifier(param) => {
-                    let index = self.add_variable(param.lexeme.clone());
+                    if !self.add_fn_param(param.lexeme.clone()) {
+                        return;
+                    }
                     arity += 1;
                     self.advance();
                 }
@@ -452,6 +537,11 @@ impl Compiler<'_> {
 
         // add return in case there isn't one
         self.add_instr(OpCode::Return);
+
+        // remove the local variables as we are done with them
+        if let Some(index) = self.variables.iter().position(|x| x.depth == self.depth) {
+            self.variables.truncate(index);
+        }
 
         self.depth -= 1;
 
@@ -480,6 +570,10 @@ impl Compiler<'_> {
             TokenType::If(t) => self.if_statement(t),
             TokenType::While(t) => self.while_statement(t),
             TokenType::Function(t) => self.def_fn(t),
+            TokenType::Return(_) => {
+                self.add_instr(OpCode::Return);
+                self.advance();
+            }
             _ => self.expression_statement(),
         }
     }

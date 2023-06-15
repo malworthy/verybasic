@@ -163,6 +163,32 @@ impl<'a> Vm<'a> {
         true
     }
 
+    fn and_or(&mut self, op: &OpCode, line_number: u32) -> bool {
+        let b = self.stack.pop().unwrap();
+        let a = self.stack.pop().unwrap();
+        let result = match a {
+            ValueType::Boolean(a) => {
+                if let ValueType::Boolean(b) = b {
+                    match op {
+                        OpCode::And(_) => ValueType::Boolean(a && b),
+                        OpCode::Or(_) => ValueType::Boolean(a && b),
+                        _ => panic!("And/Or opcode expected"),
+                    }
+                } else {
+                    runtime_error("type mismatch", line_number);
+                    return false;
+                }
+            }
+            _ => {
+                runtime_error("type mismatch", line_number);
+                return false;
+            }
+        };
+
+        self.stack.push(result);
+        true
+    }
+
     fn negate(&mut self, line_number: u32) -> bool {
         let a = self.stack.pop().unwrap();
         let result = match a {
@@ -370,12 +396,30 @@ impl<'a> Vm<'a> {
                     self.return_value = self.stack.pop();
                 }
                 OpCode::GetLocal(i, line_number) => {
+                    if i + frame.frame_pointer >= self.stack.len() {
+                        dbg!(&instructions);
+                        dbg!(&self.stack);
+                        dbg!(&call_frames);
+                        println!(
+                            "(getlocal) Line Number: {line_number} {i} {}",
+                            frame.frame_pointer
+                        );
+                    }
+
                     self.stack.push(self.stack[i + frame.frame_pointer].clone());
                 }
-                OpCode::SetLocal(i, Line_number) => {
+                OpCode::SetLocal(i, line_number) => {
+                    // dbg!(instructions);
+                    // println!("Line Number: {line_number} {i} {}", frame.frame_pointer);
                     let value = self.stack.last().unwrap().clone();
                     self.stack[i + frame.frame_pointer] = value;
                 }
+                OpCode::DefineLocal(i, line_number) => {
+                    let value = self.stack.last().unwrap().clone();
+                    self.stack.push(value);
+                    //self.stack[i + frame.frame_pointer] = value;
+                }
+                // do a define local
                 OpCode::JumpIfFalse(to_jump) => {
                     if let Some(result) = self.stack.pop() {
                         if let ValueType::Boolean(val) = result {
@@ -394,6 +438,9 @@ impl<'a> Vm<'a> {
                     // pop the frame
                     // if no frames left, then break
                     if let Some(value) = call_frames.pop() {
+                        // get rid of any local variables on the stack
+                        self.stack.truncate(frame.frame_pointer);
+                        // set the call frame
                         frame = value;
                         let val = self.return_value.clone();
                         self.stack.push(val.unwrap());
@@ -412,13 +459,18 @@ impl<'a> Vm<'a> {
                     );
                     //panic!("DefFn not implemented");
                 }
+                OpCode::And(line_number) | OpCode::Or(line_number) => {
+                    if !self.and_or(instr, *line_number) {
+                        return false;
+                    }
+                }
             }
             frame.ip += 1;
             if frame.ip >= instructions.len() {
                 break;
             }
         }
-        dbg!(&self.stack);
+        //dbg!(&self.stack);
 
         true
     }
