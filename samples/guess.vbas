@@ -1,0 +1,2 @@
+word = input("Enter a word")
+print ("you entered " + word)

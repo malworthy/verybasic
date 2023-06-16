@@ -15,8 +15,8 @@ fn main() {
         let contents =
             fs::read_to_string(file_path).expect("Should have been able to read the file");
 
-        if let Result::Err(msg) = interpret(&contents) {
-            println!("{}", msg.red());
+        if let Result::Err(_) = interpret(&contents) {
+            //println!("{}", msg.red());
             std::process::exit(1);
         }
     } else {

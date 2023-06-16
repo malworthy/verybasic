@@ -386,16 +386,15 @@ impl Compiler<'_> {
             TokenType::LeftParan(t) => self.grouping(t),
             TokenType::Identifier(t) => self.variable(t, can_assign),
             _ => {
-                dbg!(token);
-                eprintln!("Unexpected Statement: {:?}", token);
-                self.in_error = true;
+                let result = token.get_token();
+                if let Some(t) = result {
+                    let message = format!("Unexpected statement '{}'", t.lexeme);
+                    self.compile_error(message.as_str(), t);
+                } else {
+                    panic!("Unexpected Token Type");
+                }
             }
         };
-
-        // let xx = &self.tokens.get(self.token_pointer);
-
-        //let test = self.get_precedence(&self.tokens[self.token_pointer]);
-        //println!("prec: {precedence} < {test}");
 
         while self.token_pointer < self.tokens.len()
             && precedence <= self.get_precedence(&self.tokens[self.token_pointer])

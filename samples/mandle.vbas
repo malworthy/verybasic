@@ -1,5 +1,6 @@
 ' mandlebot
 
+
 width = 140
 height = 40
 max_iteration = 10
@@ -50,15 +51,6 @@ end
 function mandlebot()
     x = 0
     y = 0
-    ' while x < width
-    '     y = 0
-    '     while y < height
-    '         mandlebotPoint(x,y)
-    '         y=y+1
-    '     end
-    '     x=x+1
-    ' end
-
     while y < height
         x = 0
         while x < width
@@ -68,9 +60,11 @@ function mandlebot()
         y=y+1
         print("")
     end
-end
+end 
 
 print("starting program") 
 setgraphics(1)
 mandlebot()
 print("finished")
+
+

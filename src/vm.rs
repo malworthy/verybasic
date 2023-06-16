@@ -1,4 +1,4 @@
-use std::io::Write;
+mod functions;
 use std::{collections::HashMap, process::Command};
 
 use crate::compiler::OpCode;
@@ -9,6 +9,7 @@ pub enum ValueType<'a> {
     Str(&'a str),
     Boolean(bool),
     String(String),
+    //Array(Vec<ValueType<'a>>),
 }
 
 impl ValueType<'_> {
@@ -46,22 +47,6 @@ pub struct Vm<'a> {
     natives: HashMap<&'a str, fn(Vec<ValueType>) -> Result<ValueType, &str>>,
     functions: HashMap<&'a str, Function>,
     pub return_value: Option<ValueType<'a>>,
-}
-// Parameters: 0(string) = string to print, 1(bool) = print new line if true
-fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
-    if let Some(val) = params.first() {
-        let s = val.to_string();
-        if let Some(print_new_line) = params.get(1) {
-            //println!("I'm here!");
-            print!("{s}");
-            std::io::stdout().flush().unwrap();
-        } else {
-            println!("{s}");
-        }
-        Result::Ok(ValueType::String(s))
-    } else {
-        Err("No parameters passed to function")
-    }
 }
 
 fn system_command<'a>(
@@ -107,7 +92,8 @@ impl<'a> Vm<'a> {
     }
 
     pub fn init(&mut self) {
-        self.natives.insert("print", print);
+        self.natives.insert("print", functions::print);
+        self.natives.insert("input", functions::input);
     }
 
     fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {

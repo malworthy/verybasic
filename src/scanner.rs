@@ -49,8 +49,42 @@ pub enum TokenType {
     Identifier(Token),
     String(Token),
     Number(Token),
-    Error,
     Eof,
+}
+
+impl TokenType {
+    pub fn get_token(&self) -> Option<&Token> {
+        match self {
+            TokenType::Function(t)
+            | TokenType::Return(t)
+            | TokenType::While(t)
+            | TokenType::Then(t)
+            | TokenType::Else(t)
+            | TokenType::And(t)
+            | TokenType::Not(t)
+            | TokenType::End(t)
+            | TokenType::If(t)
+            | TokenType::Or(t)
+            | TokenType::NotEquals(t)
+            | TokenType::LessThanOrEqual(t)
+            | TokenType::GreaterThanOrEqual(t)
+            | TokenType::Equality(t)
+            | TokenType::LessThan(t)
+            | TokenType::GreaterThan(t)
+            | TokenType::Equals(t)
+            | TokenType::Plus(t)
+            | TokenType::Minus(t)
+            | TokenType::Times(t)
+            | TokenType::Divide(t)
+            | TokenType::LeftParan(t)
+            | TokenType::RightParan(t)
+            | TokenType::Comma(t)
+            | TokenType::Identifier(t)
+            | TokenType::String(t)
+            | TokenType::Number(t) => Some(t),
+            _ => None,
+        }
+    }
 }
 
 pub fn tokenize(code: &str) -> Vec<TokenType> {
@@ -104,6 +138,9 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                         lexeme.push(current_char);
                     } else {
                         break;
+                    }
+                    if current_char == '\n' {
+                        line_number += 1;
                     }
                 }
                 tokens.push(TokenType::String(Token {
