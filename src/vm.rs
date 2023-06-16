@@ -1,7 +1,7 @@
-use std::{collections::HashMap, ffi::OsStr, process::Command};
-//use std::os::windows::process;
+use std::io::Write;
+use std::{collections::HashMap, process::Command};
 
-use crate::{compiler::OpCode, main};
+use crate::compiler::OpCode;
 
 #[derive(Debug, Clone)]
 pub enum ValueType<'a> {
@@ -26,20 +26,8 @@ impl ValueType<'_> {
 
 #[derive(Copy, Clone, Debug)]
 struct Frame {
-    //instructions: &'a Vec<OpCode>,
     ip: usize,
     frame_pointer: usize,
-}
-
-impl Frame {
-    // pub fn current(&self) -> &OpCode {
-    //     &self.instructions[self.ip]
-    // }
-
-    // pub fn inc(&mut self) -> bool {
-    //     self.ip += 1;
-    //     self.ip < self.instructions.len()
-    // }
 }
 
 fn runtime_error(message: &str, line_number: u32) {
@@ -59,11 +47,17 @@ pub struct Vm<'a> {
     functions: HashMap<&'a str, Function>,
     pub return_value: Option<ValueType<'a>>,
 }
-
+// Parameters: 0(string) = string to print, 1(bool) = print new line if true
 fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
     if let Some(val) = params.first() {
         let s = val.to_string();
-        println!("{s}");
+        if let Some(print_new_line) = params.get(1) {
+            //println!("I'm here!");
+            print!("{s}");
+            std::io::stdout().flush().unwrap();
+        } else {
+            println!("{s}");
+        }
         Result::Ok(ValueType::String(s))
     } else {
         Err("No parameters passed to function")
@@ -87,6 +81,18 @@ fn system_command<'a>(
     let result = String::from_utf8_lossy(&output.stdout).to_string();
 
     Result::Ok(ValueType::String(result))
+}
+
+fn string_compare<'a>(op: &OpCode, a: &str, b: &str) -> ValueType<'a> {
+    match op {
+        OpCode::GreaterThan(_) => ValueType::Boolean(a > b),
+        OpCode::GreaterThanEq(_) => ValueType::Boolean(a >= b),
+        OpCode::LessThan(_) => ValueType::Boolean(a < b),
+        OpCode::LessThanEq(_) => ValueType::Boolean(a <= b),
+        OpCode::Equal(_) => ValueType::Boolean(a == b),
+        OpCode::NotEqual(_) => ValueType::Boolean(a != b),
+        _ => panic!("Non-comparison opcode processed in comparison()"),
+    }
 }
 
 impl<'a> Vm<'a> {
@@ -124,8 +130,22 @@ impl<'a> Vm<'a> {
                     return false;
                 }
             }
-            ValueType::Str(a) => panic!("String comparison not yet implemented"),
-            ValueType::String(a) => panic!("String comparison not yet implemented"),
+            ValueType::Str(a) => match b {
+                ValueType::Str(b) => string_compare(&op, a, b), // ValueType::Boolean(a == b),
+                ValueType::String(b) => string_compare(&op, a, b.as_str()), //ValueType::Boolean(a == b),
+                _ => {
+                    runtime_error("You cannot compare a string to a non-string", line_number);
+                    return false;
+                }
+            },
+            ValueType::String(a) => match b {
+                ValueType::Str(b) => string_compare(&op, a.as_str(), b), //ValueType::Boolean(a == b),
+                ValueType::String(b) => string_compare(&op, a.as_str(), b.as_str()), //ValueType::Boolean(a == b),
+                _ => {
+                    runtime_error("You cannot compare a string to a non-string.", line_number);
+                    return false;
+                }
+            },
             ValueType::Boolean(_) => {
                 runtime_error("boolean not valid for comparison operation", line_number);
                 return false;
@@ -171,7 +191,7 @@ impl<'a> Vm<'a> {
                 if let ValueType::Boolean(b) = b {
                     match op {
                         OpCode::And(_) => ValueType::Boolean(a && b),
-                        OpCode::Or(_) => ValueType::Boolean(a && b),
+                        OpCode::Or(_) => ValueType::Boolean(a || b),
                         _ => panic!("And/Or opcode expected"),
                     }
                 } else {

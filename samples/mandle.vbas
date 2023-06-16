@@ -1,7 +1,7 @@
 ' mandlebot
 
-width = 800
-height = 800
+width = 140
+height = 40
 max_iteration = 10
 
  function setgraphics(x)
@@ -9,7 +9,11 @@ max_iteration = 10
  end
 
 function plot(x,y,c)
-     0
+    if c == "black" then
+        print("*", 0)
+    else
+        print(" ", 0)
+    end
 end
 
 function getColor(c)
@@ -46,13 +50,23 @@ end
 function mandlebot()
     x = 0
     y = 0
-    while x < width
-        y = 0
-        while y < height
+    ' while x < width
+    '     y = 0
+    '     while y < height
+    '         mandlebotPoint(x,y)
+    '         y=y+1
+    '     end
+    '     x=x+1
+    ' end
+
+    while y < height
+        x = 0
+        while x < width
             mandlebotPoint(x,y)
-            y=y+1
+            x=x+1
         end
-        x=x+1
+        y=y+1
+        print("")
     end
 end
 
