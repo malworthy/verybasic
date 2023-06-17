@@ -30,3 +30,11 @@ pub fn input(params: Vec<ValueType>) -> Result<ValueType, &str> {
         Err(_) => Err("Could not read from terminal"),
     }
 }
+
+pub fn array(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    let mut array: Vec<ValueType> = Vec::new();
+    for value in params {
+        array.push(value)
+    }
+    Ok(ValueType::Array(array))
+}

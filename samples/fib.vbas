@@ -1,0 +1,11 @@
+
+
+function fib(n) 
+    if n < 2 then n exit end
+    fib(n - 2) + fib(n - 1)
+end
+
+'const start = clock();
+print(fib(40))
+'print clock() - start;
+'print "expect 11 secs (make sure you disable stress gc and build release version!)\n"

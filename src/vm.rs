@@ -1,6 +1,8 @@
 mod functions;
 use std::{collections::HashMap, process::Command};
 
+use colored::Colorize;
+
 use crate::compiler::OpCode;
 
 #[derive(Debug, Clone)]
@@ -9,7 +11,7 @@ pub enum ValueType<'a> {
     Str(&'a str),
     Boolean(bool),
     String(String),
-    //Array(Vec<ValueType<'a>>),
+    Array(Vec<ValueType<'a>>),
 }
 
 impl ValueType<'_> {
@@ -19,6 +21,7 @@ impl ValueType<'_> {
             ValueType::Boolean(b) => format!("{b}"),
             ValueType::Str(str) => str.to_string(),
             ValueType::String(str) => str.to_string(),
+            ValueType::Array(a) => format!("{:?}", a),
         }
     }
 }
@@ -32,7 +35,7 @@ struct Frame {
 }
 
 fn runtime_error(message: &str, line_number: u32) {
-    eprintln!("runtime error: {message} in line {line_number}");
+    eprintln!("Runtime error: {} in line {line_number}", message.red());
 }
 
 struct Function {
@@ -94,6 +97,7 @@ impl<'a> Vm<'a> {
     pub fn init(&mut self) {
         self.natives.insert("print", functions::print);
         self.natives.insert("input", functions::input);
+        self.natives.insert("array", functions::array);
     }
 
     fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {
@@ -133,7 +137,11 @@ impl<'a> Vm<'a> {
                 }
             },
             ValueType::Boolean(_) => {
-                runtime_error("boolean not valid for comparison operation", line_number);
+                runtime_error("Boolean not valid for comparison operation", line_number);
+                return false;
+            }
+            ValueType::Array(_) => {
+                runtime_error("Array not valid for comparison operation", line_number);
                 return false;
             }
         };
@@ -219,6 +227,10 @@ impl<'a> Vm<'a> {
             ValueType::Boolean(a) => ValueType::Boolean(!a),
             ValueType::Str(a) => ValueType::Boolean(a.len() == 0),
             ValueType::String(a) => ValueType::Boolean(a.len() == 0),
+            ValueType::Array(a) => {
+                runtime_error("Cannot add an array", line_number);
+                return false;
+            }
         };
 
         self.stack.push(result);
@@ -261,6 +273,10 @@ impl<'a> Vm<'a> {
             }
             ValueType::Boolean(_) => {
                 runtime_error("Cannot add a boolean", line_number);
+                return false;
+            }
+            ValueType::Array(_) => {
+                runtime_error("Cannot add an array", line_number);
                 return false;
             }
         };
@@ -367,6 +383,7 @@ impl<'a> Vm<'a> {
                     let mut args: Vec<ValueType> = Vec::new();
 
                     if let Some(func) = self.natives.get(&name.as_str()) {
+                        // call a native/built-in function
                         for _i in 0..*argc {
                             let v = self.stack.pop().unwrap();
                             args.insert(0, v);
@@ -402,15 +419,15 @@ impl<'a> Vm<'a> {
                     self.return_value = self.stack.pop();
                 }
                 OpCode::GetLocal(i, line_number) => {
-                    if i + frame.frame_pointer >= self.stack.len() {
-                        dbg!(&instructions);
-                        dbg!(&self.stack);
-                        dbg!(&call_frames);
-                        println!(
-                            "(getlocal) Line Number: {line_number} {i} {}",
-                            frame.frame_pointer
-                        );
-                    }
+                    // if i + frame.frame_pointer >= self.stack.len() {
+                    //     dbg!(&instructions);
+                    //     dbg!(&self.stack);
+                    //     dbg!(&call_frames);
+                    //     println!(
+                    //         "(getlocal) Line Number: {line_number} {i} {}",
+                    //         frame.frame_pointer
+                    //     );
+                    // }
 
                     self.stack.push(self.stack[i + frame.frame_pointer].clone());
                 }
@@ -467,6 +484,27 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::And(line_number) | OpCode::Or(line_number) => {
                     if !self.and_or(instr, *line_number) {
+                        return false;
+                    }
+                }
+                OpCode::Subscript(line_number) => {
+                    let index = self.stack.pop().unwrap();
+                    let array = self.stack.pop().unwrap();
+                    if let ValueType::Array(a) = array {
+                        if let ValueType::Number(index) = index {
+                            let i = index as usize;
+                            if let Some(val) = a.get(i) {
+                                self.stack.push(val.clone());
+                            } else {
+                                runtime_error("Subscript out of range", *line_number);
+                                return false;
+                            }
+                        } else {
+                            runtime_error("Subscript index must be a number", *line_number);
+                            return false;
+                        }
+                    } else {
+                        runtime_error("Subscript only works on arrays", *line_number);
                         return false;
                     }
                 }

@@ -45,6 +45,8 @@ pub enum TokenType {
     Divide(Token),
     LeftParan(Token),
     RightParan(Token),
+    LeftBracket(Token),
+    RightBracket(Token),
     Comma(Token),
     Identifier(Token),
     String(Token),
@@ -81,6 +83,8 @@ impl TokenType {
             | TokenType::Comma(t)
             | TokenType::Identifier(t)
             | TokenType::String(t)
+            | TokenType::LeftBracket(t)
+            | TokenType::RightBracket(t)
             | TokenType::Number(t) => Some(t),
             _ => None,
         }
@@ -103,6 +107,9 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                 i += 1
             }
             line_number += 1;
+        }
+        if i >= code.len() {
+            return tokens;
         }
 
         let (token, len) = make_keyword(&code[i..], line_number);
@@ -357,6 +364,16 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                     precedence: precedence::CALL,
                 }),
                 ")" => TokenType::RightParan(Token {
+                    lexeme: single_char.to_string(),
+                    line_number,
+                    precedence: precedence::NONE,
+                }),
+                "[" => TokenType::LeftBracket(Token {
+                    lexeme: single_char.to_string(),
+                    line_number,
+                    precedence: precedence::CALL,
+                }),
+                "]" => TokenType::RightBracket(Token {
                     lexeme: single_char.to_string(),
                     line_number,
                     precedence: precedence::NONE,

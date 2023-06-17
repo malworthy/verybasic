@@ -76,6 +76,16 @@ mod tests {
     }
 
     #[test]
+    fn arrays() {
+        //assert_eq!(interpret_test("x[0]"), "Number(1.0)");
+        assert_eq!(interpret_test("x=array(1,2,3) : x[0]"), "Number(1.0)");
+        assert_eq!(interpret_test("x=array(1,2,3) : x[1]"), "Number(2.0)");
+        assert_eq!(interpret_test("x=array(1,2,3) : x[2]"), "Number(3.0)");
+        assert_eq!(interpret_test("x=array(1,2,3) : x[3]"), "Runtime Error");
+        assert_eq!(interpret_test("x=46 : x[3]"), "Runtime Error");
+    }
+
+    #[test]
     fn and() {
         assert_eq!(interpret_test("1==1 and 2==2"), "Boolean(true)");
         assert_eq!(interpret_test("1==1 and 1==2"), "Boolean(false)");

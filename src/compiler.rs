@@ -31,6 +31,7 @@ pub enum OpCode {
     JumpIfFalse(usize),
     Jump(i32),
     DefFn(String, usize, i32), //ip pointer, arity
+    Subscript(u32),
     Return,
 }
 
@@ -108,6 +109,19 @@ impl Compiler<'_> {
         }
     }
 
+    fn subscript(&mut self, token: &Token) -> bool {
+        // get the index of the array
+        self.expression();
+        if let TokenType::RightBracket(t) = &self.tokens[self.token_pointer] {
+            self.add_instr(OpCode::Subscript(token.line_number));
+            self.advance();
+        } else {
+            self.compile_error("Missing ]", token);
+            return false;
+        }
+        true
+    }
+
     fn call(&mut self, token: &Token) -> bool {
         if self.token_pointer >= self.tokens.len() {
             self.compile_error("Syntax error", token);
@@ -120,9 +134,6 @@ impl Compiler<'_> {
             self.compile_error("Syntax Error", token);
             return false;
         }
-        //dbg!(&self.instructions);
-        //println!("parsing call() {name}");
-        //dbg!(token);
         let mut arguments = 0;
         loop {
             match &self.tokens[self.token_pointer] {
@@ -323,6 +334,7 @@ impl Compiler<'_> {
                 true
             }
             TokenType::LeftParan(t) => self.call(t),
+            TokenType::LeftBracket(t) => self.subscript(t),
             _ => false,
         }
     }
@@ -339,7 +351,10 @@ impl Compiler<'_> {
             TokenType::LessThanOrEqual(t) => t.precedence,
             TokenType::Equality(t) => t.precedence,
             TokenType::NotEquals(t) => t.precedence,
-            TokenType::LeftParan(t) | TokenType::And(t) | TokenType::Or(t) => t.precedence,
+            TokenType::LeftParan(t)
+            | TokenType::And(t)
+            | TokenType::Or(t)
+            | TokenType::LeftBracket(t) => t.precedence,
 
             _ => precedence::NONE,
         }
