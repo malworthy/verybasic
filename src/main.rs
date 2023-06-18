@@ -71,7 +71,26 @@ mod tests {
     #[test]
     fn temp_test() {
         interpret_test("cmd(\"/s\",\"dir\")");
-        //assert_eq!(interpret_test("print(\"hello\")"), "String(\"hello\")");
+    }
+
+    #[test]
+    fn token_scans_whole_words() {
+        assert_eq!(
+            interpret_test("note = 1234; print(note)"),
+            "String(\"1234\")"
+        );
+    }
+
+    #[test]
+    fn len() {
+        assert_eq!(interpret_test("len(\"hello\")"), "Number(5.0)");
+        assert_eq!(
+            interpret_test("len(\"hello\" + \" world\")"),
+            "Number(11.0)"
+        );
+        assert_eq!(interpret_test("len(array(1,1,1,1,2))"), "Number(5.0)");
+        assert_eq!(interpret_test("len(555.45)"), "Number(8.0)");
+        assert_eq!(interpret_test(" true = (1==1) : len(true)"), "Number(1.0)");
     }
 
     #[test]
@@ -87,6 +106,19 @@ mod tests {
         assert_eq!(interpret_test("x=array(1,2,3) : x[2]"), "Number(3.0)");
         assert_eq!(interpret_test("x=array(1,2,3) : x[3]"), "Runtime Error");
         assert_eq!(interpret_test("x=46 : x[3]"), "Runtime Error");
+
+        assert_eq!(
+            interpret_test(
+                " 
+        function test() 
+            x=array(1,2,3) 
+            x[2] 
+        end
+        test() 
+        "
+            ),
+            "Number(3.0)"
+        );
     }
 
     #[test]

@@ -69,7 +69,7 @@ pub struct Compiler<'a> {
     depth: u8,
 }
 
-const NATIVES: [&str; 4] = ["print", "input", "array", "seconds"];
+const NATIVES: [&str; 5] = ["print", "input", "array", "len", "seconds"];
 
 fn is_native(name: &str) -> Result<usize, usize> {
     let mut i = 0;

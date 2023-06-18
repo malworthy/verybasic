@@ -91,10 +91,11 @@ impl<'a> Vm<'a> {
         }
     }
 
-    const NATIVES: [fn(Vec<ValueType>) -> Result<ValueType, &str>; 4] = [
+    const NATIVES: [fn(Vec<ValueType>) -> Result<ValueType, &str>; 5] = [
         functions::print,
         functions::input,
         functions::array,
+        functions::len,
         functions::seconds,
     ];
 
@@ -427,16 +428,6 @@ impl<'a> Vm<'a> {
                     self.return_value = self.stack.pop();
                 }
                 OpCode::GetLocal(i, line_number) => {
-                    // if i + frame.frame_pointer >= self.stack.len() {
-                    //     dbg!(&instructions);
-                    //     dbg!(&self.stack);
-                    //     dbg!(&call_frames);
-                    //     println!(
-                    //         "(getlocal) Line Number: {line_number} {i} {}",
-                    //         frame.frame_pointer
-                    //     );
-                    // }
-
                     self.stack.push(self.stack[i + frame.frame_pointer].clone());
                 }
                 OpCode::SetLocal(i, line_number) => {

@@ -48,3 +48,19 @@ pub fn seconds(_params: Vec<ValueType>) -> Result<ValueType, &str> {
         Err(_) => Err("SystemTime before UNIX EPOCH!"),
     }
 }
+
+pub fn len(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if let Some(val) = params.first() {
+        let len = match val {
+            ValueType::Array(v) => v.len(),
+            ValueType::Str(s) => s.len(),
+            ValueType::String(s) => s.len(),
+            ValueType::Number(_) => 8,
+            ValueType::Boolean(_) => 1,
+        };
+        let len = len as f64;
+        Ok(ValueType::Number(len))
+    } else {
+        Err("No parameters passed to function len()")
+    }
+}
