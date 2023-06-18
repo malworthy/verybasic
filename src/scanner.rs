@@ -189,8 +189,22 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
     tokens
 }
 
+fn is_word(code: &str, i: usize) -> bool {
+    if let Some(ch) = code.chars().nth(i) {
+        !ch.is_ascii_alphanumeric()
+    } else {
+        true
+    }
+}
+
+fn match_word(code: &str, word: &str) -> bool {
+    let len = word.len();
+    code.len() >= len && &code[..len] == word && is_word(code, len)
+}
+
 fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
-    if code.len() >= 8 && &code[..8] == "function" {
+    //if code.len() >= 8 && &code[..8] == "function" {
+    if match_word(code, "function") {
         (
             TokenType::Function(Token {
                 lexeme: String::from("function"),
@@ -199,7 +213,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             8,
         )
-    } else if code.len() >= 5 && &code[..5] == "while" {
+    } else if match_word(code, "while") {
         (
             TokenType::While(Token {
                 lexeme: String::from("while"),
@@ -208,7 +222,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             5,
         )
-    } else if code.len() >= 4 && &code[..4] == "exit" {
+    } else if match_word(code, "exit") {
         (
             TokenType::Return(Token {
                 lexeme: String::from("exit"),
@@ -217,7 +231,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             4,
         )
-    } else if code.len() >= 4 && &code[..4] == "then" {
+    } else if match_word(code, "then") {
         (
             TokenType::Then(Token {
                 lexeme: String::from("then"),
@@ -226,7 +240,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             4,
         )
-    } else if code.len() >= 4 && &code[..4] == "else" {
+    } else if match_word(code, "else") {
         (
             TokenType::Else(Token {
                 lexeme: String::from("else"),
@@ -235,7 +249,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             4,
         )
-    } else if code.len() >= 3 && &code[..3] == "and" {
+    } else if match_word(code, "and") {
         (
             TokenType::And(Token {
                 lexeme: String::from("and"),
@@ -244,7 +258,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             3,
         )
-    } else if code.len() >= 3 && &code[..3] == "not" {
+    } else if match_word(code, "not") {
         (
             TokenType::Not(Token {
                 lexeme: String::from("not"),
@@ -253,7 +267,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             3,
         )
-    } else if code.len() >= 3 && &code[..3] == "end" {
+    } else if match_word(code, "end") {
         (
             TokenType::End(Token {
                 lexeme: String::from("end"),
@@ -262,7 +276,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             3,
         )
-    } else if code.len() >= 2 && &code[..2] == "if" {
+    } else if match_word(code, "if") {
         (
             TokenType::If(Token {
                 lexeme: String::from("if"),
@@ -271,7 +285,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             2,
         )
-    } else if code.len() >= 2 && &code[..2] == "or" {
+    } else if match_word(code, "or") {
         (
             TokenType::Or(Token {
                 lexeme: String::from("or"),

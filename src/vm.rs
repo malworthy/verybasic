@@ -59,18 +59,14 @@ fn system_command<'a>(
         args.push(param.to_string());
     }
 
-    dbg!(&args);
+    let output = Command::new(command).args(args).output();
 
-    let output = Command::new(command)
-        .args(args)
-        .output()
-        .expect("failed to execute process");
-
-    let result = String::from_utf8_lossy(&output.stdout).to_string();
-
-    dbg!(&result);
-
-    Result::Ok(ValueType::String(result))
+    if let Ok(output) = output {
+        let result = String::from_utf8_lossy(&output.stdout).to_string();
+        Result::Ok(ValueType::String(result))
+    } else {
+        Result::Err("Failed to run command")
+    }
 }
 
 fn string_compare<'a>(op: &OpCode, a: &str, b: &str) -> ValueType<'a> {

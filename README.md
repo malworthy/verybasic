@@ -59,12 +59,14 @@ end
 
 ## Data types
 
-There are 3 datatypes. String, Number & Boolean. There are no 'true' and 'false' keywords.
+There are 4 datatypes. String, Number, Boolean and Array. There are no 'true' and 'false' keywords.
+Arrays can hold any datatype
 
 ```
 x = "hello"  ' string
 x = 123  ' number floating point
 x = (1 == 2) ' boolean, if this case 'false'
+x = array(1,1,1) ' create an array of 3 elements with the number 1
 ```
 
 ## Operators
@@ -122,7 +124,10 @@ creates a new array, optionally populating with elements
 
 returns the number of seconds since the unix epoch
 
-My intention is that any function call not recognized as a built in or user defined function will be a system call.
+## System calls
+
+Any function call not recognized as a built in or user defined function will be a system call.
 
 e.g. ls("-l) will be the bash command "ls -l".
+
 To override any name clashes and force a system call, prefix function with '@'. e.g. @ls("-l")
