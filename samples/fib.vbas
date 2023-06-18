@@ -5,7 +5,8 @@ function fib(n)
     fib(n - 2) + fib(n - 1)
 end
 
-'const start = clock();
-print(fib(40))
-'print clock() - start;
-'print "expect 11 secs (make sure you disable stress gc and build release version!)\n"
+print("running...")
+start = seconds()
+print(fib(40)) 
+print(seconds() - start);
+' 33 seconds 18/6

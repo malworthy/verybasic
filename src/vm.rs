@@ -46,8 +46,6 @@ struct Function {
 pub struct Vm<'a> {
     stack: Vec<ValueType<'a>>,
     globals: HashMap<&'a String, ValueType<'a>>,
-    //natives: Vec<fn(Vec<ValueType>) -> Result<ValueType, &str>>,
-    natives: HashMap<&'a str, fn(Vec<ValueType>) -> Result<ValueType, &str>>,
     functions: HashMap<&'a str, Function>,
     pub return_value: Option<ValueType<'a>>,
 }
@@ -61,12 +59,16 @@ fn system_command<'a>(
         args.push(param.to_string());
     }
 
+    dbg!(&args);
+
     let output = Command::new(command)
         .args(args)
         .output()
         .expect("failed to execute process");
 
     let result = String::from_utf8_lossy(&output.stdout).to_string();
+
+    dbg!(&result);
 
     Result::Ok(ValueType::String(result))
 }
@@ -88,17 +90,17 @@ impl<'a> Vm<'a> {
         Vm {
             stack: Vec::new(),
             globals: HashMap::new(),
-            natives: HashMap::new(), //vec![print],
             functions: HashMap::new(),
             return_value: Option::None,
         }
     }
 
-    pub fn init(&mut self) {
-        self.natives.insert("print", functions::print);
-        self.natives.insert("input", functions::input);
-        self.natives.insert("array", functions::array);
-    }
+    const NATIVES: [fn(Vec<ValueType>) -> Result<ValueType, &str>; 4] = [
+        functions::print,
+        functions::input,
+        functions::array,
+        functions::seconds,
+    ];
 
     fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {
         let b = self.stack.pop().unwrap();
@@ -379,24 +381,28 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
-                OpCode::Call(name, argc, line_number) => {
+                OpCode::CallNative(name, index, argc, line_number) => {
                     let mut args: Vec<ValueType> = Vec::new();
 
-                    if let Some(func) = self.natives.get(&name.as_str()) {
-                        // call a native/built-in function
-                        for _i in 0..*argc {
-                            let v = self.stack.pop().unwrap();
-                            args.insert(0, v);
-                        }
-                        let result = func(args);
-                        if let Ok(value) = result {
-                            self.stack.push(value);
-                        } else {
-                            let message = format!("Error running {name}.");
-                            runtime_error(&message, *line_number);
-                            return false;
-                        }
-                    } else if let Some(func) = self.functions.get(&name.as_str()) {
+                    let func = Vm::NATIVES[*index];
+                    // call a native/built-in function
+                    for _i in 0..*argc {
+                        let v = self.stack.pop().unwrap();
+                        args.insert(0, v);
+                    }
+                    let result = func(args);
+                    if let Ok(value) = result {
+                        self.stack.push(value);
+                    } else {
+                        let message = format!("Error running {name}.");
+                        runtime_error(&message, *line_number);
+                        return false;
+                    }
+                }
+                OpCode::Call(name, argc, line_number) => {
+                    //let mut args: Vec<ValueType> = Vec::new();
+
+                    if let Some(func) = self.functions.get(&name.as_str()) {
                         // call user defined func
                         call_frames.push(frame); // save current frame
                         let argc = usize::try_from(*argc).unwrap();
@@ -405,6 +411,12 @@ impl<'a> Vm<'a> {
                             frame_pointer: self.stack.len() - argc,
                         };
                     } else {
+                        let mut args: Vec<ValueType> = Vec::new();
+                        for _i in 0..*argc {
+                            let v = self.stack.pop().unwrap();
+                            args.insert(0, v);
+                        }
+
                         let result = system_command(name, args);
                         if let Ok(value) = result {
                             self.stack.push(value);

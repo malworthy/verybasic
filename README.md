@@ -106,7 +106,21 @@ print("hello, world");
 
 ## Built-in functions
 
-None as yet.
+### _print(string, [newline=true], [colour=""])_
+
+Prints a string to the console.
+
+### _input([prompt=""])_
+
+reads input from the console
+
+### _array([element],...)_
+
+creates a new array, optionally populating with elements
+
+### _seconds()_
+
+returns the number of seconds since the unix epoch
 
 My intention is that any function call not recognized as a built in or user defined function will be a system call.
 

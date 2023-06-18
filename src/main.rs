@@ -42,7 +42,6 @@ fn interpret(contents: &str) -> Result<String, String> {
 
     //dbg!(&instructions);
     let mut vm = Vm::new();
-    vm.init();
 
     let result = vm.run(&instructions);
     if !result {
@@ -70,6 +69,12 @@ mod tests {
     }
 
     #[test]
+    fn temp_test() {
+        interpret_test("cmd(\"/s\",\"dir\")");
+        //assert_eq!(interpret_test("print(\"hello\")"), "String(\"hello\")");
+    }
+
+    #[test]
     fn calling() {
         assert_eq!(interpret_test("print("), "Compile Error");
         assert_eq!(interpret_test("print(\"hello\")"), "String(\"hello\")");
@@ -77,7 +82,6 @@ mod tests {
 
     #[test]
     fn arrays() {
-        //assert_eq!(interpret_test("x[0]"), "Number(1.0)");
         assert_eq!(interpret_test("x=array(1,2,3) : x[0]"), "Number(1.0)");
         assert_eq!(interpret_test("x=array(1,2,3) : x[1]"), "Number(2.0)");
         assert_eq!(interpret_test("x=array(1,2,3) : x[2]"), "Number(3.0)");

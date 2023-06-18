@@ -1,5 +1,8 @@
 use crate::vm::ValueType;
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    time::SystemTime,
+};
 
 // Parameters: 0(string) = string to print, 1(bool) = print new line if true
 pub fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
@@ -37,4 +40,11 @@ pub fn array(params: Vec<ValueType>) -> Result<ValueType, &str> {
         array.push(value)
     }
     Ok(ValueType::Array(array))
+}
+
+pub fn seconds(_params: Vec<ValueType>) -> Result<ValueType, &str> {
+    match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(n) => Ok(ValueType::Number(n.as_secs_f64())),
+        Err(_) => Err("SystemTime before UNIX EPOCH!"),
+    }
 }

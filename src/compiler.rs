@@ -24,6 +24,7 @@ pub enum OpCode {
     SetGlobal(String, u32),
     GetGlobal(String, u32),
     Call(String, u32, u32),
+    CallNative(String, usize, u32, u32),
     Pop,
     SetLocal(usize, u32),
     DefineLocal(usize, u32),
@@ -66,6 +67,19 @@ pub struct Compiler<'a> {
     token_pointer: usize,
     pub in_error: bool,
     depth: u8,
+}
+
+const NATIVES: [&str; 4] = ["print", "input", "array", "seconds"];
+
+fn is_native(name: &str) -> Result<usize, usize> {
+    let mut i = 0;
+    for s in NATIVES {
+        if s == name {
+            return Ok(i);
+        }
+        i += 1;
+    }
+    Err(1)
 }
 
 impl Compiler<'_> {
@@ -127,6 +141,7 @@ impl Compiler<'_> {
             self.compile_error("Syntax error", token);
             return false;
         }
+        // get the name of the function
         let name: String;
         if let TokenType::Identifier(t) = &self.tokens[self.token_pointer - 2] {
             name = t.lexeme.clone();
@@ -134,12 +149,24 @@ impl Compiler<'_> {
             self.compile_error("Syntax Error", token);
             return false;
         }
+
         let mut arguments = 0;
         loop {
             match &self.tokens[self.token_pointer] {
                 TokenType::RightParan(_) => {
                     self.advance();
-                    self.add_instr(OpCode::Call(name.clone(), arguments, token.line_number));
+                    // check if it's native
+                    if let Ok(index) = is_native(name.as_str()) {
+                        self.add_instr(OpCode::CallNative(
+                            name.clone(),
+                            index,
+                            arguments,
+                            token.line_number,
+                        ));
+                    } else {
+                        self.add_instr(OpCode::Call(name.clone(), arguments, token.line_number));
+                    }
+
                     return true;
                 }
                 TokenType::Comma(_) => {
