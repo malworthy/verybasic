@@ -16,8 +16,7 @@ fn main() {
             fs::read_to_string(file_path).expect("Should have been able to read the file");
 
         if let Result::Err(_) = interpret(&contents) {
-            //println!("{}", msg.red());
-            std::process::exit(1);
+            process::exit(1);
         }
     } else {
         loop {
@@ -71,6 +70,47 @@ mod tests {
     #[test]
     fn temp_test() {
         interpret_test("cmd(\"/s\",\"dir\")");
+    }
+
+    #[test]
+    fn arity_wrong() {
+        let code = "
+        function test(a,b,c)
+            a+b+c
+        end
+
+        test(1)
+        ";
+        assert_eq!(interpret_test(code), "Compile Error");
+    }
+
+    #[test]
+    fn duplicate_functions() {
+        let code = "
+        function test(a,b,c)
+            a+b+c
+        end
+
+        function test(a)
+            a * 10
+        end
+        ";
+        assert_eq!(interpret_test(code), "Compile Error");
+    }
+
+    #[test]
+    fn function_in_function() {
+        let code = "
+        function test(a,b,c)
+
+            function inner_test(a)
+                a * 10
+            end
+
+            a+b+c
+        end
+        ";
+        assert_eq!(interpret_test(code), "Compile Error");
     }
 
     #[test]

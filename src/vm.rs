@@ -40,7 +40,7 @@ fn runtime_error(message: &str, line_number: u32) {
 
 struct Function {
     pointer: usize,
-    arity: i32,
+    arity: u8,
 }
 
 pub struct Vm<'a> {
