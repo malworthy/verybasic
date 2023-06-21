@@ -1,2 +1,6 @@
 word = input("Enter a word")
 print ("you entered " + word)
+
+
+
+'//files = dir("./**/*.exe"); i=0; while i < len(files) print(files[i]); i=i+1; end

@@ -2,10 +2,6 @@
 
 A very stripped back BASIC like language. It contains only what you need to create a turing complete program. No synactic sugar, nothing unnessary. You should be able to learn it in less than 5 minutes.
 
-Currently a work in progress and NOT usable as yet.
-
-This is my first attempt at rust, so is a learning experence. Will be constantly re-factored.
-
 ## Control Flow/Looping
 
 Very simple. if/then/else and while.
@@ -69,6 +65,19 @@ x = (1 == 2) ' boolean, if this case 'false'
 x = array(1,1,1) ' create an array of 3 elements with the number 1
 ```
 
+## Arrays
+
+Arrays are immutable. You can read an element as follows:
+
+```
+x = array(4,5,6)
+print(x[0]) ' prints 4
+print(x[1]) ' prints 5
+print(x[1]) ' prints 6
+```
+
+There is no ability to change values in an array. Something like `x[0] = 0` won't work.
+
 ## Operators
 
 ```
@@ -123,6 +132,18 @@ creates a new array, optionally populating with elements
 ### _seconds()_
 
 returns the number of seconds since the unix epoch
+
+### _dir(pattern)_
+
+will query the filesystem for all files that match a particular pattern. Uses Unix shell style patterns.
+
+### _rand()_
+
+returns a random number between 0 and 1
+
+### _readlines(filename)_
+
+returns an aray of all lines in a text file
 
 ## System calls
 
