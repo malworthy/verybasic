@@ -91,12 +91,26 @@ impl<'a> Vm<'a> {
         }
     }
 
-    const NATIVES: [fn(Vec<ValueType>) -> Result<ValueType, &str>; 5] = [
+    pub const NATIVE_NAMES: [&str; 8] = [
+        "print",
+        "input",
+        "array",
+        "len",
+        "seconds",
+        "dir",
+        "readlines",
+        "rand",
+    ];
+
+    const NATIVES: [fn(Vec<ValueType>) -> Result<ValueType, &str>; 8] = [
         functions::print,
         functions::input,
         functions::array,
         functions::len,
         functions::seconds,
+        functions::dir,
+        functions::readlines,
+        functions::random,
     ];
 
     fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {

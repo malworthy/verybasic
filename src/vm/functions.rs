@@ -1,5 +1,8 @@
 use crate::vm::ValueType;
+use glob::glob;
+use rand;
 use std::{
+    fs::read_to_string,
     io::{self, Write},
     time::SystemTime,
 };
@@ -62,5 +65,51 @@ pub fn len(params: Vec<ValueType>) -> Result<ValueType, &str> {
         Ok(ValueType::Number(len))
     } else {
         Err("No parameters passed to function len()")
+    }
+}
+
+pub fn dir(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if let Some(val) = params.first() {
+        let pattern = val.to_string();
+        let file = glob(pattern.as_str());
+        match file {
+            Ok(paths) => {
+                let mut array: Vec<ValueType> = Vec::new();
+                for file in paths {
+                    if let Ok(file) = file {
+                        let s = file.to_string_lossy();
+                        let y = String::from(s);
+                        array.push(ValueType::String(y));
+                    }
+                }
+                return Ok(ValueType::Array(array));
+            }
+            Err(_) => {
+                return Err("can't read");
+            }
+        }
+    } else {
+        Err("Missing parameter for dir()")
+    }
+}
+
+pub fn random(_params: Vec<ValueType>) -> Result<ValueType, &str> {
+    let number = rand::random::<f64>();
+    Ok(ValueType::Number(number))
+}
+
+pub fn readlines(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if let Some(param) = params.first() {
+        let filename = param.to_string();
+
+        let lines: Vec<ValueType> = read_to_string(filename)
+            .unwrap() // panic on possible file-reading errors
+            .lines() // split the string into an iterator of string slices
+            .map(|x| ValueType::String(String::from(x)))
+            .collect(); // gather them together into a vector
+
+        Ok(ValueType::Array(lines))
+    } else {
+        Err("No parameters passed to readlines()")
     }
 }
