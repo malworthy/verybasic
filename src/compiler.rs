@@ -28,6 +28,7 @@ pub enum OpCode {
     GetGlobal(String, u32),
     Call(String, u32, u32),
     CallNative(String, usize, u32, u32),
+    CallNativeGr(usize, u32, u32),
     Pop,
     SetLocal(usize, u32),
     DefineLocal(usize, u32),
@@ -75,11 +76,18 @@ pub struct Compiler<'a> {
 
 fn is_native(name: &str) -> Result<usize, usize> {
     let mut i = 0;
-    for s in Vm::NATIVE_NAMES {
-        if s == name {
+    for s in Vm::NATIVES {
+        if s.1 == name {
             return Ok(i);
         }
         i += 1;
+    }
+    Err(1)
+}
+
+fn is_native_graphics(name: &str) -> Result<usize, usize> {
+    if let Some(i) = Vm::NATIVES_GR.into_iter().position(|x| x.1 == name) {
+        return Ok(i);
     }
     Err(1)
 }
@@ -174,6 +182,8 @@ impl Compiler<'_> {
                             arguments,
                             token.line_number,
                         ));
+                    } else if let Ok(index) = is_native_graphics(name.as_str()) {
+                        self.add_instr(OpCode::CallNativeGr(index, arguments, token.line_number));
                     } else {
                         // check arity
                         if let Some(arity) = self.functions.get(&name) {

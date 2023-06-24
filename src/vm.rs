@@ -1,4 +1,5 @@
 mod functions;
+mod graphics;
 use std::{collections::HashMap, process::Command};
 
 use colored::Colorize;
@@ -48,6 +49,7 @@ pub struct Vm<'a> {
     globals: HashMap<&'a String, ValueType<'a>>,
     functions: HashMap<&'a str, Function>,
     pub return_value: Option<ValueType<'a>>,
+    gr: graphics::Graphics,
 }
 
 fn system_command<'a>(
@@ -88,29 +90,34 @@ impl<'a> Vm<'a> {
             globals: HashMap::new(),
             functions: HashMap::new(),
             return_value: Option::None,
+            gr: graphics::Graphics::new(),
         }
     }
 
-    pub const NATIVE_NAMES: [&str; 8] = [
-        "print",
-        "input",
-        "array",
-        "len",
-        "seconds",
-        "dir",
-        "readlines",
-        "rand",
+    pub fn test() {
+        println!("hello")
+    }
+
+    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 8] = [
+        (functions::print, "print"),
+        (functions::input, "input"),
+        (functions::array, "array"),
+        (functions::len, "len"),
+        (functions::seconds, "seconds"),
+        (functions::dir, "dir"),
+        (functions::readlines, "readlines"),
+        (functions::random, "rand"),
+        //Vm::test,
     ];
 
-    const NATIVES: [fn(Vec<ValueType>) -> Result<ValueType, &str>; 8] = [
-        functions::print,
-        functions::input,
-        functions::array,
-        functions::len,
-        functions::seconds,
-        functions::dir,
-        functions::readlines,
-        functions::random,
+    pub const NATIVES_GR: [(
+        fn(Vec<ValueType<'a>>, &'a mut graphics::Graphics) -> Result<ValueType<'a>, &'a str>,
+        &str,
+    ); 4] = [
+        (functions::window, "window"),
+        (functions::plot, "plot"),
+        (functions::clear_graphics, "cleargraphics"),
+        (functions::init_graphics, "initgraphics"),
     ];
 
     fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {
@@ -300,17 +307,12 @@ impl<'a> Vm<'a> {
 
     pub fn run(&mut self, instructions: &'a Vec<OpCode>) -> bool {
         let mut call_frames: Vec<Frame> = Vec::new();
-        //let mut stack: Vec<ValueType> = Vec::new();
         let main_frame = Frame {
-            //instructions,
             ip: 0,
             frame_pointer: 0,
         };
-        //call_frames.push(main_frame);
         let mut frame = main_frame;
         loop {
-            //let frame = &mut call_frames[call_frames.len() - 1]; //  callFrames.last().unwrap(); //TODO: make safer
-            //let mut frame = call_frames.last_mut().unwrap(); //TODO: make safer
             let instr = &instructions[frame.ip];
             match instr {
                 OpCode::ConstantNum(num, _) => {
@@ -395,24 +397,38 @@ impl<'a> Vm<'a> {
                 OpCode::CallNative(name, index, argc, line_number) => {
                     let mut args: Vec<ValueType> = Vec::new();
 
-                    let func = Vm::NATIVES[*index];
+                    let func = Vm::NATIVES[*index].0;
                     // call a native/built-in function
                     for _i in 0..*argc {
                         let v = self.stack.pop().unwrap();
                         args.insert(0, v);
                     }
                     let result = func(args);
-                    if let Ok(value) = result {
-                        self.stack.push(value);
-                    } else {
-                        let message = format!("Error running {name}.");
-                        runtime_error(&message, *line_number);
-                        return false;
+
+                    match result {
+                        Ok(value) => self.stack.push(value),
+                        Err(message) => {
+                            runtime_error(&message, *line_number);
+                            return false;
+                        }
                     }
                 }
-                OpCode::Call(name, argc, line_number) => {
-                    //let mut args: Vec<ValueType> = Vec::new();
+                OpCode::CallNativeGr(index, argc, line_number) => {
+                    let mut args: Vec<ValueType> = Vec::new();
+                    let func = Vm::NATIVES_GR[*index].0;
 
+                    // call a native/built-in function
+                    for _i in 0..*argc {
+                        let v = self.stack.pop().unwrap();
+                        args.insert(0, v);
+                    }
+                    if let Err(msg) = func(args, &mut self.gr) {
+                        runtime_error(msg, *line_number);
+                        return false;
+                    }
+                    self.stack.push(ValueType::Boolean(true));
+                }
+                OpCode::Call(name, argc, line_number) => {
                     if let Some(func) = self.functions.get(&name.as_str()) {
                         // call user defined func
                         call_frames.push(frame); // save current frame
@@ -429,13 +445,22 @@ impl<'a> Vm<'a> {
                         }
 
                         let result = system_command(name, args);
-                        if let Ok(value) = result {
-                            self.stack.push(value);
-                        } else {
-                            let message = format!("Error running {name}.");
-                            runtime_error(&message, *line_number);
-                            return false;
+
+                        match result {
+                            Ok(value) => self.stack.push(value),
+                            Err(message) => {
+                                runtime_error(&message, *line_number);
+                                return false;
+                            }
                         }
+
+                        // if let Ok(value) = result {
+                        //     self.stack.push(value);
+                        // } else {
+                        //     let message = format!("Error running {name}.");
+                        //     runtime_error(&message, *line_number);
+                        //     return false;
+                        // }
                     }
                 }
                 OpCode::Pop => {

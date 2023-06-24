@@ -7,6 +7,8 @@ use std::{
     time::SystemTime,
 };
 
+use super::graphics::Graphics;
+
 // Parameters: 0(string) = string to print, 1(bool) = print new line if true
 pub fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
     if let Some(val) = params.first() {
@@ -112,4 +114,80 @@ pub fn readlines(params: Vec<ValueType>) -> Result<ValueType, &str> {
     } else {
         Err("No parameters passed to readlines()")
     }
+}
+
+pub fn window<'a>(
+    _params: Vec<ValueType<'a>>,
+    g: &'a mut Graphics,
+) -> Result<ValueType<'a>, &'a str> {
+    g.show_window();
+    Ok(ValueType::Boolean(true))
+}
+
+pub fn clear_graphics<'a>(
+    _params: Vec<ValueType<'a>>,
+    g: &'a mut Graphics,
+) -> Result<ValueType<'a>, &'a str> {
+    g.clear();
+    Ok(ValueType::Boolean(true))
+}
+
+pub fn init_graphics<'a>(
+    params: Vec<ValueType<'a>>,
+    g: &'a mut Graphics,
+) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 2 {
+        return Err("Not enough parameters passed to function initgraphics(width, height)");
+    }
+    let width: i32;
+    let height: i32;
+    if let ValueType::Number(n) = params[0] {
+        width = n as i32;
+    } else {
+        return Err("parameter x must be a number in initgraphics(width, height)");
+    }
+    if let ValueType::Number(n) = params[1] {
+        height = n as i32;
+    } else {
+        return Err("parameter y must be a number in initgraphics(width, height)");
+    }
+    g.init(width, height);
+    Ok(ValueType::Boolean(true))
+}
+
+pub fn plot<'a>(params: Vec<ValueType<'a>>, g: &'a mut Graphics) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 3 {
+        return Err("Not enough parameters passed to function plot(x,y,c)");
+    }
+    let x: f32;
+    let y: f32;
+    if let ValueType::Number(n) = params[0] {
+        x = n as f32;
+    } else {
+        return Err("parameter x must be a number in plot(x,y,c)");
+    }
+    if let ValueType::Number(n) = params[1] {
+        y = n as f32;
+    } else {
+        return Err("parameter y must be a number in plot(x,y,c)");
+    }
+
+    let colour = params[2].to_string();
+
+    let rgb = match colour.as_str() {
+        "darkblue" => (0, 0, 128),
+        "blue" => (0, 0, 255),
+        "purple" => (128, 0, 128),
+        "yellow" => (255, 255, 0),
+        "pink" => (255, 192, 203),
+        "red" => (255, 0, 0),
+        "green" => (0, 255, 0),
+        "black" => (0, 0, 0),
+        "white" => (255, 255, 255),
+        _ => (0, 0, 0),
+    };
+
+    g.draw_rect(x, y, 1.0, 1.0, rgb);
+
+    Ok(ValueType::Boolean(true))
 }

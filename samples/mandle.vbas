@@ -1,21 +1,13 @@
 ' mandlebot
 
 
-width = 140
-height = 40
-max_iteration = 10
+width = 900
+height = 700
+max_iteration = 50
 
  function setgraphics(x)
-     0
+     initgraphics(width, height)
  end
-
-function plot(x,y,c)
-    if c == "black" then
-        print("*", 0)
-    else
-        print(" ", 0)
-    end
-end
 
 function getColor(c)
     if c < max_iteration * 0.1 then  "darkblue" exit end
@@ -58,13 +50,16 @@ function mandlebot()
             x=x+1
         end
         y=y+1
-        print("")
+        'print("")
     end
 end 
 
 print("starting program") 
+s = seconds()
 setgraphics(1)
 mandlebot()
+window()
 print("finished")
+print(seconds() - s)
 
 

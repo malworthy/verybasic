@@ -143,7 +143,41 @@ returns a random number between 0 and 1
 
 ### _readlines(filename)_
 
-returns an aray of all lines in a text file
+returns an array of all lines in a text file
+
+## Graphic functions
+
+Very Basic has the ability to do basic 2D graphics. You can draw to a canvas and then display the canvas in a window, or save it as a image file.
+
+### _initgraphics(width, height)_
+
+creates a new canvas for drawing. You must call this before calling any other graphics functions.
+
+### _cleargraphics()_
+
+sets all pixels on the canvas to white
+
+### _plot(x, y, colour)_
+
+sets the colour at x,y coordinates on the canvas
+
+### _window()_
+
+display a window showing the canvas. Size of window will be the same as the canvas
+
+### Colours
+
+the following pre-defined string values for colours are available:
+
+- darkblue
+- blue
+- purple
+- yellow
+- pink
+- red
+- green
+- black
+- white
 
 ## System calls
 

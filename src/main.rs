@@ -188,13 +188,13 @@ mod tests {
                         0
                     end
                     
-                    function plot(x,y,c)
+                    function test(x,y,c)
                         x = 1
                         b = 2
                         setgraphics(2)
                         print(x)
                     end
-                    plot(1,2,3)";
+                    test(1,2,3)";
         assert_eq!(interpret_test(code), "String(\"1\")");
     }
 
