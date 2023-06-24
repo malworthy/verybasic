@@ -27,15 +27,15 @@ pub enum OpCode {
     SetGlobal(String, u32),
     GetGlobal(String, u32),
     Call(String, u32, u32),
-    CallNative(String, usize, u32, u32),
+    CallNative(usize, u32, u32),
     CallNativeGr(usize, u32, u32),
     Pop,
-    SetLocal(usize, u32),
-    DefineLocal(usize, u32),
-    GetLocal(usize, u32),
+    SetLocal(usize),
+    DefineLocal,
+    GetLocal(usize),
     JumpIfFalse(usize),
     Jump(i32),
-    DefFn(String, usize, u8), //ip pointer, arity
+    DefFn(String, usize), //ip pointer, arity
     Subscript(u32),
     Return,
 }
@@ -176,12 +176,7 @@ impl Compiler<'_> {
                     self.advance();
                     // check if it's native
                     if let Ok(index) = is_native(name.as_str()) {
-                        self.add_instr(OpCode::CallNative(
-                            name.clone(),
-                            index,
-                            arguments,
-                            token.line_number,
-                        ));
+                        self.add_instr(OpCode::CallNative(index, arguments, token.line_number));
                     } else if let Ok(index) = is_native_graphics(name.as_str()) {
                         self.add_instr(OpCode::CallNativeGr(index, arguments, token.line_number));
                     } else {
@@ -293,9 +288,9 @@ impl Compiler<'_> {
                 self.add_instr(OpCode::SetGlobal(token.lexeme.clone(), token.line_number));
             } else {
                 if added {
-                    self.add_instr(OpCode::DefineLocal(index, token.line_number));
+                    self.add_instr(OpCode::DefineLocal);
                 } else {
-                    self.add_instr(OpCode::SetLocal(index, token.line_number));
+                    self.add_instr(OpCode::SetLocal(index));
                 }
             }
         } else {
@@ -316,7 +311,7 @@ impl Compiler<'_> {
                         .position(|x| x.depth == self.depth)
                         .unwrap();
                     let index = index - start;
-                    self.add_instr(OpCode::GetLocal(index, token.line_number));
+                    self.add_instr(OpCode::GetLocal(index));
                 }
             } else {
                 // compile error - can't find variable
@@ -619,7 +614,7 @@ impl Compiler<'_> {
         self.depth -= 1;
 
         let to_jump: i32 = (self.instructions.len() - fn_start).try_into().unwrap();
-        self.add_instr(OpCode::DefFn(name.clone(), fn_start, arity));
+        self.add_instr(OpCode::DefFn(name.clone(), fn_start));
         if !self.add_fn(name, arity) {
             self.compile_error("Attempt to define the same function twice", fn_token);
             return;

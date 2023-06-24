@@ -39,15 +39,15 @@ fn runtime_error(message: &str, line_number: u32) {
     eprintln!("Runtime error: {} in line {line_number}", message.red());
 }
 
-struct Function {
-    pointer: usize,
-    arity: u8,
-}
+// struct Function {
+//     pointer: usize,
+//     arity: u8,
+// }
 
 pub struct Vm<'a> {
     stack: Vec<ValueType<'a>>,
     globals: HashMap<&'a String, ValueType<'a>>,
-    functions: HashMap<&'a str, Function>,
+    functions: HashMap<&'a str, usize>,
     pub return_value: Option<ValueType<'a>>,
     gr: graphics::Graphics,
 }
@@ -394,7 +394,7 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
-                OpCode::CallNative(name, index, argc, line_number) => {
+                OpCode::CallNative(index, argc, line_number) => {
                     let mut args: Vec<ValueType> = Vec::new();
 
                     let func = Vm::NATIVES[*index].0;
@@ -429,12 +429,12 @@ impl<'a> Vm<'a> {
                     self.stack.push(ValueType::Boolean(true));
                 }
                 OpCode::Call(name, argc, line_number) => {
-                    if let Some(func) = self.functions.get(&name.as_str()) {
+                    if let Some(pointer) = self.functions.get(&name.as_str()) {
                         // call user defined func
                         call_frames.push(frame); // save current frame
                         let argc = usize::try_from(*argc).unwrap();
                         frame = Frame {
-                            ip: func.pointer - 1,
+                            ip: pointer - 1,
                             frame_pointer: self.stack.len() - argc,
                         };
                     } else {
@@ -453,29 +453,21 @@ impl<'a> Vm<'a> {
                                 return false;
                             }
                         }
-
-                        // if let Ok(value) = result {
-                        //     self.stack.push(value);
-                        // } else {
-                        //     let message = format!("Error running {name}.");
-                        //     runtime_error(&message, *line_number);
-                        //     return false;
-                        // }
                     }
                 }
                 OpCode::Pop => {
                     self.return_value = self.stack.pop();
                 }
-                OpCode::GetLocal(i, line_number) => {
+                OpCode::GetLocal(i) => {
                     self.stack.push(self.stack[i + frame.frame_pointer].clone());
                 }
-                OpCode::SetLocal(i, line_number) => {
+                OpCode::SetLocal(i) => {
                     // dbg!(instructions);
                     // println!("Line Number: {line_number} {i} {}", frame.frame_pointer);
                     let value = self.stack.last().unwrap().clone();
                     self.stack[i + frame.frame_pointer] = value;
                 }
-                OpCode::DefineLocal(i, line_number) => {
+                OpCode::DefineLocal => {
                     let value = self.stack.last().unwrap().clone();
                     self.stack.push(value);
                     //self.stack[i + frame.frame_pointer] = value;
@@ -510,14 +502,8 @@ impl<'a> Vm<'a> {
                     }
                     //panic!("return not implemented");
                 }
-                OpCode::DefFn(name, index, arity) => {
-                    self.functions.insert(
-                        name,
-                        Function {
-                            pointer: *index,
-                            arity: *arity,
-                        },
-                    );
+                OpCode::DefFn(name, index) => {
+                    self.functions.insert(name, *index);
                     //panic!("DefFn not implemented");
                 }
                 OpCode::And(line_number) | OpCode::Or(line_number) => {
