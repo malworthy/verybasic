@@ -26,7 +26,7 @@ pub enum OpCode {
     Or(u32),
     SetGlobal(String, u32),
     GetGlobal(String, u32),
-    Call(String, u32, u32),
+    Call(usize, u32, u32),
     CallNative(usize, u32, u32),
     CallNativeGr(usize, u32, u32),
     Pop,
@@ -35,7 +35,7 @@ pub enum OpCode {
     GetLocal(usize),
     JumpIfFalse(usize),
     Jump(i32),
-    DefFn(String, usize), //ip pointer, arity
+    // DefFn(String, usize), //ip pointer, arity
     Subscript(u32),
     Return,
 }
@@ -68,7 +68,7 @@ pub struct Compiler<'a> {
     instructions: &'a mut Vec<OpCode>,
     tokens: &'a Vec<TokenType>,
     variables: Vec<Variable>,
-    functions: HashMap<String, u8>,
+    pub functions: Vec<(String, u8, usize)>,
     token_pointer: usize,
     pub in_error: bool,
     depth: u8,
@@ -101,7 +101,7 @@ impl Compiler<'_> {
             token_pointer: 0,
             in_error: false,
             depth: 0,
-            functions: HashMap::new(),
+            functions: Vec::new(),
         }
     }
 
@@ -110,12 +110,18 @@ impl Compiler<'_> {
         self.instructions.len() - 1
     }
 
-    fn add_fn(&mut self, name: String, arity: u8) -> bool {
-        if self.functions.contains_key(&name) {
+    fn add_fn(&mut self, name: String, arity: u8, fn_start: usize) -> bool {
+        if let Some(index) = self.functions.iter().position(|x| *x.0 == name) {
             return false;
         };
-        self.functions.entry(name).or_insert(arity);
+        self.functions.push((name, arity, fn_start));
         true
+
+        // if self.functions.contains_key(&name) {
+        //     return false;
+        // };
+        // self.functions.entry(name).or_insert(arity);
+        // true
     }
 
     fn number(&mut self, token: &Token) {
@@ -180,17 +186,29 @@ impl Compiler<'_> {
                     } else if let Ok(index) = is_native_graphics(name.as_str()) {
                         self.add_instr(OpCode::CallNativeGr(index, arguments, token.line_number));
                     } else {
-                        // check arity
-                        if let Some(arity) = self.functions.get(&name) {
-                            if *arity != arguments as u8 {
+                        // get index of fn
+                        if let Some(index) = self.functions.iter().position(|x| x.0 == name) {
+                            let f = &self.functions[index];
+                            if f.1 != arguments as u8 {
                                 self.compile_error(
                                     "Wrong number of arguments pass to function",
                                     token,
                                 );
                                 return false;
                             }
+                            self.add_instr(OpCode::Call(f.2, arguments, token.line_number));
                         }
-                        self.add_instr(OpCode::Call(name.clone(), arguments, token.line_number));
+                        // // check arity
+                        // if let Some(arity) = self.functions.get(&name) {
+                        //     if *arity != arguments as u8 {
+                        //         self.compile_error(
+                        //             "Wrong number of arguments pass to function",
+                        //             token,
+                        //         );
+                        //         return false;
+                        //     }
+                        // }
+                        //self.add_instr(OpCode::Call(name.clone(), arguments, token.line_number));
                     }
 
                     return true;
@@ -592,6 +610,12 @@ impl Compiler<'_> {
                 }
             }
         }
+        // add the function here before compiling the body - that way we support recursion
+        if !self.add_fn(name, arity, fn_start) {
+            self.compile_error("Attempt to define the same function twice", fn_token);
+            return;
+        }
+
         // The function body
         self.block();
 
@@ -614,11 +638,11 @@ impl Compiler<'_> {
         self.depth -= 1;
 
         let to_jump: i32 = (self.instructions.len() - fn_start).try_into().unwrap();
-        self.add_instr(OpCode::DefFn(name.clone(), fn_start));
-        if !self.add_fn(name, arity) {
-            self.compile_error("Attempt to define the same function twice", fn_token);
-            return;
-        }
+        //self.add_instr(OpCode::DefFn(name.clone(), fn_start));
+        // if !self.add_fn(name, arity, fn_start) {
+        //     self.compile_error("Attempt to define the same function twice", fn_token);
+        //     return;
+        // }
 
         // patch jump so we jump over the function if not calling it
 

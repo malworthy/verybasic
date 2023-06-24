@@ -39,9 +39,7 @@ fn interpret(contents: &str) -> Result<String, String> {
         return Result::Err(String::from("Compile Error"));
     }
 
-    //dbg!(&instructions);
     let mut vm = Vm::new();
-
     let result = vm.run(&instructions);
     if !result {
         return Result::Err(String::from("Runtime Error"));
@@ -67,10 +65,10 @@ mod tests {
         }
     }
 
-    #[test]
-    fn temp_test() {
-        interpret_test("cmd(\"/s\",\"dir\")");
-    }
+    // #[test]
+    // fn temp_test() {
+    //     interpret_test("cmd(\"/s\",\"dir\")");
+    // }
 
     #[test]
     fn arity_wrong() {
@@ -82,6 +80,19 @@ mod tests {
         test(1)
         ";
         assert_eq!(interpret_test(code), "Compile Error");
+    }
+
+    #[test]
+    fn recursion() {
+        let code = "
+        function fib(n) 
+            if n < 2 then n exit end
+            fib(n - 2) + fib(n - 1)
+        end
+
+        fib(20)
+        ";
+        assert_eq!(interpret_test(code), "Number(6765.0)");
     }
 
     #[test]

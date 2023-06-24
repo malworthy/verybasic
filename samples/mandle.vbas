@@ -60,6 +60,6 @@ setgraphics(1)
 mandlebot()
 window()
 print("finished")
-print(seconds() - s)
+print(seconds() - s) '7-12 seconds 
 
 
