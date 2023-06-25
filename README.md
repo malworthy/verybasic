@@ -159,11 +159,15 @@ sets all pixels on the canvas to white
 
 ### _plot(x, y, colour)_
 
-sets the colour at x,y coordinates on the canvas
+sets the colour at x,y coordinates on the canvas. Colour can either be a pre-defined colour string or a hex code (e.g. #ADFF2F)
 
 ### _window()_
 
 display a window showing the canvas. Size of window will be the same as the canvas
+
+### _rgb(red,green,blue)_
+
+returns a hex code for the speficied red, green and blue values.
 
 ### Colours
 
@@ -178,6 +182,8 @@ the following pre-defined string values for colours are available:
 - green
 - black
 - white
+
+Other colours can be specified using Hex Codes. A hex code starts with '#' and must be 6 digits.
 
 ## System calls
 

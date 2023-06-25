@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::Vm;
 use colored::Colorize;
 
@@ -24,9 +22,10 @@ pub enum OpCode {
     Not(u32),
     And(u32),
     Or(u32),
-    SetGlobal(String, u32),
+    SetGlobal(String),
     GetGlobal(String, u32),
-    Call(usize, u32, u32),
+    Call(usize, u32),
+    CallSystem(String, u32, u32),
     CallNative(usize, u32, u32),
     CallNativeGr(usize, u32, u32),
     Pop,
@@ -40,27 +39,14 @@ pub enum OpCode {
     Return,
 }
 
-pub enum DataType {
-    Any,
-    Text,
-    Number,
-    Boolean,
-    List,
-}
-
 pub struct Variable {
     depth: u8,
     name: String,
-    data_type: DataType,
 }
 
 impl Variable {
     pub fn new(name: String, depth: u8) -> Self {
-        Variable {
-            depth,
-            name,
-            data_type: DataType::Any,
-        }
+        Variable { depth, name }
     }
 }
 
@@ -111,23 +97,20 @@ impl Compiler<'_> {
     }
 
     fn add_fn(&mut self, name: String, arity: u8, fn_start: usize) -> bool {
-        if let Some(index) = self.functions.iter().position(|x| *x.0 == name) {
+        if self.functions.iter().any(|x| *x.0 == name) {
             return false;
         };
         self.functions.push((name, arity, fn_start));
         true
-
-        // if self.functions.contains_key(&name) {
-        //     return false;
-        // };
-        // self.functions.entry(name).or_insert(arity);
-        // true
     }
 
     fn number(&mut self, token: &Token) {
         let number = match token.lexeme.parse::<f64>() {
             Ok(v) => v,
-            Err(e) => 0.0,
+            Err(_) => {
+                self.compile_error("Could not parse number", token);
+                return;
+            }
         };
         self.add_instr(OpCode::ConstantNum(number, token.line_number));
     }
@@ -151,7 +134,7 @@ impl Compiler<'_> {
     fn subscript(&mut self, token: &Token) -> bool {
         // get the index of the array
         self.expression();
-        if let TokenType::RightBracket(t) = &self.tokens[self.token_pointer] {
+        if let TokenType::RightBracket(_) = &self.tokens[self.token_pointer] {
             self.add_instr(OpCode::Subscript(token.line_number));
             self.advance();
         } else {
@@ -196,19 +179,11 @@ impl Compiler<'_> {
                                 );
                                 return false;
                             }
-                            self.add_instr(OpCode::Call(f.2, arguments, token.line_number));
+                            self.add_instr(OpCode::Call(f.2, arguments));
+                        } else {
+                            // can't find anything so try a system call
+                            self.add_instr(OpCode::CallSystem(name, arguments, token.line_number));
                         }
-                        // // check arity
-                        // if let Some(arity) = self.functions.get(&name) {
-                        //     if *arity != arguments as u8 {
-                        //         self.compile_error(
-                        //             "Wrong number of arguments pass to function",
-                        //             token,
-                        //         );
-                        //         return false;
-                        //     }
-                        // }
-                        //self.add_instr(OpCode::Call(name.clone(), arguments, token.line_number));
                     }
 
                     return true;
@@ -229,7 +204,6 @@ impl Compiler<'_> {
                 }
             }
         }
-        true
     }
 
     fn add_variable(&mut self, name: String) -> (usize, bool) {
@@ -303,7 +277,7 @@ impl Compiler<'_> {
             self.expression();
             let (index, added) = self.add_variable(token.lexeme.clone());
             if self.depth == 0 {
-                self.add_instr(OpCode::SetGlobal(token.lexeme.clone(), token.line_number));
+                self.add_instr(OpCode::SetGlobal(token.lexeme.clone()));
             } else {
                 if added {
                     self.add_instr(OpCode::DefineLocal);
@@ -572,7 +546,7 @@ impl Compiler<'_> {
             return;
         }
         // consume (
-        if let TokenType::LeftParan(t) = &self.tokens[self.token_pointer] {
+        if let TokenType::LeftParan(_) = &self.tokens[self.token_pointer] {
             self.advance();
         } else {
             self.compile_error("missing '(' after function name", fn_token);

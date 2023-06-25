@@ -9,7 +9,6 @@ pub mod precedence {
     pub const FACTOR: u8 = 7;
     pub const UNARY: u8 = 8;
     pub const CALL: u8 = 9;
-    pub const PRIMARY: u8 = 10;
 }
 
 #[derive(Debug)]
@@ -156,12 +155,16 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                     precedence: precedence::NONE,
                 }));
                 i += 1;
-            } else if current_char.is_ascii_alphabetic() {
+            } else if current_char.is_ascii_alphabetic()
+                || current_char == '@'
+                || current_char == '_'
+            {
                 // Identifier
                 let mut lexeme = String::new();
                 while i < code.len()
                     && (current_char.is_ascii_alphabetic()
                         || current_char == '_'
+                        || current_char == '@'
                         || current_char.is_numeric())
                 {
                     lexeme.push(current_char);

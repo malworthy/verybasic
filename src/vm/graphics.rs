@@ -1,12 +1,5 @@
-use crate::vm::ValueType;
-
-// use font_kit::family_name::FamilyName;
-// use font_kit::properties::Properties;
-// use font_kit::source::SystemSource;
-use minifb::{MouseMode, Scale, ScaleMode, Window, WindowOptions};
-use raqote::{
-    DrawOptions, DrawTarget, PathBuilder, Point, SolidSource, Source, StrokeStyle, Transform,
-};
+use minifb::{Window, WindowOptions};
+use raqote::{DrawOptions, DrawTarget, PathBuilder, SolidSource, Source};
 const WIDTH: i32 = 400;
 const HEIGHT: i32 = 400;
 

@@ -53,13 +53,20 @@ fn system_command<'a>(
         args.push(param.to_string());
     }
 
-    let output = Command::new(command).args(args).output();
+    let first_char = command.chars().nth(0).unwrap();
+
+    let output = if first_char == '@' {
+        let command = &command[1..];
+        Command::new(command).args(args).output()
+    } else {
+        Command::new(command).args(args).output()
+    };
 
     if let Ok(output) = output {
         let result = String::from_utf8_lossy(&output.stdout).to_string();
         Result::Ok(ValueType::String(result))
     } else {
-        Result::Err("Failed to run command")
+        Result::Err("Failed to run system command")
     }
 }
 
@@ -85,7 +92,7 @@ impl<'a> Vm<'a> {
         }
     }
 
-    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 8] = [
+    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 9] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (functions::array, "array"),
@@ -94,6 +101,7 @@ impl<'a> Vm<'a> {
         (functions::dir, "dir"),
         (functions::readlines, "readlines"),
         (functions::random, "rand"),
+        (functions::rgb, "rgb"),
     ];
 
     pub const NATIVES_GR: [(
@@ -233,8 +241,8 @@ impl<'a> Vm<'a> {
             ValueType::Boolean(a) => ValueType::Boolean(!a),
             ValueType::Str(a) => ValueType::Boolean(a.len() == 0),
             ValueType::String(a) => ValueType::Boolean(a.len() == 0),
-            ValueType::Array(a) => {
-                runtime_error("Cannot add an array", line_number);
+            ValueType::Array(_) => {
+                runtime_error("not invalid for an array", line_number);
                 return false;
             }
         };
@@ -243,7 +251,7 @@ impl<'a> Vm<'a> {
         true
     }
 
-    fn add(&mut self, op: &OpCode, line_number: u32) -> bool {
+    fn add(&mut self, line_number: u32) -> bool {
         let b = self.stack.pop().unwrap();
         let a = self.stack.pop().unwrap();
         let result = match a {
@@ -324,7 +332,7 @@ impl<'a> Vm<'a> {
                     };
                 }
                 OpCode::Add(line_number) => {
-                    if !self.add(&instr, *line_number) {
+                    if !self.add(*line_number) {
                         return false;
                     };
                 }
@@ -368,7 +376,7 @@ impl<'a> Vm<'a> {
                         return false;
                     };
                 }
-                OpCode::SetGlobal(name, line_number) => {
+                OpCode::SetGlobal(name) => {
                     let v = self.stack.last().unwrap();
                     self.globals.insert(name, v.clone());
                 }
@@ -415,39 +423,30 @@ impl<'a> Vm<'a> {
                     }
                     self.stack.push(ValueType::Boolean(true));
                 }
-                OpCode::Call(pointer, argc, line_number) => {
-                    //let pointer = &self.funcs[*index];
+                OpCode::CallSystem(name, argc, line_number) => {
+                    let mut args: Vec<ValueType> = Vec::new();
+                    for _i in 0..*argc {
+                        let v = self.stack.pop().unwrap();
+                        args.insert(0, v);
+                    }
+
+                    let result = system_command(name, args);
+
+                    match result {
+                        Ok(value) => self.stack.push(value),
+                        Err(message) => {
+                            runtime_error(&message, *line_number);
+                            return false;
+                        }
+                    }
+                }
+                OpCode::Call(pointer, argc) => {
                     call_frames.push(frame); // save current frame
                     let argc = *argc as usize;
                     frame = Frame {
                         ip: pointer - 1,
                         frame_pointer: self.stack.len() - argc,
                     };
-                    // if let Some(pointer) = self.functions.get(&name.as_str()) {
-                    //     // call user defined func
-                    //     call_frames.push(frame); // save current frame
-                    //     let argc = usize::try_from(*argc).unwrap();
-                    //     frame = Frame {
-                    //         ip: pointer - 1,
-                    //         frame_pointer: self.stack.len() - argc,
-                    //     };
-                    // } else {
-                    //     let mut args: Vec<ValueType> = Vec::new();
-                    //     for _i in 0..*argc {
-                    //         let v = self.stack.pop().unwrap();
-                    //         args.insert(0, v);
-                    //     }
-
-                    //     let result = system_command(name, args);
-
-                    //     match result {
-                    //         Ok(value) => self.stack.push(value),
-                    //         Err(message) => {
-                    //             runtime_error(&message, *line_number);
-                    //             return false;
-                    //         }
-                    //     }
-                    // }
                 }
                 OpCode::Pop => {
                     self.return_value = self.stack.pop();

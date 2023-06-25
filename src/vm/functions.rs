@@ -1,5 +1,6 @@
 use crate::vm::ValueType;
 use glob::glob;
+use hex;
 use rand;
 use std::{
     fs::read_to_string,
@@ -13,13 +14,22 @@ use super::graphics::Graphics;
 pub fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
     if let Some(val) = params.first() {
         let s = val.to_string();
-        if let Some(print_new_line) = params.get(1) {
-            //println!("I'm here!");
+        let new_line = if let Some(print_new_line) = params.get(1) {
+            if let ValueType::Boolean(val) = print_new_line {
+                *val
+            } else {
+                false
+            }
+        } else {
+            true
+        };
+        if new_line {
+            println!("{s}");
+        } else {
             print!("{s}");
             std::io::stdout().flush().unwrap();
-        } else {
-            println!("{s}");
         }
+
         Result::Ok(ValueType::String(s))
     } else {
         Err("No parameters passed to function")
@@ -116,6 +126,54 @@ pub fn readlines(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 }
 
+pub fn rgb(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    let r: u8;
+    let g: u8;
+    let b: u8;
+
+    if let Some(param) = params.get(0) {
+        if let ValueType::Number(val) = param {
+            if *val > 255.0 {
+                return Err("Red greater than 255");
+            }
+            r = *val as u8;
+        } else {
+            return Err("Incorrect parameters passed to function 'rgb'");
+        }
+    } else {
+        return Err("Incorrect parameters passed to function 'rgb'");
+    }
+
+    if let Some(param) = params.get(1) {
+        if let ValueType::Number(val) = param {
+            if *val > 255.0 {
+                return Err("Green greater than 255");
+            }
+            g = *val as u8;
+        } else {
+            return Err("Incorrect parameters passed to function 'rgb'");
+        }
+    } else {
+        return Err("Incorrect parameters passed to function 'rgb'");
+    }
+
+    if let Some(param) = params.get(2) {
+        if let ValueType::Number(val) = param {
+            if *val > 255.0 {
+                return Err("Blue greater than 255");
+            }
+            b = *val as u8;
+        } else {
+            return Err("Incorrect parameters passed to function 'rgb'");
+        }
+    } else {
+        return Err("Incorrect parameters passed to function 'rgb'");
+    }
+
+    let hex_string = format!("#{}", hex::encode([r, g, b]));
+    Ok(ValueType::String(hex_string))
+}
+
 pub fn window<'a>(
     _params: Vec<ValueType<'a>>,
     g: &'a mut Graphics,
@@ -184,10 +242,49 @@ pub fn plot<'a>(params: Vec<ValueType<'a>>, g: &'a mut Graphics) -> Result<Value
         "green" => (0, 255, 0),
         "black" => (0, 0, 0),
         "white" => (255, 255, 255),
-        _ => (0, 0, 0),
+        _ => hex_to_rgb(&colour),
     };
 
     g.draw_rect(x, y, 1.0, 1.0, rgb);
 
     Ok(ValueType::Boolean(true))
+}
+
+fn hex_to_rgb(colour: &str) -> (u8, u8, u8) {
+    if !colour.starts_with('#') || colour.len() != 7 {
+        return (0, 0, 0);
+    }
+    let result = hex::decode(&colour[1..]);
+
+    match result {
+        Ok(bytes) => (bytes[0], bytes[1], bytes[2]),
+        Err(_) => (0, 0, 0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::hex_to_rgb;
+
+    //use crate::hex_to_rgb;
+    #[test]
+    fn test_hex_to_rgb() {
+        let result = hex_to_rgb("#FF0000");
+        assert_eq!(result, (255, 0, 0));
+
+        let result = hex_to_rgb("#0000ff");
+        assert_eq!(result, (0, 0, 255));
+
+        let result = hex_to_rgb("#00ff00");
+        assert_eq!(result, (0, 255, 0));
+
+        let result = hex_to_rgb("#00ff0");
+        assert_eq!(result, (0, 0, 0));
+
+        let result = hex_to_rgb("garbage");
+        assert_eq!(result, (0, 0, 0));
+
+        let result = hex_to_rgb("");
+        assert_eq!(result, (0, 0, 0));
+    }
 }

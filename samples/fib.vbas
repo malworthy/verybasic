@@ -7,7 +7,7 @@ end
 
 print("running...")
 start = seconds()
-print(fib(35)) 
+print(fib(40)) 
 print(seconds() - start);
 ' 33 seconds 18/6/2023
 ' 30 seconds 24/6/2023
