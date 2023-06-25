@@ -38,7 +38,9 @@ fn runtime_error(message: &str, line_number: u32) {
 }
 
 pub struct Vm<'a> {
-    stack: Vec<ValueType<'a>>,
+    //stack: Vec<ValueType<'a>>,
+    stack: [ValueType<'a>; 256],
+    stack_pointer: usize,
     globals: HashMap<&'a String, ValueType<'a>>,
     pub return_value: Option<ValueType<'a>>,
     gr: graphics::Graphics,
@@ -82,13 +84,17 @@ fn string_compare<'a>(op: &OpCode, a: &str, b: &str) -> ValueType<'a> {
     }
 }
 
+const EMPTY_ELEMENT: ValueType = ValueType::Boolean(false);
+
 impl<'a> Vm<'a> {
     pub fn new() -> Self {
         Vm {
-            stack: Vec::new(),
+            //stack: Vec::new(),
+            stack: [EMPTY_ELEMENT; 256],
             globals: HashMap::new(),
             return_value: Option::None,
             gr: graphics::Graphics::new(),
+            stack_pointer: 0,
         }
     }
 
@@ -114,12 +120,29 @@ impl<'a> Vm<'a> {
         (functions::init_graphics, "initgraphics"),
     ];
 
+    fn push(&mut self, value: ValueType<'a>) {
+        if self.stack_pointer > 255 {
+            runtime_error("Stack Overflow", 0);
+        }
+        self.stack[self.stack_pointer] = value;
+        self.stack_pointer += 1;
+    }
+
+    fn pop<'b>(&'b mut self) -> &'b ValueType<'b> {
+        self.stack_pointer -= 1;
+        &self.stack[self.stack_pointer]
+    }
+
     fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {
-        let b = self.stack.pop().unwrap();
-        let a = self.stack.pop().unwrap();
+        self.stack_pointer -= 1;
+        let b = &self.stack[self.stack_pointer];
+
+        self.stack_pointer -= 1;
+        let a = &self.stack[self.stack_pointer];
+
         let result = match a {
             ValueType::Number(a) => {
-                if let ValueType::Number(b) = b {
+                if let ValueType::Number(ref b) = b {
                     match op {
                         OpCode::GreaterThan(_) => ValueType::Boolean(a > b),
                         OpCode::GreaterThanEq(_) => ValueType::Boolean(a >= b),
@@ -160,13 +183,16 @@ impl<'a> Vm<'a> {
             }
         };
 
-        self.stack.push(result);
+        self.push(result);
         true
     }
 
     fn binary(&mut self, op: &OpCode, line_number: u32) -> bool {
-        let b = self.stack.pop().unwrap();
-        let a = self.stack.pop().unwrap();
+        self.stack_pointer -= 1;
+        let b = &self.stack[self.stack_pointer];
+
+        self.stack_pointer -= 1;
+        let a = &self.stack[self.stack_pointer];
         let result = match a {
             ValueType::Number(a) => {
                 if let ValueType::Number(b) = b {
@@ -187,19 +213,22 @@ impl<'a> Vm<'a> {
             }
         };
 
-        self.stack.push(result);
+        self.push(result);
         true
     }
 
     fn and_or(&mut self, op: &OpCode, line_number: u32) -> bool {
-        let b = self.stack.pop().unwrap();
-        let a = self.stack.pop().unwrap();
+        self.stack_pointer -= 1;
+        let b = &self.stack[self.stack_pointer];
+
+        self.stack_pointer -= 1;
+        let a = &self.stack[self.stack_pointer];
         let result = match a {
             ValueType::Boolean(a) => {
                 if let ValueType::Boolean(b) = b {
                     match op {
-                        OpCode::And(_) => ValueType::Boolean(a && b),
-                        OpCode::Or(_) => ValueType::Boolean(a || b),
+                        OpCode::And(_) => ValueType::Boolean(*a && *b),
+                        OpCode::Or(_) => ValueType::Boolean(*a || *b),
                         _ => panic!("And/Or opcode expected"),
                     }
                 } else {
@@ -213,12 +242,13 @@ impl<'a> Vm<'a> {
             }
         };
 
-        self.stack.push(result);
+        self.push(result);
         true
     }
 
     fn negate(&mut self, line_number: u32) -> bool {
-        let a = self.stack.pop().unwrap();
+        self.stack_pointer -= 1;
+        let a = &self.stack[self.stack_pointer];
         let result = match a {
             ValueType::Number(a) => ValueType::Number(-a),
             _ => {
@@ -230,14 +260,15 @@ impl<'a> Vm<'a> {
             }
         };
 
-        self.stack.push(result);
+        self.push(result);
         true
     }
 
     fn not(&mut self, line_number: u32) -> bool {
-        let a = self.stack.pop().unwrap();
+        self.stack_pointer -= 1;
+        let a = &self.stack[self.stack_pointer];
         let result = match a {
-            ValueType::Number(a) => ValueType::Boolean(a == 0.0),
+            ValueType::Number(a) => ValueType::Boolean(*a == 0.0),
             ValueType::Boolean(a) => ValueType::Boolean(!a),
             ValueType::Str(a) => ValueType::Boolean(a.len() == 0),
             ValueType::String(a) => ValueType::Boolean(a.len() == 0),
@@ -247,13 +278,17 @@ impl<'a> Vm<'a> {
             }
         };
 
-        self.stack.push(result);
+        self.push(result);
         true
     }
 
     fn add(&mut self, line_number: u32) -> bool {
-        let b = self.stack.pop().unwrap();
-        let a = self.stack.pop().unwrap();
+        self.stack_pointer -= 1;
+        let b = &self.stack[self.stack_pointer];
+
+        self.stack_pointer -= 1;
+        let a = &self.stack[self.stack_pointer];
+
         let result = match a {
             ValueType::Number(a) => {
                 if let ValueType::Number(b) = b {
@@ -295,7 +330,7 @@ impl<'a> Vm<'a> {
             }
         };
 
-        self.stack.push(result);
+        self.push(result);
         true
     }
 
@@ -311,10 +346,10 @@ impl<'a> Vm<'a> {
             let instr = &instructions[frame.ip];
             match instr {
                 OpCode::ConstantNum(num, _) => {
-                    self.stack.push(ValueType::Number(*num));
+                    self.push(ValueType::Number(*num));
                 }
                 OpCode::ConstantStr(str, _) => {
-                    self.stack.push(ValueType::Str(str));
+                    self.push(ValueType::Str(str));
                 }
                 OpCode::Subtract(line_number) => {
                     if !self.binary(&instr, *line_number) {
@@ -377,12 +412,12 @@ impl<'a> Vm<'a> {
                     };
                 }
                 OpCode::SetGlobal(name) => {
-                    let v = self.stack.last().unwrap();
+                    let v = &self.stack[self.stack_pointer - 1];
                     self.globals.insert(name, v.clone());
                 }
                 OpCode::GetGlobal(name, line_number) => {
                     if let Some(value) = self.globals.get(&name) {
-                        self.stack.push(value.clone());
+                        self.push(value.clone());
                     } else {
                         let message = format!("Global variable {name} does not exist.");
                         runtime_error(&message, *line_number);
@@ -395,13 +430,14 @@ impl<'a> Vm<'a> {
                     let func = Vm::NATIVES[*index].0;
                     // call a native/built-in function
                     for _i in 0..*argc {
-                        let v = self.stack.pop().unwrap();
-                        args.insert(0, v);
+                        self.stack_pointer -= 1;
+                        let v = &self.stack[self.stack_pointer];
+                        args.insert(0, v.clone());
                     }
                     let result = func(args);
 
                     match result {
-                        Ok(value) => self.stack.push(value),
+                        Ok(value) => self.push(value),
                         Err(message) => {
                             runtime_error(&message, *line_number);
                             return false;
@@ -414,26 +450,28 @@ impl<'a> Vm<'a> {
 
                     // call a native/built-in function
                     for _i in 0..*argc {
-                        let v = self.stack.pop().unwrap();
-                        args.insert(0, v);
+                        self.stack_pointer -= 1;
+                        let v = &self.stack[self.stack_pointer];
+                        args.insert(0, v.clone());
                     }
                     if let Err(msg) = func(args, &mut self.gr) {
                         runtime_error(msg, *line_number);
                         return false;
                     }
-                    self.stack.push(ValueType::Boolean(true));
+                    self.push(ValueType::Boolean(true));
                 }
                 OpCode::CallSystem(name, argc, line_number) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     for _i in 0..*argc {
-                        let v = self.stack.pop().unwrap();
-                        args.insert(0, v);
+                        self.stack_pointer -= 1;
+                        let v = &self.stack[self.stack_pointer];
+                        args.insert(0, v.clone());
                     }
 
                     let result = system_command(name, args);
 
                     match result {
-                        Ok(value) => self.stack.push(value),
+                        Ok(value) => self.push(value),
                         Err(message) => {
                             runtime_error(&message, *line_number);
                             return false;
@@ -445,32 +483,36 @@ impl<'a> Vm<'a> {
                     let argc = *argc as usize;
                     frame = Frame {
                         ip: pointer - 1,
-                        frame_pointer: self.stack.len() - argc,
+                        frame_pointer: self.stack_pointer - argc,
                     };
                 }
                 OpCode::Pop => {
-                    self.return_value = self.stack.pop();
+                    self.stack_pointer -= 1;
+                    let v = &self.stack[self.stack_pointer];
+                    self.return_value = Some(v.clone());
                 }
                 OpCode::GetLocal(i) => {
-                    self.stack.push(self.stack[i + frame.frame_pointer].clone());
+                    self.push(self.stack[i + frame.frame_pointer].clone());
                 }
                 OpCode::SetLocal(i) => {
-                    let value = self.stack.last().unwrap().clone();
+                    let value = self.stack[self.stack_pointer - 1].clone();
                     self.stack[i + frame.frame_pointer] = value;
                 }
                 OpCode::DefineLocal => {
-                    let value = self.stack.last().unwrap().clone();
-                    self.stack.push(value);
+                    let value = self.stack[self.stack_pointer - 1].clone();
+                    self.push(value);
                 }
                 // do a define local
                 OpCode::JumpIfFalse(to_jump) => {
-                    if let Some(result) = self.stack.pop() {
-                        if let ValueType::Boolean(val) = result {
-                            if !val {
-                                frame.ip += to_jump;
-                            }
+                    self.stack_pointer -= 1;
+                    let result = &self.stack[self.stack_pointer];
+                    //if let Some(result) = self.stack.pop() {
+                    if let ValueType::Boolean(val) = result {
+                        if !val {
+                            frame.ip += to_jump;
                         }
                     }
+                    //}
                 }
                 OpCode::Jump(to_jump) => {
                     let current: i32 = frame.ip.try_into().unwrap();
@@ -482,11 +524,12 @@ impl<'a> Vm<'a> {
                     // if no frames left, then break
                     if let Some(value) = call_frames.pop() {
                         // get rid of any local variables on the stack
-                        self.stack.truncate(frame.frame_pointer);
+                        self.stack_pointer = frame.frame_pointer;
+                        //self.stack.truncate(frame.frame_pointer);
                         // set the call frame
                         frame = value;
                         let val = self.return_value.clone();
-                        self.stack.push(val.unwrap());
+                        self.push(val.unwrap());
                     } else {
                         break;
                     }
@@ -497,13 +540,19 @@ impl<'a> Vm<'a> {
                     }
                 }
                 OpCode::Subscript(line_number) => {
-                    let index = self.stack.pop().unwrap();
-                    let array = self.stack.pop().unwrap();
+                    // let index = self.stack.pop().unwrap();
+                    // let array = self.stack.pop().unwrap();
+                    self.stack_pointer -= 1;
+                    let index = &self.stack[self.stack_pointer];
+
+                    self.stack_pointer -= 1;
+                    let array = &self.stack[self.stack_pointer];
+
                     if let ValueType::Array(a) = array {
                         if let ValueType::Number(index) = index {
-                            let i = index as usize;
+                            let i = *index as usize;
                             if let Some(val) = a.get(i) {
-                                self.stack.push(val.clone());
+                                self.push(val.clone());
                             } else {
                                 runtime_error("Subscript out of range", *line_number);
                                 return false;
