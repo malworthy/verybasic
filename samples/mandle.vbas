@@ -58,8 +58,9 @@ print("starting program")
 s = seconds()
 setgraphics(1)
 mandlebot()
-window()
 print("finished")
-print(seconds() - s) '7-12 seconds 
+print(seconds() - s) '3.9 secs 25/06/2023
+window()
+
 
 

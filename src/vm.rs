@@ -128,10 +128,10 @@ impl<'a> Vm<'a> {
         self.stack_pointer += 1;
     }
 
-    fn pop<'b>(&'b mut self) -> &'b ValueType<'b> {
-        self.stack_pointer -= 1;
-        &self.stack[self.stack_pointer]
-    }
+    // fn pop<'b>(&'b mut self) -> &'b ValueType<'b> {
+    //     self.stack_pointer -= 1;
+    //     &self.stack[self.stack_pointer]
+    // }
 
     fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {
         self.stack_pointer -= 1;
