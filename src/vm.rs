@@ -86,6 +86,13 @@ fn string_compare<'a>(op: &OpCode, a: &str, b: &str) -> ValueType<'a> {
 
 const EMPTY_ELEMENT: ValueType = ValueType::Boolean(false);
 
+macro_rules! pop {
+    ($s:ident, $v:ident) => {
+        $s.stack_pointer -= 1;
+        let $v = &$s.stack[$s.stack_pointer];
+    };
+}
+
 impl<'a> Vm<'a> {
     pub fn new() -> Self {
         Vm {
@@ -128,17 +135,9 @@ impl<'a> Vm<'a> {
         self.stack_pointer += 1;
     }
 
-    // fn pop<'b>(&'b mut self) -> &'b ValueType<'b> {
-    //     self.stack_pointer -= 1;
-    //     &self.stack[self.stack_pointer]
-    // }
-
     fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {
-        self.stack_pointer -= 1;
-        let b = &self.stack[self.stack_pointer];
-
-        self.stack_pointer -= 1;
-        let a = &self.stack[self.stack_pointer];
+        pop!(self, b);
+        pop!(self, a);
 
         let result = match a {
             ValueType::Number(a) => {
@@ -188,11 +187,9 @@ impl<'a> Vm<'a> {
     }
 
     fn binary(&mut self, op: &OpCode, line_number: u32) -> bool {
-        self.stack_pointer -= 1;
-        let b = &self.stack[self.stack_pointer];
+        pop!(self, b);
+        pop!(self, a);
 
-        self.stack_pointer -= 1;
-        let a = &self.stack[self.stack_pointer];
         let result = match a {
             ValueType::Number(a) => {
                 if let ValueType::Number(b) = b {
@@ -218,11 +215,9 @@ impl<'a> Vm<'a> {
     }
 
     fn and_or(&mut self, op: &OpCode, line_number: u32) -> bool {
-        self.stack_pointer -= 1;
-        let b = &self.stack[self.stack_pointer];
+        pop!(self, b);
+        pop!(self, a);
 
-        self.stack_pointer -= 1;
-        let a = &self.stack[self.stack_pointer];
         let result = match a {
             ValueType::Boolean(a) => {
                 if let ValueType::Boolean(b) = b {
@@ -247,8 +242,8 @@ impl<'a> Vm<'a> {
     }
 
     fn negate(&mut self, line_number: u32) -> bool {
-        self.stack_pointer -= 1;
-        let a = &self.stack[self.stack_pointer];
+        pop!(self, a);
+
         let result = match a {
             ValueType::Number(a) => ValueType::Number(-a),
             _ => {
@@ -265,8 +260,8 @@ impl<'a> Vm<'a> {
     }
 
     fn not(&mut self, line_number: u32) -> bool {
-        self.stack_pointer -= 1;
-        let a = &self.stack[self.stack_pointer];
+        pop!(self, a);
+
         let result = match a {
             ValueType::Number(a) => ValueType::Boolean(*a == 0.0),
             ValueType::Boolean(a) => ValueType::Boolean(!a),
@@ -283,11 +278,8 @@ impl<'a> Vm<'a> {
     }
 
     fn add(&mut self, line_number: u32) -> bool {
-        self.stack_pointer -= 1;
-        let b = &self.stack[self.stack_pointer];
-
-        self.stack_pointer -= 1;
-        let a = &self.stack[self.stack_pointer];
+        pop!(self, b);
+        pop!(self, a);
 
         let result = match a {
             ValueType::Number(a) => {
@@ -430,8 +422,9 @@ impl<'a> Vm<'a> {
                     let func = Vm::NATIVES[*index].0;
                     // call a native/built-in function
                     for _i in 0..*argc {
-                        self.stack_pointer -= 1;
-                        let v = &self.stack[self.stack_pointer];
+                        // self.stack_pointer -= 1;
+                        // let v = &self.stack[self.stack_pointer];
+                        pop!(self, v);
                         args.insert(0, v.clone());
                     }
                     let result = func(args);
@@ -450,8 +443,7 @@ impl<'a> Vm<'a> {
 
                     // call a native/built-in function
                     for _i in 0..*argc {
-                        self.stack_pointer -= 1;
-                        let v = &self.stack[self.stack_pointer];
+                        pop!(self, v);
                         args.insert(0, v.clone());
                     }
                     if let Err(msg) = func(args, &mut self.gr) {
@@ -463,8 +455,7 @@ impl<'a> Vm<'a> {
                 OpCode::CallSystem(name, argc, line_number) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     for _i in 0..*argc {
-                        self.stack_pointer -= 1;
-                        let v = &self.stack[self.stack_pointer];
+                        pop!(self, v);
                         args.insert(0, v.clone());
                     }
 
@@ -487,8 +478,7 @@ impl<'a> Vm<'a> {
                     };
                 }
                 OpCode::Pop => {
-                    self.stack_pointer -= 1;
-                    let v = &self.stack[self.stack_pointer];
+                    pop!(self, v);
                     self.return_value = Some(v.clone());
                 }
                 OpCode::GetLocal(i) => {
@@ -504,8 +494,7 @@ impl<'a> Vm<'a> {
                 }
                 // do a define local
                 OpCode::JumpIfFalse(to_jump) => {
-                    self.stack_pointer -= 1;
-                    let result = &self.stack[self.stack_pointer];
+                    pop!(self, result);
                     //if let Some(result) = self.stack.pop() {
                     if let ValueType::Boolean(val) = result {
                         if !val {
@@ -542,11 +531,8 @@ impl<'a> Vm<'a> {
                 OpCode::Subscript(line_number) => {
                     // let index = self.stack.pop().unwrap();
                     // let array = self.stack.pop().unwrap();
-                    self.stack_pointer -= 1;
-                    let index = &self.stack[self.stack_pointer];
-
-                    self.stack_pointer -= 1;
-                    let array = &self.stack[self.stack_pointer];
+                    pop!(self, index);
+                    pop!(self, array);
 
                     if let ValueType::Array(a) = array {
                         if let ValueType::Number(index) = index {
