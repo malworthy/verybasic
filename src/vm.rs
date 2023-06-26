@@ -105,7 +105,7 @@ impl<'a> Vm<'a> {
         }
     }
 
-    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 9] = [
+    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 11] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (functions::array, "array"),
@@ -115,6 +115,8 @@ impl<'a> Vm<'a> {
         (functions::readlines, "readlines"),
         (functions::random, "rand"),
         (functions::rgb, "rgb"),
+        (functions::mid, "mid"),
+        (functions::left, "left"),
     ];
 
     pub const NATIVES_GR: [(
@@ -493,13 +495,16 @@ impl<'a> Vm<'a> {
                     self.push(value);
                 }
                 // do a define local
-                OpCode::JumpIfFalse(to_jump) => {
+                OpCode::JumpIfFalse(to_jump, line_number) => {
                     pop!(self, result);
                     //if let Some(result) = self.stack.pop() {
                     if let ValueType::Boolean(val) = result {
                         if !val {
                             frame.ip += to_jump;
                         }
+                    } else {
+                        runtime_error("boolean value expected", *line_number);
+                        return false;
                     }
                     //}
                 }

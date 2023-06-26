@@ -32,7 +32,7 @@ pub enum OpCode {
     SetLocal(usize),
     DefineLocal,
     GetLocal(usize),
-    JumpIfFalse(usize),
+    JumpIfFalse(usize, u32),
     Jump(i32),
     // DefFn(String, usize), //ip pointer, arity
     Subscript(u32),
@@ -483,11 +483,11 @@ impl Compiler<'_> {
         let token = &self.tokens[self.token_pointer];
         if let TokenType::Then(t) = token {
             self.advance();
-            let if_index = self.add_instr(OpCode::JumpIfFalse(0));
+            let if_index = self.add_instr(OpCode::JumpIfFalse(0, if_token.line_number));
             self.block();
             let else_index = self.add_instr(OpCode::Jump(0));
             self.instructions[if_index] =
-                OpCode::JumpIfFalse(self.instructions.len() - if_index - 1);
+                OpCode::JumpIfFalse(self.instructions.len() - if_index - 1, if_token.line_number);
             if let TokenType::Else(_) = self.tokens[self.token_pointer] {
                 self.advance();
                 self.block();
@@ -511,12 +511,14 @@ impl Compiler<'_> {
         let loop_start: i32 = (self.instructions.len() - 1).try_into().unwrap();
         self.advance();
         self.expression();
-        let jump_index = self.add_instr(OpCode::JumpIfFalse(0));
+        let jump_index = self.add_instr(OpCode::JumpIfFalse(0, while_token.line_number));
         self.block();
         let len: i32 = self.instructions.len().try_into().unwrap();
         self.add_instr(OpCode::Jump((loop_start - len).try_into().unwrap()));
-        self.instructions[jump_index] =
-            OpCode::JumpIfFalse(self.instructions.len() - jump_index - 1);
+        self.instructions[jump_index] = OpCode::JumpIfFalse(
+            self.instructions.len() - jump_index - 1,
+            while_token.line_number,
+        );
         let token = &self.tokens[self.token_pointer];
         if let TokenType::End(_) = token {
             self.advance();
@@ -591,7 +593,12 @@ impl Compiler<'_> {
         }
 
         // The function body
+        let body_check = self.instructions.len();
         self.block();
+        if body_check == self.instructions.len() {
+            self.compile_error("all functions must have a body", fn_token);
+            return;
+        }
 
         // Check for end
         if let TokenType::End(_) = &self.tokens[self.token_pointer] {

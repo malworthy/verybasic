@@ -125,6 +125,12 @@ mod tests {
     }
 
     #[test]
+    fn funtion_no_body() {
+        let code = "function test() end print(test())";
+        assert_eq!(interpret_test(code), "Compile Error");
+    }
+
+    #[test]
     fn token_scans_whole_words() {
         assert_eq!(
             interpret_test("note = 1234; print(note)"),
@@ -269,6 +275,11 @@ mod tests {
             interpret_test("if 1==2 then x=1; x+5 else x=6; x+5 end"),
             "Number(11.0)"
         );
+
+        assert_eq!(
+            interpret_test("if 1 then x=1; x+5 else x=6; x+5 end"),
+            "Runtime Error"
+        );
     }
 
     #[test]
@@ -350,5 +361,13 @@ mod tests {
         } else {
             assert!(false);
         }
+    }
+
+    #[test]
+    fn string_functions_left() {
+        assert_eq!(interpret_test("left(\"hello\", 1)"), "String(\"h\")");
+        assert_eq!(interpret_test("left(\"hello\", 100)"), "String(\"hello\")");
+        assert_eq!(interpret_test("left(\"hello\", -1)"), "Runtime Error");
+        assert_eq!(interpret_test("left(\"hello\", 0)"), "String(\"\")");
     }
 }

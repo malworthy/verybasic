@@ -125,7 +125,72 @@ pub fn readlines(params: Vec<ValueType>) -> Result<ValueType, &str> {
         Err("No parameters passed to readlines()")
     }
 }
+// String functions
+pub fn mid(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if params.len() < 2 {
+        return Err(
+            "Incorrect number of parameters passed to function mid(string, start[,length])",
+        );
+    }
+    let string = params[0].to_string();
+    let start = if let ValueType::Number(val) = params[1] {
+        if val < 1.0 {
+            return Err("Parameter 'start' of mid(string, start[,length]) must be a 1 or greater");
+        }
+        val as usize - 1
+    } else {
+        return Err("Parameter 'start' of mid(string, start[,length]) must be a number");
+    };
+    if start >= string.len() {
+        return Ok(ValueType::String(String::from("")));
+    }
 
+    if let Some(param) = params.get(2) {
+        let mut length = if let ValueType::Number(val) = param {
+            if *val < 0.0 {
+                return Err(
+                    "Parameter 'length' of mid(string, start[,length]) must be a 0 or greater",
+                );
+            }
+            *val as usize
+        } else {
+            return Err("Parameter 'start' of mid(string, start[,length]) must be a number");
+        };
+
+        if start + length >= string.len() {
+            length = string.len() - start;
+        }
+
+        let result = &string[start..start + length];
+        return Ok(ValueType::String(String::from(result)));
+    }
+
+    let result = &string[start..];
+
+    Ok(ValueType::String(String::from(result)))
+}
+
+pub fn left(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if params.len() < 2 {
+        return Err("Incorrect number of parameters passed to function left(string, length)");
+    }
+    let string = params[0].to_string();
+    let start = if let ValueType::Number(val) = params[1] {
+        if val < 0.0 {
+            return Err("Parameter 'length' of left(string, length) must be a 0 or greater");
+        }
+        val as usize
+    } else {
+        return Err("Parameter 'length' of left(string, length) must be a number");
+    };
+    if start >= string.len() {
+        return Ok(ValueType::String(string));
+    }
+
+    Ok(ValueType::String(String::from(&string[..start])))
+}
+
+// Graphics functions
 pub fn rgb(params: Vec<ValueType>) -> Result<ValueType, &str> {
     let r: u8;
     let g: u8;

@@ -24,9 +24,10 @@ while x < 10
 end
 ```
 
+Note: The expression evaluated for if and while must return a boolean. For example `if 1 then print("hello") end` won't work.
+
 ## Functions
 
-Functions must be declared before you call them in the top level script.
 Functions will return the result of the last expression executed. All functions must return a value. An empty function body will be a compile error.
 
 Example:
@@ -168,6 +169,15 @@ display a window showing the canvas. Size of window will be the same as the canv
 ### _rgb(red,green,blue)_
 
 returns a hex code for the speficied red, green and blue values.
+
+### _mid(string, start, [length])_
+
+returns part of a string using a 1 based index.
+e.g mid("hello",3) returns "llo", mid("hello",3, 2) return "lo"
+
+### _left(string, length)_
+
+Returns a substring containing a specified number of characters from the beginning (left side) of a string.
 
 ### Colours
 
