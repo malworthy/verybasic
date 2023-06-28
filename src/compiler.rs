@@ -6,37 +6,76 @@ use crate::scanner::{precedence, Token, TokenType};
 
 #[derive(Debug)]
 pub enum OpCode {
-    ConstantNum(f64, u32),
-    ConstantStr(String, u32),
-    Add(u32),
-    Subtract(u32),
-    Negate(u32),
-    Multiply(u32),
-    Divide(u32),
-    GreaterThan(u32),
-    GreaterThanEq(u32),
-    LessThan(u32),
-    LessThanEq(u32),
-    Equal(u32),
-    NotEqual(u32),
-    Not(u32),
-    And(u32),
-    Or(u32),
+    ConstantNum(f64),
+    ConstantStr(String),
+    Add,
+    Subtract,
+    Negate,
+    Multiply,
+    Divide,
+    GreaterThan,
+    GreaterThanEq,
+    LessThan,
+    LessThanEq,
+    Equal,
+    NotEqual,
+    Not,
+    And,
+    Or,
     SetGlobal(String),
-    GetGlobal(String, u32),
+    GetGlobal(String),
     Call(usize, u32),
-    CallSystem(String, u32, u32),
-    CallNative(usize, u32, u32),
-    CallNativeGr(usize, u32, u32),
+    CallSystem(String, u32),
+    CallNative(usize, u32),
+    CallNativeGr(usize, u32),
     Pop,
     SetLocal(usize),
     DefineLocal,
     GetLocal(usize),
-    JumpIfFalse(usize, u32),
+    JumpIfFalse(usize),
     Jump(i32),
-    // DefFn(String, usize), //ip pointer, arity
-    Subscript(u32),
+    Subscript,
     Return,
+}
+
+pub fn print_instr(instructions: Vec<OpCode>) {
+    let mut addr = 0;
+    for i in instructions {
+        let x = match i {
+            OpCode::Add => format!("{} ADD", addr),
+            OpCode::Call(ptr, argc) => format!("{} CALL {} {}", addr, ptr, argc),
+            OpCode::CallNative(index, argc) => format!("{} CALN {} {}", addr, index, argc),
+            OpCode::CallNativeGr(index, argc) => format!("{} CALG {} {}", addr, index, argc),
+            OpCode::And => format!("{} AND", addr),
+            OpCode::CallSystem(name, argc) => format!("{} SYS  {} {}", addr, name, argc),
+            OpCode::ConstantNum(num) => format!("{} NUM  {}", addr, num),
+            OpCode::ConstantStr(str) => format!("{} STR  {}", addr, str),
+            OpCode::DefineLocal => format!("{} DEF", addr),
+            OpCode::Divide => format!("{} DIV", addr),
+            OpCode::Equal => format!("{} EQ", addr),
+            OpCode::GetGlobal(name) => format!("{} GLOB {}", addr, name),
+            OpCode::GetLocal(index) => format!("{} LOC {}", addr, index),
+            OpCode::GreaterThan => format!("{} GT", addr),
+            OpCode::GreaterThanEq => format!("{} GTEQ", addr),
+            OpCode::Jump(ptr) => format!("{} JUMP {}", addr, ptr),
+            OpCode::JumpIfFalse(ptr) => format!("{} JUMF {}", addr, ptr),
+            OpCode::LessThan => format!("{} LT", addr),
+            OpCode::LessThanEq => format!("{} LTEQ", addr),
+            OpCode::Multiply => format!("{} MUL", addr),
+            OpCode::Negate => format!("{} NEG", addr),
+            OpCode::Not => format!("{} NOT", addr),
+            OpCode::NotEqual => format!("{} NEQ", addr),
+            OpCode::Or => format!("{} OR", addr),
+            OpCode::Pop => format!("{} POP", addr),
+            OpCode::Return => format!("{} RET", addr),
+            OpCode::SetGlobal(name) => format!("{} SETG {}", addr, name),
+            OpCode::SetLocal(index) => format!("{} SET {}", addr, index),
+            OpCode::Subscript => format!("{} SBPT", addr),
+            OpCode::Subtract => format!("{} SUB", addr),
+        };
+        addr += 1;
+        println!("{}", x);
+    }
 }
 
 pub struct Variable {
@@ -52,6 +91,7 @@ impl Variable {
 
 pub struct Compiler<'a> {
     instructions: &'a mut Vec<OpCode>,
+    line_numbers: &'a mut Vec<u32>,
     tokens: &'a Vec<TokenType>,
     variables: Vec<Variable>,
     pub functions: Vec<(String, u8, usize)>,
@@ -79,9 +119,14 @@ fn is_native_graphics(name: &str) -> Result<usize, usize> {
 }
 
 impl Compiler<'_> {
-    pub fn new<'a>(tokens: &'a Vec<TokenType>, instructions: &'a mut Vec<OpCode>) -> Compiler<'a> {
+    pub fn new<'a>(
+        tokens: &'a Vec<TokenType>,
+        instructions: &'a mut Vec<OpCode>,
+        line_numbers: &'a mut Vec<u32>,
+    ) -> Compiler<'a> {
         Compiler {
             instructions,
+            line_numbers,
             tokens,
             variables: Vec::new(),
             token_pointer: 0,
@@ -91,7 +136,8 @@ impl Compiler<'_> {
         }
     }
 
-    fn add_instr(&mut self, op: OpCode) -> usize {
+    fn add_instr(&mut self, op: OpCode, line_number: u32) -> usize {
+        self.line_numbers.push(line_number);
         self.instructions.push(op);
         self.instructions.len() - 1
     }
@@ -112,11 +158,11 @@ impl Compiler<'_> {
                 return;
             }
         };
-        self.add_instr(OpCode::ConstantNum(number, token.line_number));
+        self.add_instr(OpCode::ConstantNum(number), token.line_number);
     }
 
     fn string(&mut self, token: &Token) {
-        self.add_instr(OpCode::ConstantStr(token.lexeme.clone(), token.line_number));
+        self.add_instr(OpCode::ConstantStr(token.lexeme.clone()), token.line_number);
     }
 
     fn grouping(&mut self, token: &Token) {
@@ -135,7 +181,7 @@ impl Compiler<'_> {
         // get the index of the array
         self.expression();
         if let TokenType::RightBracket(_) = &self.tokens[self.token_pointer] {
-            self.add_instr(OpCode::Subscript(token.line_number));
+            self.add_instr(OpCode::Subscript, token.line_number);
             self.advance();
         } else {
             self.compile_error("Missing ]", token);
@@ -165,9 +211,9 @@ impl Compiler<'_> {
                     self.advance();
                     // check if it's native
                     if let Ok(index) = is_native(name.as_str()) {
-                        self.add_instr(OpCode::CallNative(index, arguments, token.line_number));
+                        self.add_instr(OpCode::CallNative(index, arguments), token.line_number);
                     } else if let Ok(index) = is_native_graphics(name.as_str()) {
-                        self.add_instr(OpCode::CallNativeGr(index, arguments, token.line_number));
+                        self.add_instr(OpCode::CallNativeGr(index, arguments), token.line_number);
                     } else {
                         // get index of fn
                         if let Some(index) = self.functions.iter().position(|x| x.0 == name) {
@@ -179,10 +225,10 @@ impl Compiler<'_> {
                                 );
                                 return false;
                             }
-                            self.add_instr(OpCode::Call(f.2, arguments));
+                            self.add_instr(OpCode::Call(f.2, arguments), token.line_number);
                         } else {
                             // can't find anything so try a system call
-                            self.add_instr(OpCode::CallSystem(name, arguments, token.line_number));
+                            self.add_instr(OpCode::CallSystem(name, arguments), token.line_number);
                         }
                     }
 
@@ -277,12 +323,12 @@ impl Compiler<'_> {
             self.expression();
             let (index, added) = self.add_variable(token.lexeme.clone());
             if self.depth == 0 {
-                self.add_instr(OpCode::SetGlobal(token.lexeme.clone()));
+                self.add_instr(OpCode::SetGlobal(token.lexeme.clone()), token.line_number);
             } else {
                 if added {
-                    self.add_instr(OpCode::DefineLocal);
+                    self.add_instr(OpCode::DefineLocal, token.line_number);
                 } else {
-                    self.add_instr(OpCode::SetLocal(index));
+                    self.add_instr(OpCode::SetLocal(index), token.line_number);
                 }
             }
         } else {
@@ -295,7 +341,7 @@ impl Compiler<'_> {
             {
                 let index = self.variables.len() - 1 - index;
                 if self.variables[index].depth == 0 {
-                    self.add_instr(OpCode::GetGlobal(token.lexeme.clone(), token.line_number));
+                    self.add_instr(OpCode::GetGlobal(token.lexeme.clone()), token.line_number);
                 } else {
                     let start = self
                         .variables
@@ -303,7 +349,7 @@ impl Compiler<'_> {
                         .position(|x| x.depth == self.depth)
                         .unwrap();
                     let index = index - start;
-                    self.add_instr(OpCode::GetLocal(index));
+                    self.add_instr(OpCode::GetLocal(index), token.line_number);
                 }
             } else {
                 // compile error - can't find variable
@@ -320,62 +366,62 @@ impl Compiler<'_> {
         match token {
             TokenType::Plus(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::Add(t.line_number));
+                self.add_instr(OpCode::Add, t.line_number);
                 true
             }
             TokenType::Minus(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::Subtract(t.line_number));
+                self.add_instr(OpCode::Subtract, t.line_number);
                 true
             }
             TokenType::Times(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::Multiply(t.line_number));
+                self.add_instr(OpCode::Multiply, t.line_number);
                 true
             }
             TokenType::Divide(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::Divide(t.line_number));
+                self.add_instr(OpCode::Divide, t.line_number);
                 true
             }
             TokenType::GreaterThan(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::GreaterThan(t.line_number));
+                self.add_instr(OpCode::GreaterThan, t.line_number);
                 true
             }
             TokenType::GreaterThanOrEqual(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::GreaterThanEq(t.line_number));
+                self.add_instr(OpCode::GreaterThanEq, t.line_number);
                 true
             }
             TokenType::LessThan(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::LessThan(t.line_number));
+                self.add_instr(OpCode::LessThan, t.line_number);
                 true
             }
             TokenType::LessThanOrEqual(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::LessThanEq(t.line_number));
+                self.add_instr(OpCode::LessThanEq, t.line_number);
                 true
             }
             TokenType::Equality(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::Equal(t.line_number));
+                self.add_instr(OpCode::Equal, t.line_number);
                 true
             }
             TokenType::NotEquals(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::NotEqual(t.line_number));
+                self.add_instr(OpCode::NotEqual, t.line_number);
                 true
             }
             TokenType::And(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::And(t.line_number));
+                self.add_instr(OpCode::And, t.line_number);
                 true
             }
             TokenType::Or(t) => {
                 self.parse_precedence(t.precedence + 1);
-                self.add_instr(OpCode::Or(t.line_number));
+                self.add_instr(OpCode::Or, t.line_number);
                 true
             }
             TokenType::LeftParan(t) => self.call(t),
@@ -437,11 +483,11 @@ impl Compiler<'_> {
             TokenType::String(t) => self.string(t),
             TokenType::Minus(t) => {
                 self.parse_precedence(precedence::UNARY);
-                self.add_instr(OpCode::Negate(t.line_number));
+                self.add_instr(OpCode::Negate, t.line_number);
             }
             TokenType::Not(t) => {
                 self.parse_precedence(precedence::UNARY);
-                self.add_instr(OpCode::Not(t.line_number));
+                self.add_instr(OpCode::Not, t.line_number);
             }
             TokenType::LeftParan(t) => self.grouping(t),
             TokenType::Identifier(t) => self.variable(t, can_assign),
@@ -474,7 +520,7 @@ impl Compiler<'_> {
 
     fn expression_statement(&mut self) {
         self.expression();
-        self.add_instr(OpCode::Pop);
+        self.add_instr(OpCode::Pop, 0);
     }
 
     fn if_statement(&mut self, if_token: &Token) {
@@ -483,11 +529,11 @@ impl Compiler<'_> {
         let token = &self.tokens[self.token_pointer];
         if let TokenType::Then(t) = token {
             self.advance();
-            let if_index = self.add_instr(OpCode::JumpIfFalse(0, if_token.line_number));
+            let if_index = self.add_instr(OpCode::JumpIfFalse(0), if_token.line_number);
             self.block();
-            let else_index = self.add_instr(OpCode::Jump(0));
+            let else_index = self.add_instr(OpCode::Jump(0), if_token.line_number);
             self.instructions[if_index] =
-                OpCode::JumpIfFalse(self.instructions.len() - if_index - 1, if_token.line_number);
+                OpCode::JumpIfFalse(self.instructions.len() - if_index - 1);
             if let TokenType::Else(_) = self.tokens[self.token_pointer] {
                 self.advance();
                 self.block();
@@ -511,14 +557,15 @@ impl Compiler<'_> {
         let loop_start: i32 = (self.instructions.len() - 1).try_into().unwrap();
         self.advance();
         self.expression();
-        let jump_index = self.add_instr(OpCode::JumpIfFalse(0, while_token.line_number));
+        let jump_index = self.add_instr(OpCode::JumpIfFalse(0), while_token.line_number);
         self.block();
         let len: i32 = self.instructions.len().try_into().unwrap();
-        self.add_instr(OpCode::Jump((loop_start - len).try_into().unwrap()));
-        self.instructions[jump_index] = OpCode::JumpIfFalse(
-            self.instructions.len() - jump_index - 1,
+        self.add_instr(
+            OpCode::Jump((loop_start - len).try_into().unwrap()),
             while_token.line_number,
         );
+        self.instructions[jump_index] =
+            OpCode::JumpIfFalse(self.instructions.len() - jump_index - 1);
         let token = &self.tokens[self.token_pointer];
         if let TokenType::End(_) = token {
             self.advance();
@@ -533,7 +580,7 @@ impl Compiler<'_> {
             self.compile_error("Can't define a function within a function", fn_token);
             return;
         }
-        let jump_index = self.add_instr(OpCode::Jump(0));
+        let jump_index = self.add_instr(OpCode::Jump(0), 0);
         let fn_start = self.instructions.len();
         self.depth += 1;
         self.advance();
@@ -609,7 +656,7 @@ impl Compiler<'_> {
         }
 
         // add return in case there isn't one
-        self.add_instr(OpCode::Return);
+        self.add_instr(OpCode::Return, 0);
 
         // remove the local variables as we are done with them
         if let Some(index) = self.variables.iter().position(|x| x.depth == self.depth) {
@@ -647,8 +694,8 @@ impl Compiler<'_> {
             TokenType::If(t) => self.if_statement(t),
             TokenType::While(t) => self.while_statement(t),
             TokenType::Function(t) => self.def_fn(t),
-            TokenType::Return(_) => {
-                self.add_instr(OpCode::Return);
+            TokenType::Return(t) => {
+                self.add_instr(OpCode::Return, t.line_number);
                 self.advance();
             }
             _ => self.expression_statement(),

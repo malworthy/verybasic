@@ -33,13 +33,16 @@ fn interpret(contents: &str) -> Result<String, String> {
     let tokens = crate::scanner::tokenize(&contents);
 
     let mut instructions: Vec<compiler::OpCode> = Vec::new();
-    let mut compiler = Compiler::new(&tokens, &mut instructions);
+    let mut line_numbers: Vec<u32> = Vec::new();
+    let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
     compiler.compile();
     if compiler.in_error {
         return Result::Err(String::from("Compile Error"));
     }
+    //dbg!(&tokens);
+    //dbg!(&line_numbers);
 
-    let mut vm = Vm::new();
+    let mut vm = Vm::new(&mut line_numbers);
     let result = vm.run(&instructions);
     if !result {
         return Result::Err(String::from("Runtime Error"));
@@ -54,8 +57,9 @@ fn interpret(contents: &str) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::interpret;
+    use crate::compiler::Compiler;
     use crate::scanner::TokenType;
+    use crate::{compiler, interpret};
 
     fn interpret_test(contents: &str) -> String {
         let result = interpret(contents);
@@ -65,10 +69,24 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn temp_test() {
-    //     interpret_test("cmd(\"/s\",\"dir\")");
-    // }
+    #[test]
+    fn temp_test() {
+        let code = "function fib(n) 
+        if n < 2 then n exit end
+        fib(n - 2) + fib(n - 1)
+    end
+    
+    start = seconds()
+    print(fib(40)) 
+    print(seconds() - start); ";
+        let tokens = crate::scanner::tokenize(&code);
+
+        let mut instructions: Vec<compiler::OpCode> = Vec::new();
+        let mut line_numbers: Vec<u32> = Vec::new();
+        let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
+        compiler.compile();
+        compiler::print_instr(instructions);
+    }
 
     #[test]
     fn arity_wrong() {

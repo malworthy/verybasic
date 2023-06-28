@@ -33,18 +33,9 @@ struct Frame {
     frame_pointer: usize,
 }
 
-fn runtime_error(message: &str, line_number: u32) {
-    eprintln!("Runtime error: {} in line {line_number}", message.red());
-}
-
-pub struct Vm<'a> {
-    //stack: Vec<ValueType<'a>>,
-    stack: [ValueType<'a>; 256],
-    stack_pointer: usize,
-    globals: HashMap<&'a String, ValueType<'a>>,
-    pub return_value: Option<ValueType<'a>>,
-    gr: graphics::Graphics,
-}
+// fn runtime_error(message: &str, line_number: u32) {
+//     eprintln!("Runtime error: {} in line {line_number}", message.red());
+// }
 
 fn system_command<'a>(
     command: &'a String,
@@ -74,12 +65,12 @@ fn system_command<'a>(
 
 fn string_compare<'a>(op: &OpCode, a: &str, b: &str) -> ValueType<'a> {
     match op {
-        OpCode::GreaterThan(_) => ValueType::Boolean(a > b),
-        OpCode::GreaterThanEq(_) => ValueType::Boolean(a >= b),
-        OpCode::LessThan(_) => ValueType::Boolean(a < b),
-        OpCode::LessThanEq(_) => ValueType::Boolean(a <= b),
-        OpCode::Equal(_) => ValueType::Boolean(a == b),
-        OpCode::NotEqual(_) => ValueType::Boolean(a != b),
+        OpCode::GreaterThan => ValueType::Boolean(a > b),
+        OpCode::GreaterThanEq => ValueType::Boolean(a >= b),
+        OpCode::LessThan => ValueType::Boolean(a < b),
+        OpCode::LessThanEq => ValueType::Boolean(a <= b),
+        OpCode::Equal => ValueType::Boolean(a == b),
+        OpCode::NotEqual => ValueType::Boolean(a != b),
         _ => panic!("Non-comparison opcode processed in comparison()"),
     }
 }
@@ -93,8 +84,18 @@ macro_rules! pop {
     };
 }
 
+pub struct Vm<'a> {
+    stack: [ValueType<'a>; 256],
+    stack_pointer: usize,
+    globals: HashMap<&'a String, ValueType<'a>>,
+    pub return_value: Option<ValueType<'a>>,
+    gr: graphics::Graphics,
+    line_numbers: &'a mut Vec<u32>,
+    ip: usize,
+}
+
 impl<'a> Vm<'a> {
-    pub fn new() -> Self {
+    pub fn new(line_numbers: &'a mut Vec<u32>) -> Self {
         Vm {
             //stack: Vec::new(),
             stack: [EMPTY_ELEMENT; 256],
@@ -102,6 +103,8 @@ impl<'a> Vm<'a> {
             return_value: Option::None,
             gr: graphics::Graphics::new(),
             stack_pointer: 0,
+            ip: 0,
+            line_numbers,
         }
     }
 
@@ -129,15 +132,20 @@ impl<'a> Vm<'a> {
         (functions::init_graphics, "initgraphics"),
     ];
 
+    fn runtime_error(&mut self, message: &str) {
+        let line_number = self.line_numbers[self.ip];
+        eprintln!("Runtime error: {} in line {line_number}", message.red());
+    }
+
     fn push(&mut self, value: ValueType<'a>) {
         if self.stack_pointer > 255 {
-            runtime_error("Stack Overflow", 0);
+            self.runtime_error("Stack Overflow");
         }
         self.stack[self.stack_pointer] = value;
         self.stack_pointer += 1;
     }
 
-    fn comparison(&mut self, op: &OpCode, line_number: u32) -> bool {
+    fn comparison(&mut self, op: &OpCode) -> bool {
         pop!(self, b);
         pop!(self, a);
 
@@ -145,16 +153,16 @@ impl<'a> Vm<'a> {
             ValueType::Number(a) => {
                 if let ValueType::Number(ref b) = b {
                     match op {
-                        OpCode::GreaterThan(_) => ValueType::Boolean(a > b),
-                        OpCode::GreaterThanEq(_) => ValueType::Boolean(a >= b),
-                        OpCode::LessThan(_) => ValueType::Boolean(a < b),
-                        OpCode::LessThanEq(_) => ValueType::Boolean(a <= b),
-                        OpCode::Equal(_) => ValueType::Boolean(a == b),
-                        OpCode::NotEqual(_) => ValueType::Boolean(a != b),
+                        OpCode::GreaterThan => ValueType::Boolean(a > b),
+                        OpCode::GreaterThanEq => ValueType::Boolean(a >= b),
+                        OpCode::LessThan => ValueType::Boolean(a < b),
+                        OpCode::LessThanEq => ValueType::Boolean(a <= b),
+                        OpCode::Equal => ValueType::Boolean(a == b),
+                        OpCode::NotEqual => ValueType::Boolean(a != b),
                         _ => panic!("Non-comparison opcode processed in comparison()"),
                     }
                 } else {
-                    runtime_error("type mismatch", line_number);
+                    self.runtime_error("type mismatch");
                     return false;
                 }
             }
@@ -162,7 +170,7 @@ impl<'a> Vm<'a> {
                 ValueType::Str(b) => string_compare(&op, a, b), // ValueType::Boolean(a == b),
                 ValueType::String(b) => string_compare(&op, a, b.as_str()), //ValueType::Boolean(a == b),
                 _ => {
-                    runtime_error("You cannot compare a string to a non-string", line_number);
+                    self.runtime_error("You cannot compare a string to a non-string");
                     return false;
                 }
             },
@@ -170,16 +178,16 @@ impl<'a> Vm<'a> {
                 ValueType::Str(b) => string_compare(&op, a.as_str(), b), //ValueType::Boolean(a == b),
                 ValueType::String(b) => string_compare(&op, a.as_str(), b.as_str()), //ValueType::Boolean(a == b),
                 _ => {
-                    runtime_error("You cannot compare a string to a non-string.", line_number);
+                    self.runtime_error("You cannot compare a string to a non-string.");
                     return false;
                 }
             },
             ValueType::Boolean(_) => {
-                runtime_error("Boolean not valid for comparison operation", line_number);
+                self.runtime_error("Boolean not valid for comparison operation");
                 return false;
             }
             ValueType::Array(_) => {
-                runtime_error("Array not valid for comparison operation", line_number);
+                self.runtime_error("Array not valid for comparison operation");
                 return false;
             }
         };
@@ -188,7 +196,7 @@ impl<'a> Vm<'a> {
         true
     }
 
-    fn binary(&mut self, op: &OpCode, line_number: u32) -> bool {
+    fn binary(&mut self, op: &OpCode) -> bool {
         pop!(self, b);
         pop!(self, a);
 
@@ -196,18 +204,18 @@ impl<'a> Vm<'a> {
             ValueType::Number(a) => {
                 if let ValueType::Number(b) = b {
                     match op {
-                        OpCode::Subtract(_) => ValueType::Number(a - b),
-                        OpCode::Multiply(_) => ValueType::Number(a * b),
-                        OpCode::Divide(_) => ValueType::Number(a / b),
+                        OpCode::Subtract => ValueType::Number(a - b),
+                        OpCode::Multiply => ValueType::Number(a * b),
+                        OpCode::Divide => ValueType::Number(a / b),
                         _ => panic!("Non-binary opcode processed in binary()"),
                     }
                 } else {
-                    runtime_error("type mismatch", line_number);
+                    self.runtime_error("type mismatch");
                     return false;
                 }
             }
             _ => {
-                runtime_error("type mismatch", line_number);
+                self.runtime_error("type mismatch");
                 return false;
             }
         };
@@ -216,7 +224,7 @@ impl<'a> Vm<'a> {
         true
     }
 
-    fn and_or(&mut self, op: &OpCode, line_number: u32) -> bool {
+    fn and_or(&mut self, op: &OpCode) -> bool {
         pop!(self, b);
         pop!(self, a);
 
@@ -224,17 +232,17 @@ impl<'a> Vm<'a> {
             ValueType::Boolean(a) => {
                 if let ValueType::Boolean(b) = b {
                     match op {
-                        OpCode::And(_) => ValueType::Boolean(*a && *b),
-                        OpCode::Or(_) => ValueType::Boolean(*a || *b),
+                        OpCode::And => ValueType::Boolean(*a && *b),
+                        OpCode::Or => ValueType::Boolean(*a || *b),
                         _ => panic!("And/Or opcode expected"),
                     }
                 } else {
-                    runtime_error("type mismatch", line_number);
+                    self.runtime_error("type mismatch");
                     return false;
                 }
             }
             _ => {
-                runtime_error("type mismatch", line_number);
+                self.runtime_error("type mismatch");
                 return false;
             }
         };
@@ -243,16 +251,13 @@ impl<'a> Vm<'a> {
         true
     }
 
-    fn negate(&mut self, line_number: u32) -> bool {
+    fn negate(&mut self) -> bool {
         pop!(self, a);
 
         let result = match a {
             ValueType::Number(a) => ValueType::Number(-a),
             _ => {
-                runtime_error(
-                    "Type mismatch. '-' can only be used on numbers.",
-                    line_number,
-                );
+                self.runtime_error("Type mismatch. '-' can only be used on numbers.");
                 return false;
             }
         };
@@ -261,7 +266,7 @@ impl<'a> Vm<'a> {
         true
     }
 
-    fn not(&mut self, line_number: u32) -> bool {
+    fn not(&mut self) -> bool {
         pop!(self, a);
 
         let result = match a {
@@ -270,7 +275,7 @@ impl<'a> Vm<'a> {
             ValueType::Str(a) => ValueType::Boolean(a.len() == 0),
             ValueType::String(a) => ValueType::Boolean(a.len() == 0),
             ValueType::Array(_) => {
-                runtime_error("not invalid for an array", line_number);
+                self.runtime_error("not invalid for an array");
                 return false;
             }
         };
@@ -279,7 +284,7 @@ impl<'a> Vm<'a> {
         true
     }
 
-    fn add(&mut self, line_number: u32) -> bool {
+    fn add(&mut self) -> bool {
         pop!(self, b);
         pop!(self, a);
 
@@ -288,7 +293,7 @@ impl<'a> Vm<'a> {
                 if let ValueType::Number(b) = b {
                     ValueType::Number(a + b)
                 } else {
-                    runtime_error("type mismatch", line_number);
+                    self.runtime_error("type mismatch");
                     return false;
                 }
             }
@@ -297,7 +302,7 @@ impl<'a> Vm<'a> {
                     ValueType::Str(b) => format!("{}{}", a, b),
                     ValueType::String(b) => format!("{}{}", a, b),
                     _ => {
-                        runtime_error("type mismatch", line_number);
+                        self.runtime_error("type mismatch");
                         return false;
                     }
                 };
@@ -308,18 +313,18 @@ impl<'a> Vm<'a> {
                     ValueType::Str(b) => format!("{}{}", a, b),
                     ValueType::String(b) => format!("{}{}", a, b),
                     _ => {
-                        runtime_error("type mismatch", line_number);
+                        self.runtime_error("type mismatch");
                         return false;
                     }
                 };
                 ValueType::String(joined.clone())
             }
             ValueType::Boolean(_) => {
-                runtime_error("Cannot add a boolean", line_number);
+                self.runtime_error("Cannot add a boolean");
                 return false;
             }
             ValueType::Array(_) => {
-                runtime_error("Cannot add an array", line_number);
+                self.runtime_error("Cannot add an array");
                 return false;
             }
         };
@@ -338,70 +343,71 @@ impl<'a> Vm<'a> {
         let mut frame = main_frame;
         loop {
             let instr = &instructions[frame.ip];
+            self.ip = frame.ip;
             match instr {
-                OpCode::ConstantNum(num, _) => {
+                OpCode::ConstantNum(num) => {
                     self.push(ValueType::Number(*num));
                 }
-                OpCode::ConstantStr(str, _) => {
+                OpCode::ConstantStr(str) => {
                     self.push(ValueType::Str(str));
                 }
-                OpCode::Subtract(line_number) => {
-                    if !self.binary(&instr, *line_number) {
+                OpCode::Subtract => {
+                    if !self.binary(&instr) {
                         return false;
                     };
                 }
-                OpCode::Multiply(line_number) => {
-                    if !self.binary(&instr, *line_number) {
+                OpCode::Multiply => {
+                    if !self.binary(&instr) {
                         return false;
                     };
                 }
-                OpCode::Divide(line_number) => {
-                    if !self.binary(&instr, *line_number) {
+                OpCode::Divide => {
+                    if !self.binary(&instr) {
                         return false;
                     };
                 }
-                OpCode::Add(line_number) => {
-                    if !self.add(*line_number) {
+                OpCode::Add => {
+                    if !self.add() {
                         return false;
                     };
                 }
-                OpCode::Negate(line_number) => {
-                    if !self.negate(*line_number) {
+                OpCode::Negate => {
+                    if !self.negate() {
                         return false;
                     };
                 }
-                OpCode::Not(line_number) => {
-                    if !self.not(*line_number) {
+                OpCode::Not => {
+                    if !self.not() {
                         return false;
                     };
                 }
-                OpCode::GreaterThan(line_number) => {
-                    if !self.comparison(&instr, *line_number) {
+                OpCode::GreaterThan => {
+                    if !self.comparison(&instr) {
                         return false;
                     };
                 }
-                OpCode::GreaterThanEq(line_number) => {
-                    if !self.comparison(&instr, *line_number) {
+                OpCode::GreaterThanEq => {
+                    if !self.comparison(&instr) {
                         return false;
                     };
                 }
-                OpCode::LessThan(line_number) => {
-                    if !self.comparison(&instr, *line_number) {
+                OpCode::LessThan => {
+                    if !self.comparison(&instr) {
                         return false;
                     };
                 }
-                OpCode::LessThanEq(line_number) => {
-                    if !self.comparison(&instr, *line_number) {
+                OpCode::LessThanEq => {
+                    if !self.comparison(&instr) {
                         return false;
                     };
                 }
-                OpCode::Equal(line_number) => {
-                    if !self.comparison(&instr, *line_number) {
+                OpCode::Equal => {
+                    if !self.comparison(&instr) {
                         return false;
                     };
                 }
-                OpCode::NotEqual(line_number) => {
-                    if !self.comparison(&instr, *line_number) {
+                OpCode::NotEqual => {
+                    if !self.comparison(&instr) {
                         return false;
                     };
                 }
@@ -409,16 +415,16 @@ impl<'a> Vm<'a> {
                     let v = &self.stack[self.stack_pointer - 1];
                     self.globals.insert(name, v.clone());
                 }
-                OpCode::GetGlobal(name, line_number) => {
+                OpCode::GetGlobal(name) => {
                     if let Some(value) = self.globals.get(&name) {
                         self.push(value.clone());
                     } else {
                         let message = format!("Global variable {name} does not exist.");
-                        runtime_error(&message, *line_number);
+                        self.runtime_error(&message);
                         return false;
                     }
                 }
-                OpCode::CallNative(index, argc, line_number) => {
+                OpCode::CallNative(index, argc) => {
                     let mut args: Vec<ValueType> = Vec::new();
 
                     let func = Vm::NATIVES[*index].0;
@@ -434,12 +440,12 @@ impl<'a> Vm<'a> {
                     match result {
                         Ok(value) => self.push(value),
                         Err(message) => {
-                            runtime_error(&message, *line_number);
+                            self.runtime_error(&message);
                             return false;
                         }
                     }
                 }
-                OpCode::CallNativeGr(index, argc, line_number) => {
+                OpCode::CallNativeGr(index, argc) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     let func = Vm::NATIVES_GR[*index].0;
 
@@ -449,12 +455,13 @@ impl<'a> Vm<'a> {
                         args.insert(0, v.clone());
                     }
                     if let Err(msg) = func(args, &mut self.gr) {
-                        runtime_error(msg, *line_number);
+                        let message = format!("{}", msg);
+                        self.runtime_error(&message);
                         return false;
                     }
                     self.push(ValueType::Boolean(true));
                 }
-                OpCode::CallSystem(name, argc, line_number) => {
+                OpCode::CallSystem(name, argc) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     for _i in 0..*argc {
                         pop!(self, v);
@@ -466,7 +473,7 @@ impl<'a> Vm<'a> {
                     match result {
                         Ok(value) => self.push(value),
                         Err(message) => {
-                            runtime_error(&message, *line_number);
+                            self.runtime_error(&message);
                             return false;
                         }
                     }
@@ -495,7 +502,7 @@ impl<'a> Vm<'a> {
                     self.push(value);
                 }
                 // do a define local
-                OpCode::JumpIfFalse(to_jump, line_number) => {
+                OpCode::JumpIfFalse(to_jump) => {
                     pop!(self, result);
                     //if let Some(result) = self.stack.pop() {
                     if let ValueType::Boolean(val) = result {
@@ -503,7 +510,7 @@ impl<'a> Vm<'a> {
                             frame.ip += to_jump;
                         }
                     } else {
-                        runtime_error("boolean value expected", *line_number);
+                        self.runtime_error("boolean value expected");
                         return false;
                     }
                     //}
@@ -528,12 +535,12 @@ impl<'a> Vm<'a> {
                         break;
                     }
                 }
-                OpCode::And(line_number) | OpCode::Or(line_number) => {
-                    if !self.and_or(instr, *line_number) {
+                OpCode::And | OpCode::Or => {
+                    if !self.and_or(instr) {
                         return false;
                     }
                 }
-                OpCode::Subscript(line_number) => {
+                OpCode::Subscript => {
                     // let index = self.stack.pop().unwrap();
                     // let array = self.stack.pop().unwrap();
                     pop!(self, index);
@@ -545,15 +552,15 @@ impl<'a> Vm<'a> {
                             if let Some(val) = a.get(i) {
                                 self.push(val.clone());
                             } else {
-                                runtime_error("Subscript out of range", *line_number);
+                                self.runtime_error("Subscript out of range");
                                 return false;
                             }
                         } else {
-                            runtime_error("Subscript index must be a number", *line_number);
+                            self.runtime_error("Subscript index must be a number");
                             return false;
                         }
                     } else {
-                        runtime_error("Subscript only works on arrays", *line_number);
+                        self.runtime_error("Subscript only works on arrays");
                         return false;
                     }
                 }
