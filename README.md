@@ -2,6 +2,23 @@
 
 A very stripped back BASIC like language. It contains only what you need to create a turing complete program. No synactic sugar, nothing unnessary. You should be able to learn it in less than 5 minutes.
 
+## Compiling
+
+On linux you may need to install the following dependencies
+
+```
+sudo apt install libfontconfig libfontconfig1-dev
+sudo apt install pkg-config
+```
+
+then simply
+
+```
+git clone https://github.com/malworthy/verybasic_rust.git
+cd verybasic_rust
+cargo build
+```
+
 ## Control Flow/Looping
 
 Very simple. if/then/else and while.
@@ -21,6 +38,28 @@ x = 0
 while x < 10
     print("X is " + x)
     x = x + 1
+end
+```
+
+Using 'else if' like below will not work and results in a compile error. Very basic is too basic to understand this.
+
+```
+if x == 1 then
+    print("hello")
+else if x ==2 then
+    print("won't work)
+end
+```
+
+instead re-write as
+
+```
+if x == 1 then
+    print("hello")
+else
+    if x ==2 then
+        print("won't work)
+    end
 end
 ```
 
@@ -146,6 +185,15 @@ returns a random number between 0 and 1
 
 returns an array of all lines in a text file
 
+### _mid(string, start, [length])_
+
+returns part of a string using a 1 based index.
+e.g mid("hello",3) returns "llo", mid("hello",3, 2) return "lo"
+
+### _left(string, length)_
+
+Returns a substring containing a specified number of characters from the beginning (left side) of a string.
+
 ## Graphic functions
 
 Very Basic has the ability to do basic 2D graphics. You can draw to a canvas and then display the canvas in a window, or save it as a image file.
@@ -168,16 +216,7 @@ display a window showing the canvas. Size of window will be the same as the canv
 
 ### _rgb(red,green,blue)_
 
-returns a hex code for the speficied red, green and blue values.
-
-### _mid(string, start, [length])_
-
-returns part of a string using a 1 based index.
-e.g mid("hello",3) returns "llo", mid("hello",3, 2) return "lo"
-
-### _left(string, length)_
-
-Returns a substring containing a specified number of characters from the beginning (left side) of a string.
+returns a hex code for the specified red, green and blue values.
 
 ### Colours
 

@@ -1,5 +1,72 @@
-word = input("Enter a word")
-print ("you entered " + word)
+false = 1==0
+true = 1==1
+
+main()
+
+function main()
+    'words = readlines(".\samples\wordlist.txt")
+    words = array("hello","steal","light","wrong")
+    index = rand() * len(words)
+
+    answer = left(words[index],5)
+    print(answer)
+    i = 0
+    while i < 10
+        word = get_word()
+        print("word is " + word)
+
+        if word > answer then
+            print(word + " is greater than answer")
+        else 
+            if word < answer then
+                print(word + " is less than answer")
+            else
+                print("you got it")
+                exit
+            end
+        end
+        i=i+1
+        show_matched(word, answer)
+    end
+    print("The answer is: " + answer ". You didn't get it!")
+end
+
+function validate_word(wordx)
+    print (len(wordx))
+    if len(wordx) <> 5 then
+        false
+    else
+        true
+    end
+end
+
+function get_word()
+    word = input("Enter a 5 letter word > ")
+    print("word entered is " + word)
+    while not validate_word(word)
+        print("Not a valid 5 letter word!")
+        word = input("Enter a 5 letter word > ")
+    end
+    word
+end
+
+function show_matched(guess, answer)
+    print(guess)
+    print("Answer: ", false)
+    i = 1
+    while i <= 5
+        print (mid(guess,i,1) + " - " + mid(answer,i,1))
+        if mid(guess,i,1) == mid(answer,i,1) then
+            print(mid(answer,i,1), false)
+        else
+            print("?", false)
+        end
+        i = i + 1
+    end
+    print("")
+end
+
+
 
 
 

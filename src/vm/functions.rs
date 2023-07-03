@@ -44,7 +44,7 @@ pub fn input(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
     let mut input = String::new();
     match io::stdin().read_line(&mut input) {
-        Ok(_) => Result::Ok(ValueType::String(input)),
+        Ok(_) => Result::Ok(ValueType::String(String::from(input.trim_end()))),
         Err(_) => Err("Could not read from terminal"),
     }
 }

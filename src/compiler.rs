@@ -30,7 +30,7 @@ pub enum OpCode {
     CallNativeGr(usize, u32),
     Pop,
     SetLocal(usize),
-    DefineLocal,
+    DefineLocal(usize),
     GetLocal(usize),
     JumpIfFalse(usize),
     Jump(i32),
@@ -50,7 +50,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::CallSystem(name, argc) => format!("{} SYS  {} {}", addr, name, argc),
             OpCode::ConstantNum(num) => format!("{} NUM  {}", addr, num),
             OpCode::ConstantStr(str) => format!("{} STR  {}", addr, str),
-            OpCode::DefineLocal => format!("{} DEF", addr),
+            OpCode::DefineLocal(num) => format!("{} DEF {}", addr, num),
             OpCode::Divide => format!("{} DIV", addr),
             OpCode::Equal => format!("{} EQ", addr),
             OpCode::GetGlobal(name) => format!("{} GLOB {}", addr, name),
@@ -252,8 +252,8 @@ impl Compiler<'_> {
         }
     }
 
-    fn add_variable(&mut self, name: String) -> (usize, bool) {
-        let index: usize;
+    fn add_variable(&mut self, name: String) -> (Option<usize>, bool) {
+        let index: Option<usize>;
         let mut added = false;
         if let Some(i) = self.variables.iter().position(|x| x.name == name) {
             if self.variables[i].depth > 0 {
@@ -262,9 +262,9 @@ impl Compiler<'_> {
                     .iter()
                     .position(|x| x.depth == self.depth)
                     .unwrap();
-                index = i - start;
+                index = Some(i - start);
             } else {
-                index = 0; // global, so we don't use index.
+                index = None; // global, so we don't use index.
             }
         } else {
             self.variables.push(Variable::new(name, self.depth));
@@ -273,8 +273,12 @@ impl Compiler<'_> {
                 .iter()
                 .position(|x| x.depth == self.depth)
                 .unwrap();
+            if self.depth == 0 {
+                index = None
+            } else {
+                index = Some(self.variables.len() - start - 1);
+            }
 
-            index = self.variables.len() - start - 1;
             added = true;
         }
         (index, added)
@@ -322,15 +326,28 @@ impl Compiler<'_> {
             // Setting a variable
             self.expression();
             let (index, added) = self.add_variable(token.lexeme.clone());
-            if self.depth == 0 {
-                self.add_instr(OpCode::SetGlobal(token.lexeme.clone()), token.line_number);
-            } else {
-                if added {
-                    self.add_instr(OpCode::DefineLocal, token.line_number);
-                } else {
-                    self.add_instr(OpCode::SetLocal(index), token.line_number);
+            match index {
+                Some(index) => {
+                    if added {
+                        self.add_instr(OpCode::DefineLocal(index), token.line_number);
+                    } else {
+                        self.add_instr(OpCode::SetLocal(index), token.line_number);
+                    }
+                }
+                None => {
+                    self.add_instr(OpCode::SetGlobal(token.lexeme.clone()), token.line_number);
                 }
             }
+
+            // if self.depth == 0 || index < 0 {
+            //     self.add_instr(OpCode::SetGlobal(token.lexeme.clone()), token.line_number);
+            // } else {
+            //     if added {
+            //         self.add_instr(OpCode::DefineLocal(index), token.line_number);
+            //     } else {
+            //         self.add_instr(OpCode::SetLocal(index), token.line_number);
+            //     }
+            // }
         } else {
             // Getting value from a variable
             if let Some(index) = self
@@ -555,10 +572,14 @@ impl Compiler<'_> {
 
     fn while_statement(&mut self, while_token: &Token) {
         let loop_start: i32 = (self.instructions.len() - 1).try_into().unwrap();
-        self.advance();
+        if !self.advance() {
+            return;
+        }
         self.expression();
         let jump_index = self.add_instr(OpCode::JumpIfFalse(0), while_token.line_number);
-        self.block();
+        if !self.block() {
+            return;
+        }
         let len: i32 = self.instructions.len().try_into().unwrap();
         self.add_instr(
             OpCode::Jump((loop_start - len).try_into().unwrap()),
@@ -677,15 +698,21 @@ impl Compiler<'_> {
         self.instructions[jump_index] = OpCode::Jump(to_jump);
     }
 
-    fn block(&mut self) {
+    fn block(&mut self) -> bool {
         loop {
-            match self.tokens[self.token_pointer] {
-                TokenType::Else(_) | TokenType::End(_) | TokenType::Eof => break,
-                _ => {
-                    self.statement();
+            if let Some(token) = self.tokens.get(self.token_pointer) {
+                match token {
+                    TokenType::Else(_) | TokenType::End(_) | TokenType::Eof => break,
+                    _ => {
+                        self.statement();
+                    }
                 }
+            } else {
+                self.compile_error_message("Unexpected Error - Possibly missing 'end'");
+                return false;
             }
         }
+        true
     }
 
     fn statement(&mut self) {
@@ -712,6 +739,28 @@ impl Compiler<'_> {
             if self.in_error {
                 break;
             }
+        }
+
+        self.second_pass();
+    }
+
+    pub fn second_pass(&mut self) {
+        let mut index: usize = 0;
+        while index < self.instructions.len() {
+            let inst = self.instructions.get(index).unwrap();
+            if let OpCode::CallSystem(name, arguments) = inst {
+                if let Some(fi) = self.functions.iter().position(|x| x.0 == *name) {
+                    let f = &self.functions[fi];
+                    if f.1 != *arguments as u8 {
+                        panic!("not implemented yet");
+                        //self.compile_error("Wrong number of arguments pass to function", token);
+                        return;
+                    }
+
+                    self.instructions[index] = OpCode::Call(f.2, *arguments);
+                }
+            }
+            index += 1;
         }
     }
 }

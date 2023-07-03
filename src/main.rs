@@ -70,22 +70,34 @@ mod tests {
     }
 
     #[test]
-    fn temp_test() {
-        let code = "function fib(n) 
-        if n < 2 then n exit end
-        fib(n - 2) + fib(n - 1)
-    end
-    
-    start = seconds()
-    print(fib(40)) 
-    print(seconds() - start); ";
-        let tokens = crate::scanner::tokenize(&code);
+    fn temp_variables() {
+        let code = "
+        global = 0
+        main()
+        
+        function main()
+            i = 0
+            while i < 3
+                print(i)
+                word = get_word()
+                print(word)
+                i=i+1
+            end
+            word
+        end
+        
+        function get_word()
+            global = global + 1
+        end";
+        assert_eq!(interpret_test(code), "Number(3.0)");
 
-        let mut instructions: Vec<compiler::OpCode> = Vec::new();
-        let mut line_numbers: Vec<u32> = Vec::new();
-        let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
-        compiler.compile();
-        compiler::print_instr(instructions);
+        // let tokens = crate::scanner::tokenize(&code);
+
+        // let mut instructions: Vec<compiler::OpCode> = Vec::new();
+        // let mut line_numbers: Vec<u32> = Vec::new();
+        // let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
+        // compiler.compile();
+        // compiler::print_instr(instructions);
     }
 
     #[test]
@@ -272,6 +284,28 @@ mod tests {
             interpret_test("function test(x) x * 2 end; test(20); "),
             "Number(40.0)"
         );
+    }
+
+    #[test]
+    fn ifthenelseif() {
+        let code = "
+        i = 0
+        answer = 44
+        while i < 10
+            print(i)
+            word = input(\"Enter a word\")
+            if left(word,5) > answer then
+                print(\"guess is > answer\")
+            else if i = 1 then
+                if word < answer then
+                    print(\"guess < answer\")
+                else
+                    print(\"you got it\")
+                end
+            end
+        end
+        ";
+        assert_eq!(interpret_test(code), "Compile Error");
     }
 
     #[test]

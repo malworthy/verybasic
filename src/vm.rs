@@ -497,9 +497,14 @@ impl<'a> Vm<'a> {
                     let value = self.stack[self.stack_pointer - 1].clone();
                     self.stack[i + frame.frame_pointer] = value;
                 }
-                OpCode::DefineLocal => {
+                OpCode::DefineLocal(i) => {
+                    //dbg!(i);
                     let value = self.stack[self.stack_pointer - 1].clone();
-                    self.push(value);
+                    if i + frame.frame_pointer >= self.stack_pointer - 1 {
+                        self.push(value);
+                    } else {
+                        self.stack[i + frame.frame_pointer] = value;
+                    }
                 }
                 // do a define local
                 OpCode::JumpIfFalse(to_jump) => {
@@ -569,8 +574,9 @@ impl<'a> Vm<'a> {
             if frame.ip >= instructions.len() {
                 break;
             }
+            //dbg!(&instr);
+            //dbg!(&self.stack[0..self.stack_pointer]);
         }
-        //dbg!(&self.stack);
 
         true
     }
