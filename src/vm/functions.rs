@@ -9,6 +9,7 @@ use std::{
 };
 
 use super::graphics::Graphics;
+use colored::Colorize;
 
 // Parameters: 0(string) = string to print, 1(bool) = print new line if true
 pub fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
@@ -23,10 +24,26 @@ pub fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
         } else {
             true
         };
+        let color = match params.get(2) {
+            Some(val) => val.to_string(),
+            None => String::from("normal"),
+        };
+        let cs = match color.as_str() {
+            "red" => s.red(),
+            "green" => s.green(),
+            "blue" => s.blue(),
+            "yellow" => s.yellow(),
+            "white" => s.white(),
+            "cyan" => s.cyan(),
+            "magenta" => s.magenta(),
+            "purple" => s.purple(),
+            "black" => s.black(),
+            _ => s.normal(),
+        };
         if new_line {
-            println!("{s}");
+            println!("{cs}");
         } else {
-            print!("{s}");
+            print!("{cs}");
             std::io::stdout().flush().unwrap();
         }
 
@@ -188,6 +205,27 @@ pub fn left(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 
     Ok(ValueType::String(String::from(&string[..start])))
+}
+
+pub fn str(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if params.len() == 0 {
+        return Err("Incorrect number of parameters passed to function str(value)");
+    }
+    let string = params[0].to_string();
+
+    Ok(ValueType::String(string))
+}
+
+pub fn floor(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if let Some(param) = params.get(0) {
+        if let ValueType::Number(val) = param {
+            return Ok(ValueType::Number(val.floor()));
+        } else {
+            return Err("Parameter passed to function 'floor(num)' must be a number.");
+        }
+    } else {
+        return Err("Incorrect number of parameters passed to function 'floor(num)'");
+    }
 }
 
 // Graphics functions

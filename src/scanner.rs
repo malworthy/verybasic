@@ -50,6 +50,7 @@ pub enum TokenType {
     Identifier(Token),
     String(Token),
     Number(Token),
+    Bool(Token),
     Eof,
 }
 
@@ -84,7 +85,8 @@ impl TokenType {
             | TokenType::String(t)
             | TokenType::LeftBracket(t)
             | TokenType::RightBracket(t)
-            | TokenType::Number(t) => Some(t),
+            | TokenType::Number(t)
+            | TokenType::Bool(t) => Some(t),
             _ => None,
         }
     }
@@ -238,6 +240,24 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
         (
             TokenType::Then(Token {
                 lexeme: String::from("then"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            4,
+        )
+    } else if match_word(code, "false") {
+        (
+            TokenType::Bool(Token {
+                lexeme: String::from("false"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            5,
+        )
+    } else if match_word(code, "true") {
+        (
+            TokenType::Bool(Token {
+                lexeme: String::from("true"),
                 line_number,
                 precedence: precedence::NONE,
             }),

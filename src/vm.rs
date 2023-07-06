@@ -108,7 +108,7 @@ impl<'a> Vm<'a> {
         }
     }
 
-    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 11] = [
+    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 13] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (functions::array, "array"),
@@ -120,6 +120,8 @@ impl<'a> Vm<'a> {
         (functions::rgb, "rgb"),
         (functions::mid, "mid"),
         (functions::left, "left"),
+        (functions::floor, "floor"),
+        (functions::str, "str"),
     ];
 
     pub const NATIVES_GR: [(
@@ -348,6 +350,9 @@ impl<'a> Vm<'a> {
                 OpCode::ConstantNum(num) => {
                     self.push(ValueType::Number(*num));
                 }
+                OpCode::ConstantBool(val) => {
+                    self.push(ValueType::Boolean(*val));
+                }
                 OpCode::ConstantStr(str) => {
                     self.push(ValueType::Str(str));
                 }
@@ -417,7 +422,7 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::GetGlobal(name) => {
                     if let Some(value) = self.globals.get(&name) {
-                        self.push(value.clone());
+                        self.push(value.to_owned());
                     } else {
                         let message = format!("Global variable {name} does not exist.");
                         self.runtime_error(&message);
@@ -461,7 +466,7 @@ impl<'a> Vm<'a> {
                     }
                     self.push(ValueType::Boolean(true));
                 }
-                OpCode::CallSystem(name, argc) => {
+                OpCode::CallSystem(name, argc, _) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     for _i in 0..*argc {
                         pop!(self, v);
@@ -531,7 +536,6 @@ impl<'a> Vm<'a> {
                     if let Some(value) = call_frames.pop() {
                         // get rid of any local variables on the stack
                         self.stack_pointer = frame.frame_pointer;
-                        //self.stack.truncate(frame.frame_pointer);
                         // set the call frame
                         frame = value;
                         let val = self.return_value.clone();
@@ -546,8 +550,6 @@ impl<'a> Vm<'a> {
                     }
                 }
                 OpCode::Subscript => {
-                    // let index = self.stack.pop().unwrap();
-                    // let array = self.stack.pop().unwrap();
                     pop!(self, index);
                     pop!(self, array);
 

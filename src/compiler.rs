@@ -8,6 +8,7 @@ use crate::scanner::{precedence, Token, TokenType};
 pub enum OpCode {
     ConstantNum(f64),
     ConstantStr(String),
+    ConstantBool(bool),
     Add,
     Subtract,
     Negate,
@@ -25,7 +26,7 @@ pub enum OpCode {
     SetGlobal(String),
     GetGlobal(String),
     Call(usize, u32),
-    CallSystem(String, u32),
+    CallSystem(String, u32, u32),
     CallNative(usize, u32),
     CallNativeGr(usize, u32),
     Pop,
@@ -47,7 +48,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::CallNative(index, argc) => format!("{} CALN {} {}", addr, index, argc),
             OpCode::CallNativeGr(index, argc) => format!("{} CALG {} {}", addr, index, argc),
             OpCode::And => format!("{} AND", addr),
-            OpCode::CallSystem(name, argc) => format!("{} SYS  {} {}", addr, name, argc),
+            OpCode::CallSystem(name, argc, _) => format!("{} SYS  {} {}", addr, name, argc),
             OpCode::ConstantNum(num) => format!("{} NUM  {}", addr, num),
             OpCode::ConstantStr(str) => format!("{} STR  {}", addr, str),
             OpCode::DefineLocal(num) => format!("{} DEF {}", addr, num),
@@ -72,6 +73,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::SetLocal(index) => format!("{} SET {}", addr, index),
             OpCode::Subscript => format!("{} SBPT", addr),
             OpCode::Subtract => format!("{} SUB", addr),
+            OpCode::ConstantBool(val) => format!("{} BOOL {}", addr, val),
         };
         addr += 1;
         println!("{}", x);
@@ -165,6 +167,13 @@ impl Compiler<'_> {
         self.add_instr(OpCode::ConstantStr(token.lexeme.clone()), token.line_number);
     }
 
+    fn bool(&mut self, token: &Token) {
+        self.add_instr(
+            OpCode::ConstantBool(token.lexeme == "true"),
+            token.line_number,
+        );
+    }
+
     fn grouping(&mut self, token: &Token) {
         self.expression();
 
@@ -228,7 +237,10 @@ impl Compiler<'_> {
                             self.add_instr(OpCode::Call(f.2, arguments), token.line_number);
                         } else {
                             // can't find anything so try a system call
-                            self.add_instr(OpCode::CallSystem(name, arguments), token.line_number);
+                            self.add_instr(
+                                OpCode::CallSystem(name, arguments, token.line_number),
+                                token.line_number,
+                            );
                         }
                     }
 
@@ -482,6 +494,11 @@ impl Compiler<'_> {
         self.in_error = true;
     }
 
+    fn compile_error_line(&mut self, message: &str, line_number: u32) {
+        eprintln!("Compile error: {}, line {}", message.red(), line_number);
+        self.in_error = true;
+    }
+
     fn compile_error_message(&mut self, message: &str) {
         eprintln!("Compile error: {}", message.red());
         self.in_error = true;
@@ -498,6 +515,7 @@ impl Compiler<'_> {
         match token {
             TokenType::Number(t) => self.number(t),
             TokenType::String(t) => self.string(t),
+            TokenType::Bool(t) => self.bool(t),
             TokenType::Minus(t) => {
                 self.parse_precedence(precedence::UNARY);
                 self.add_instr(OpCode::Negate, t.line_number);
@@ -748,12 +766,14 @@ impl Compiler<'_> {
         let mut index: usize = 0;
         while index < self.instructions.len() {
             let inst = self.instructions.get(index).unwrap();
-            if let OpCode::CallSystem(name, arguments) = inst {
+            if let OpCode::CallSystem(name, arguments, line_number) = inst {
                 if let Some(fi) = self.functions.iter().position(|x| x.0 == *name) {
                     let f = &self.functions[fi];
                     if f.1 != *arguments as u8 {
-                        panic!("not implemented yet");
-                        //self.compile_error("Wrong number of arguments pass to function", token);
+                        self.compile_error_line(
+                            "Wrong number of arguments pass to function",
+                            *line_number,
+                        );
                         return;
                     }
 

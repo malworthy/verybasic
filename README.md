@@ -194,6 +194,14 @@ e.g mid("hello",3) returns "llo", mid("hello",3, 2) return "lo"
 
 Returns a substring containing a specified number of characters from the beginning (left side) of a string.
 
+### _str(value)_
+
+Converts any value to a string
+
+### _floor(number)_
+
+Returns the largest integer not greater than _number_
+
 ## Graphic functions
 
 Very Basic has the ability to do basic 2D graphics. You can draw to a canvas and then display the canvas in a window, or save it as a image file.

@@ -177,13 +177,19 @@ mod tests {
         );
         assert_eq!(interpret_test("len(array(1,1,1,1,2))"), "Number(5.0)");
         assert_eq!(interpret_test("len(555.45)"), "Number(8.0)");
-        assert_eq!(interpret_test(" true = (1==1) : len(true)"), "Number(1.0)");
+        assert_eq!(interpret_test("len(true)"), "Number(1.0)");
     }
 
     #[test]
     fn calling() {
         assert_eq!(interpret_test("print("), "Compile Error");
         assert_eq!(interpret_test("print(\"hello\")"), "String(\"hello\")");
+    }
+
+    #[test]
+    fn booleans() {
+        assert_eq!(interpret_test("true"), "Boolean(true)");
+        assert_eq!(interpret_test("false"), "Boolean(false)");
     }
 
     #[test]

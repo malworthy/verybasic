@@ -1,48 +1,97 @@
-false = 1==0
-true = 1==1
+'false = 1==0
+'true = 1==1
 
-main()
+valid_words = readlines(".\samples\validwords.txt")
+stats = array(0,0,0,0,0,0,0,0,0,0,0)
+
+result = main()
+if result < 10 then
+    print("You got it in ", false)
+    print(result)
+end
+save_stats(stats, result)
+
+function save_stats(stats, result)
+    i = 1
+    if result < 10 then
+        print(stats[0] + 1)
+    else
+        print(0)
+    end
+    while i < len(stats)    
+        if i == (result+1) then
+            print(stats[i] + 1)
+        else
+            print(stats[i])
+        end
+        i=i+1
+    end
+end
 
 function main()
-    'words = readlines(".\samples\wordlist.txt")
-    words = array("hello","steal","light","wrong")
-    index = rand() * len(words)
 
+    words = readlines(".\samples\wordlist.txt")
+    index = rand() * len(words)
     answer = left(words[index],5)
     print(answer)
+    
     i = 0
     while i < 10
+        print("GUESS " + left(i+1,2))
         word = get_word()
-        print("word is " + word)
+        'print("word is " + word)
 
         if word > answer then
-            print(word + " is greater than answer")
+            print(word + " is greater than the answer")
         else 
             if word < answer then
-                print(word + " is less than answer")
+                print(word + " is less than the answer")
             else
                 print("you got it")
-                exit
+                i exit
             end
         end
         i=i+1
         show_matched(word, answer)
+        print("")
+        print("-------------------------------------")
+        print("")
     end
     print("The answer is: " + answer ". You didn't get it!")
+    i
 end
 
-function validate_word(wordx)
-    print (len(wordx))
-    if len(wordx) <> 5 then
-        false
-    else
-        true
+function binary_search(word)
+    l = 0
+    r = len(valid_words) - 1
+    while l <= r
+        m = floor((l + r) / 2)
+        if valid_words[m] < word then
+            l = m + 1
+        else
+            if valid_words[m] > word then
+                r = m - 1
+            else
+                true exit
+            end 
+        end      
     end
+    false
+end
+
+function validate_word(word)
+    'print (len(word))
+    if len(word) <> 5 then
+        false
+        exit
+    end
+
+    binary_search(word)
 end
 
 function get_word()
     word = input("Enter a 5 letter word > ")
-    print("word entered is " + word)
+    'print("word entered is " + word)
     while not validate_word(word)
         print("Not a valid 5 letter word!")
         word = input("Enter a 5 letter word > ")
@@ -51,11 +100,11 @@ function get_word()
 end
 
 function show_matched(guess, answer)
-    print(guess)
+    'print(guess)
     print("Answer: ", false)
     i = 1
     while i <= 5
-        print (mid(guess,i,1) + " - " + mid(answer,i,1))
+        'print (mid(guess,i,1) + " - " + mid(answer,i,1))
         if mid(guess,i,1) == mid(answer,i,1) then
             print(mid(answer,i,1), false)
         else
@@ -65,9 +114,3 @@ function show_matched(guess, answer)
     end
     print("")
 end
-
-
-
-
-
-'//files = dir("./**/*.exe"); i=0; while i < len(files) print(files[i]); i=i+1; end
