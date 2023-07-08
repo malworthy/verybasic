@@ -23,6 +23,8 @@ pub enum OpCode {
     Not,
     And,
     Or,
+    Mod,
+    Pow,
     SetGlobal(String),
     GetGlobal(String),
     Call(usize, u32),
@@ -63,6 +65,8 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::LessThan => format!("{} LT", addr),
             OpCode::LessThanEq => format!("{} LTEQ", addr),
             OpCode::Multiply => format!("{} MUL", addr),
+            OpCode::Mod => format!("{} MOD", addr),
+            OpCode::Pow => format!("{} POW", addr),
             OpCode::Negate => format!("{} NEG", addr),
             OpCode::Not => format!("{} NOT", addr),
             OpCode::NotEqual => format!("{} NEQ", addr),
@@ -350,16 +354,6 @@ impl Compiler<'_> {
                     self.add_instr(OpCode::SetGlobal(token.lexeme.clone()), token.line_number);
                 }
             }
-
-            // if self.depth == 0 || index < 0 {
-            //     self.add_instr(OpCode::SetGlobal(token.lexeme.clone()), token.line_number);
-            // } else {
-            //     if added {
-            //         self.add_instr(OpCode::DefineLocal(index), token.line_number);
-            //     } else {
-            //         self.add_instr(OpCode::SetLocal(index), token.line_number);
-            //     }
-            // }
         } else {
             // Getting value from a variable
             if let Some(index) = self
@@ -411,6 +405,16 @@ impl Compiler<'_> {
             TokenType::Divide(t) => {
                 self.parse_precedence(t.precedence + 1);
                 self.add_instr(OpCode::Divide, t.line_number);
+                true
+            }
+            TokenType::Hat(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::Pow, t.line_number);
+                true
+            }
+            TokenType::Mod(t) => {
+                self.parse_precedence(t.precedence + 1);
+                self.add_instr(OpCode::Mod, t.line_number);
                 true
             }
             TokenType::GreaterThan(t) => {
@@ -474,6 +478,8 @@ impl Compiler<'_> {
             TokenType::LeftParan(t)
             | TokenType::And(t)
             | TokenType::Or(t)
+            | TokenType::Hat(t)
+            | TokenType::Mod(t)
             | TokenType::LeftBracket(t) => t.precedence,
 
             _ => precedence::NONE,

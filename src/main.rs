@@ -9,7 +9,6 @@ use crate::{compiler::Compiler, vm::Vm};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    println!("{}", "Very Basic Version 0.1".yellow());
 
     if let Some(file_path) = args.get(1) {
         let contents =
@@ -19,12 +18,17 @@ fn main() {
             process::exit(1);
         }
     } else {
+        println!("{}", "Very Basic Version 0.1".yellow());
         loop {
             let mut line = String::new();
             io::stdin()
                 .read_line(&mut line)
                 .expect("Failed to read line");
-            _ = interpret(&line);
+            let result = interpret(&line);
+            match result {
+                Ok(s) => println!("{}", s.bright_black()),
+                Err(_) => println!(""),
+            }
         }
     }
 }

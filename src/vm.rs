@@ -209,6 +209,8 @@ impl<'a> Vm<'a> {
                         OpCode::Subtract => ValueType::Number(a - b),
                         OpCode::Multiply => ValueType::Number(a * b),
                         OpCode::Divide => ValueType::Number(a / b),
+                        OpCode::Pow => ValueType::Number(a.powf(*b)),
+                        OpCode::Mod => ValueType::Number(a % b),
                         _ => panic!("Non-binary opcode processed in binary()"),
                     }
                 } else {
@@ -337,6 +339,9 @@ impl<'a> Vm<'a> {
 
     pub fn run(&mut self, instructions: &'a Vec<OpCode>) -> bool {
         //dbg!(&instructions);
+        if instructions.len() == 0 {
+            return true;
+        }
         let mut call_frames: Vec<Frame> = Vec::new();
         let main_frame = Frame {
             ip: 0,
@@ -362,6 +367,16 @@ impl<'a> Vm<'a> {
                     };
                 }
                 OpCode::Multiply => {
+                    if !self.binary(&instr) {
+                        return false;
+                    };
+                }
+                OpCode::Mod => {
+                    if !self.binary(&instr) {
+                        return false;
+                    };
+                }
+                OpCode::Pow => {
                     if !self.binary(&instr) {
                         return false;
                     };

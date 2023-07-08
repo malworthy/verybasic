@@ -51,6 +51,8 @@ pub enum TokenType {
     String(Token),
     Number(Token),
     Bool(Token),
+    Hat(Token),
+    Mod(Token),
     Eof,
 }
 
@@ -86,6 +88,8 @@ impl TokenType {
             | TokenType::LeftBracket(t)
             | TokenType::RightBracket(t)
             | TokenType::Number(t)
+            | TokenType::Hat(t)
+            | TokenType::Mod(t)
             | TokenType::Bool(t) => Some(t),
             _ => None,
         }
@@ -281,6 +285,15 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             3,
         )
+    } else if match_word(code, "mod") {
+        (
+            TokenType::Mod(Token {
+                lexeme: String::from("mod"),
+                line_number,
+                precedence: precedence::FACTOR, // mayby up this
+            }),
+            3,
+        )
     } else if match_word(code, "not") {
         (
             TokenType::Not(Token {
@@ -391,6 +404,11 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                     precedence: precedence::FACTOR,
                 }),
                 "/" => TokenType::Divide(Token {
+                    lexeme: single_char.to_string(),
+                    line_number,
+                    precedence: precedence::FACTOR,
+                }),
+                "^" => TokenType::Hat(Token {
                     lexeme: single_char.to_string(),
                     line_number,
                     precedence: precedence::FACTOR,
