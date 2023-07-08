@@ -134,6 +134,8 @@ There is no ability to change values in an array. Something like `x[0] = 0` won'
 not
 and
 or
+^ (to the power of)
+mod (remainder)
 ```
 
 ## Comments

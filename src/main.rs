@@ -3,18 +3,28 @@ mod scanner;
 mod vm;
 
 use colored::Colorize;
-use std::{env, fs, io, process};
+use std::{fs, io, process};
 
 use crate::{compiler::Compiler, vm::Vm};
+use clap::Parser;
+
+#[derive(Debug, Parser)]
+struct Cli {
+    path: Option<std::path::PathBuf>,
+    #[arg(short, long)]
+    compile: bool,
+}
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args = Cli::parse();
 
-    if let Some(file_path) = args.get(1) {
+    if let Some(file_path) = args.path {
         let contents =
             fs::read_to_string(file_path).expect("Should have been able to read the file");
 
-        if let Result::Err(_) = interpret(&contents) {
+        if args.compile {
+            compile(&contents);
+        } else if let Result::Err(_) = interpret(&contents) {
             process::exit(1);
         }
     } else {
@@ -43,8 +53,6 @@ fn interpret(contents: &str) -> Result<String, String> {
     if compiler.in_error {
         return Result::Err(String::from("Compile Error"));
     }
-    //dbg!(&tokens);
-    //dbg!(&line_numbers);
 
     let mut vm = Vm::new(&mut line_numbers);
     let result = vm.run(&instructions);
@@ -57,6 +65,20 @@ fn interpret(contents: &str) -> Result<String, String> {
     } else {
         Result::Ok(String::new())
     }
+}
+
+fn compile(contents: &str) {
+    let tokens = crate::scanner::tokenize(&contents);
+
+    let mut instructions: Vec<compiler::OpCode> = Vec::new();
+    let mut line_numbers: Vec<u32> = Vec::new();
+    let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
+    compiler.compile();
+    if compiler.in_error {
+        return;
+    }
+
+    compiler::print_instr(instructions);
 }
 
 #[cfg(test)]
