@@ -108,7 +108,7 @@ impl<'a> Vm<'a> {
         }
     }
 
-    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 13] = [
+    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 17] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (functions::array, "array"),
@@ -122,6 +122,10 @@ impl<'a> Vm<'a> {
         (functions::left, "left"),
         (functions::floor, "floor"),
         (functions::str, "str"),
+        (functions::write, "write"),
+        (functions::append, "append"),
+        (functions::chr, "chr"),
+        (functions::val, "val"),
     ];
 
     pub const NATIVES_GR: [(

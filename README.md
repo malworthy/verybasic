@@ -154,7 +154,7 @@ Example below. Semi-colon and other symbols are just ignored.
 
 ```
 print("hello, world");
-!@#$ print("goodbye")
+!#$ print("goodbye")
 ```
 
 ## Built-in functions
@@ -187,6 +187,14 @@ returns a random number between 0 and 1
 
 returns an array of all lines in a text file
 
+### _write(filename, text)_
+
+creates a new file writes text to it. Will overwrite any existing file.
+
+### _append(filename, text)_
+
+appends text to a file. If the file doesn't exist it will be created.
+
 ### _mid(string, start, [length])_
 
 returns part of a string using a 1 based index.
@@ -199,6 +207,14 @@ Returns a substring containing a specified number of characters from the beginni
 ### _str(value)_
 
 Converts any value to a string
+
+### _val(string)_
+
+Converts a string to a number. Will return zero if string cannot be converted to a number, or if the data type is not a string.
+
+### _chr(ascii_value)_
+
+Returns a one character string using ascii encoding. Invalid ascii value will return an empty string.
 
 ### _floor(number)_
 

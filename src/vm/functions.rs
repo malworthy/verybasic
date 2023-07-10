@@ -3,7 +3,7 @@ use glob::glob;
 use hex;
 use rand;
 use std::{
-    fs::read_to_string,
+    fs::{read_to_string, File, OpenOptions},
     io::{self, Write},
     time::SystemTime,
 };
@@ -127,21 +127,102 @@ pub fn random(_params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::Number(number))
 }
 
+pub fn chr(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if let Some(param) = params.first() {
+        if let ValueType::Number(num) = param {
+            if *num >= 0.0 && *num <= 255.0 {
+                let num = *num as u8;
+                if num.is_ascii() {
+                    let ch = num as char;
+                    return Ok(ValueType::String(ch.to_string()));
+                }
+            }
+        }
+    }
+    Ok(ValueType::Str(""))
+}
+
 pub fn readlines(params: Vec<ValueType>) -> Result<ValueType, &str> {
     if let Some(param) = params.first() {
         let filename = param.to_string();
 
-        let lines: Vec<ValueType> = read_to_string(filename)
-            .unwrap() // panic on possible file-reading errors
-            .lines() // split the string into an iterator of string slices
-            .map(|x| ValueType::String(String::from(x)))
-            .collect(); // gather them together into a vector
-
+        let result = read_to_string(filename);
+        let lines: Vec<ValueType> = match result {
+            Ok(text) => text
+                .lines()
+                .map(|x| ValueType::String(String::from(x)))
+                .collect(),
+            Err(_) => ""
+                .lines()
+                .map(|x| ValueType::String(String::from(x)))
+                .collect(),
+        };
         Ok(ValueType::Array(lines))
     } else {
         Err("No parameters passed to readlines()")
     }
 }
+
+pub fn write(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    let mut params_iter = params.iter();
+    let p1 = params_iter.next();
+    let p2 = params_iter.next();
+    if let None = p2 {
+        return Err("Missing parameter passed to append(filename, text_to_write)");
+    }
+    if let Some(param) = p1 {
+        let filename = param.to_string();
+        let contents = p2.unwrap().to_string();
+
+        let data_file = File::create(filename);
+
+        match data_file {
+            Ok(mut file) => {
+                let result = file.write(contents.as_bytes());
+                return match result {
+                    Ok(_) => Ok(ValueType::Boolean(true)),
+                    Err(msg) => Ok(ValueType::String(msg.to_string())),
+                };
+            }
+            Err(msg) => {
+                return Ok(ValueType::String(msg.to_string()));
+            }
+        }
+    } else {
+        Err("No parameters passed to append(filename, text_to_write)")
+    }
+}
+
+pub fn append(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    let mut params_iter = params.iter();
+    let p1 = params_iter.next();
+    let p2 = params_iter.next();
+    if let None = p2 {
+        return Err("Missing parameter passed to append(filename, text_to_write)");
+    }
+    if let Some(param) = p1 {
+        let filename = param.to_string();
+        let contents = p2.unwrap().to_string();
+
+        let data_file = OpenOptions::new().append(true).create(true).open(filename);
+
+        match data_file {
+            Ok(mut file) => {
+                let result = file.write(contents.as_bytes());
+                return match result {
+                    Ok(_) => Ok(ValueType::Boolean(true)),
+                    Err(msg) => Ok(ValueType::String(msg.to_string())),
+                };
+            }
+            Err(msg) => {
+                return Ok(ValueType::String(msg.to_string()));
+            }
+        }
+    } else {
+        Err("No parameters passed to append(filename, text_to_write)")
+    }
+}
+
 // String functions
 pub fn mid(params: Vec<ValueType>) -> Result<ValueType, &str> {
     if params.len() < 2 {
@@ -214,6 +295,18 @@ pub fn str(params: Vec<ValueType>) -> Result<ValueType, &str> {
     let string = params[0].to_string();
 
     Ok(ValueType::String(string))
+}
+
+pub fn val(params: Vec<ValueType>) -> Result<ValueType, &str> {
+    if params.len() == 0 {
+        return Err("Incorrect number of parameters passed to function str(value)");
+    }
+    let parsed = params[0].to_string().parse::<f64>();
+
+    match parsed {
+        Ok(num) => Ok(ValueType::Number(num)),
+        Err(_) => Ok(ValueType::Number(0.0)),
+    }
 }
 
 pub fn floor(params: Vec<ValueType>) -> Result<ValueType, &str> {

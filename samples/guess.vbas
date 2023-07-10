@@ -1,29 +1,53 @@
 'false = 1==0
 'true = 1==1
 
+stats_file = "./stats.txt"
+cr = chr(10)
+
 valid_words = readlines(".\samples\validwords.txt")
-stats = array(0,0,0,0,0,0,0,0,0,0,0)
+stats = readlines(stats_file) 'array(0,0,0,0,0,0,0,0,0,0,0)
+if len(stats) <> 11 then
+    stats = array(0,0,0,0,0,0,0,0,0,0,0)
+end
 
 result = main()
 if result < 10 then
     print("You got it in ", false)
-    print(result)
+    print(result+1)
 end
 save_stats(stats, result)
+stats = readlines(stats_file)
+print_stats(stats)
 
 function save_stats(stats, result)
     i = 1
     if result < 10 then
-        print(stats[0] + 1)
+        write(stats_file, str(val(stats[0]) + 1) + cr)
     else
-        print(0)
+        write(stats_file, str(0) + cr)
     end
     while i < len(stats)    
         if i == (result+1) then
-            print(stats[i] + 1)
+            append(stats_file, str(val(stats[i]) + 1) + cr)
         else
-            print(stats[i])
+            append(stats_file, str(val(stats[i])) + cr)
         end
+        i=i+1
+    end
+end
+
+function print_stats(stats)
+    print("Streak: " + stats[0])
+    i = 1
+    while i <= 10
+        num = val(stats[i])
+        j = 0
+        print(str(i) + " ", false)
+        while j < num
+            print("*", false)
+            j=j+1
+        end
+        print("")
         i=i+1
     end
 end
@@ -33,7 +57,7 @@ function main()
     words = readlines(".\samples\wordlist.txt")
     index = rand() * len(words)
     answer = left(words[index],5)
-    print(answer)
+    'print(answer)
     
     i = 0
     while i < 10
@@ -57,7 +81,8 @@ function main()
         print("-------------------------------------")
         print("")
     end
-    print("The answer is: " + answer ". You didn't get it!")
+    print("The answer is: " + answer)
+    print("You didn't get it!", true, "red")
     i
 end
 
