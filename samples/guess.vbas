@@ -4,7 +4,7 @@
 stats_file = "./stats.txt"
 cr = chr(10)
 
-valid_words = readlines(".\samples\validwords.txt")
+valid_words = readlines("./samples/validwords.txt")
 stats = readlines(stats_file) 'array(0,0,0,0,0,0,0,0,0,0,0)
 if len(stats) <> 11 then
     stats = array(0,0,0,0,0,0,0,0,0,0,0)
@@ -54,7 +54,7 @@ end
 
 function main()
 
-    words = readlines(".\samples\wordlist.txt")
+    words = readlines("./samples/wordlist.txt")
     index = rand() * len(words)
     answer = left(words[index],5)
     'print(answer)
