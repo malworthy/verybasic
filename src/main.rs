@@ -83,9 +83,8 @@ fn compile(contents: &str) {
 
 #[cfg(test)]
 mod tests {
-    use crate::compiler::Compiler;
+    use crate::interpret;
     use crate::scanner::TokenType;
-    use crate::{compiler, interpret};
 
     fn interpret_test(contents: &str) -> String {
         let result = interpret(contents);
@@ -96,7 +95,7 @@ mod tests {
     }
 
     #[test]
-    fn temp_variables() {
+    fn test_variables() {
         let code = "
         global = 0
         main()
@@ -116,14 +115,6 @@ mod tests {
             global = global + 1
         end";
         assert_eq!(interpret_test(code), "Number(3.0)");
-
-        // let tokens = crate::scanner::tokenize(&code);
-
-        // let mut instructions: Vec<compiler::OpCode> = Vec::new();
-        // let mut line_numbers: Vec<u32> = Vec::new();
-        // let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
-        // compiler.compile();
-        // compiler::print_instr(instructions);
     }
 
     #[test]
