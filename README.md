@@ -14,7 +14,7 @@ sudo apt install pkg-config
 then simply
 
 ```
-git clone https://github.com/malworthy/verybasic_rust.git
+git clone https://github.com/malworthy/verybasic.git
 cd verybasic_rust
 cargo build
 ```
