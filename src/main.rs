@@ -13,6 +13,7 @@ struct Cli {
     path: Option<std::path::PathBuf>,
     #[arg(short, long)]
     compile: bool,
+    args_to_script: Vec<String>,
 }
 
 fn main() {
@@ -444,5 +445,13 @@ mod tests {
         assert_eq!(interpret_test("left(\"hello\", 100)"), "String(\"hello\")");
         assert_eq!(interpret_test("left(\"hello\", -1)"), "Runtime Error");
         assert_eq!(interpret_test("left(\"hello\", 0)"), "String(\"\")");
+    }
+
+    #[test]
+    fn string_functions_right() {
+        assert_eq!(interpret_test("right(\"hello\", 1)"), "String(\"o\")");
+        assert_eq!(interpret_test("right(\"hello\", 100)"), "String(\"hello\")");
+        assert_eq!(interpret_test("right(\"hello\", -1)"), "Runtime Error");
+        assert_eq!(interpret_test("right(\"hello\", 0)"), "String(\"\")");
     }
 }

@@ -1,5 +1,6 @@
 mod functions;
 mod graphics;
+mod string_functions;
 use std::{collections::HashMap, process::Command};
 
 use colored::Colorize;
@@ -108,7 +109,7 @@ impl<'a> Vm<'a> {
         }
     }
 
-    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 17] = [
+    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 22] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (functions::array, "array"),
@@ -118,14 +119,19 @@ impl<'a> Vm<'a> {
         (functions::readlines, "readlines"),
         (functions::random, "rand"),
         (functions::rgb, "rgb"),
-        (functions::mid, "mid"),
-        (functions::left, "left"),
+        (string_functions::mid, "mid"),
+        (string_functions::left, "left"),
         (functions::floor, "floor"),
-        (functions::str, "str"),
+        (string_functions::str, "str"),
         (functions::write, "write"),
         (functions::append, "append"),
         (functions::chr, "chr"),
         (functions::val, "val"),
+        (string_functions::right, "right"),
+        (string_functions::ucase, "ucase"),
+        (string_functions::lcase, "lcase"),
+        (string_functions::instr, "instr"),
+        (functions::command, "command"),
     ];
 
     pub const NATIVES_GR: [(

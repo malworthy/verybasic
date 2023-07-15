@@ -159,6 +159,16 @@ print("hello, world");
 
 ## Built-in functions
 
+### _array([element],...)_
+
+creates a new array, optionally populating with elements
+
+### _command()_
+
+returns command line arguments as an array.  
+
+NOTE: The first argument will be the full path of vbas.exe, 2nd argument name of the script. 
+
 ### _print(string, [newline=true], [colour=""])_
 
 Prints a string to the console.
@@ -166,10 +176,6 @@ Prints a string to the console.
 ### _input([prompt=""])_
 
 reads input from the console
-
-### _array([element],...)_
-
-creates a new array, optionally populating with elements
 
 ### _seconds()_
 
@@ -195,15 +201,6 @@ creates a new file writes text to it. Will overwrite any existing file.
 
 appends text to a file. If the file doesn't exist it will be created.
 
-### _mid(string, start, [length])_
-
-returns part of a string using a 1 based index.
-e.g mid("hello",3) returns "llo", mid("hello",3, 2) return "lo"
-
-### _left(string, length)_
-
-Returns a substring containing a specified number of characters from the beginning (left side) of a string.
-
 ### _str(value)_
 
 Converts any value to a string
@@ -219,6 +216,27 @@ Returns a one character string using ascii encoding. Invalid ascii value will re
 ### _floor(number)_
 
 Returns the largest integer not greater than _number_
+
+## String function
+
+### _instr()_
+
+### _lcase()_
+
+### _left(string, length)_
+
+Returns a substring containing a specified number of characters from the beginning (left side) of a string.
+
+### _mid(string, start, [length])_
+
+returns part of a string using a 1 based index.
+e.g mid("hello",3) returns "llo", mid("hello",3, 2) return "lo"
+
+abcdefghijklmopqrstuvwxyz
+
+### _right()_
+
+### _ucase()_
 
 ## Graphic functions
 

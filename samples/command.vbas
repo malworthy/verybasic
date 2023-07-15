@@ -1,0 +1,2 @@
+print("Command line arguments are:")
+print(command())

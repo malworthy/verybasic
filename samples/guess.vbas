@@ -1,5 +1,5 @@
-'false = 1==0
-'true = 1==1
+' a 'wordle' like game
+' you get 10 goes to guess a 5 letter word
 
 stats_file = "./stats.txt"
 cr = chr(10)
