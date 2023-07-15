@@ -119,13 +119,22 @@ mod tests {
     #[test]
     fn interpolation2() {
         let code = "\"a {\"2\"} b\"";
-        assert_eq!(interpret_test(code), "String(\"a 2 b\")");      
+        assert_eq!(interpret_test(code), "String(\"a 2 b\")");
     }
 
     #[test]
     fn interpolation3() {
         let code = "\"{\"hello {66}\"}\"";
-        assert_eq!(interpret_test(code), "String(\"hello 66\")");      
+        assert_eq!(interpret_test(code), "String(\"hello 66\")");
+    }
+
+    #[test]
+    fn raw_string() {
+        let code = r#""""hello " {66}""""#; 
+        let exp = r#"Str("hello \" {66}")"#;
+        let actual = interpret_test(code);
+        println!("{}",actual);
+        assert_eq!(actual, exp);
     }
 
     #[test]

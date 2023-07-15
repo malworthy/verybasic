@@ -158,6 +158,35 @@ pub fn tokenize(code: &str) -> Result<Vec<TokenType>, &str> {
                     line_number,
                     precedence: precedence::NONE,
                 }));
+            // raw string (""")
+            } else if start_raw_string(&code[i..]) {
+                let mut lexeme = String::new();
+                i += 2;
+                loop {
+                    i += 1;
+                    if let Some(char) = code.chars().nth(i) {
+                        current_char = char;
+                    } else {
+                        break;
+                    }
+
+                    if !end_raw_string(&code[i..]) {
+                        lexeme.push(current_char);
+                    } else {
+                        break;
+                    }
+                    if current_char == '\n' {
+                        line_number += 1;
+                    }
+                }
+                tokens.push(TokenType::String(Token {
+                    lexeme,
+                    line_number,
+                    precedence: precedence::NONE,
+                }));
+
+                i += 3;
+
             // Strings
             } else if current_char == '"' {
                 let mut lexeme = String::new();
@@ -251,6 +280,20 @@ pub fn tokenize(code: &str) -> Result<Vec<TokenType>, &str> {
     tokens.push(TokenType::Eof);
     //dbg!(&tokens);
     Ok(tokens)
+}
+
+fn start_raw_string(code: &str) -> bool {
+    let mut chars = code.chars();
+    code.len() >= 3 && code[..3] == *"\"\"\""
+}
+
+fn end_raw_string(code: &str) -> bool {
+    let only_three_quotes = if let Some(ch) = code.chars().nth(3) {
+        ch != '"'
+    } else {
+        true
+    };
+    only_three_quotes && code.len() >= 3 && code[..3] == *"\"\"\""
 }
 
 fn is_word(code: &str, i: usize) -> bool {
