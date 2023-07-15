@@ -96,10 +96,11 @@ impl TokenType {
     }
 }
 
-pub fn tokenize(code: &str) -> Vec<TokenType> {
+pub fn tokenize(code: &str) -> Result<Vec<TokenType>, &str> {
     let mut i = 0;
     let mut line_number = 1;
     let mut tokens: Vec<TokenType> = Vec::new();
+    let mut interpolation = 0;
 
     while i < code.len() {
         let mut current_char = code.chars().nth(i).unwrap();
@@ -114,10 +115,31 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
             line_number += 1;
         }
         if i >= code.len() {
-            return tokens;
+            if interpolation > 0 {
+                return Err("missing '}' in string interpolation");
+            }
+            return Ok(tokens);
         }
 
-        let (token, len) = make_keyword(&code[i..], line_number);
+        // ending interpolation
+        let (token, len) = if interpolation > 0 && current_char == '}' {
+            interpolation -= 1;
+            // )
+            let (t, _) = make_keyword(")", line_number);
+            tokens.push(t);
+
+            // +
+            let (t, _) = make_keyword("+", line_number);
+            tokens.push(t);
+
+            current_char = '"';
+
+            (TokenType::None, 0)
+        } else {
+            make_keyword(&code[i..], line_number)
+        };
+
+        //let (token, len) = make_keyword(&code[i..], line_number);
         if let TokenType::None = token {
             //Numbers
             if current_char.is_numeric() {
@@ -146,6 +168,32 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                     } else {
                         break;
                     }
+                    if current_char == '{' {
+                        interpolation += 1;
+
+                        // first bit of string
+                        tokens.push(TokenType::String(Token {
+                            lexeme: lexeme.clone(),
+                            line_number,
+                            precedence: precedence::NONE,
+                        }));
+                        // plus
+                        let (t, _) = make_keyword("+", line_number);
+                        tokens.push(t);
+                        // str
+                        tokens.push(TokenType::Identifier(Token {
+                            lexeme: String::from("str"),
+                            line_number,
+                            precedence: precedence::NONE,
+                        }));
+
+                        // (
+                        let (t, _) = make_keyword("(", line_number);
+                        tokens.push(t);
+
+                        break;
+                    }
+
                     if current_char != '"' {
                         lexeme.push(current_char);
                     } else {
@@ -155,11 +203,14 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                         line_number += 1;
                     }
                 }
-                tokens.push(TokenType::String(Token {
-                    lexeme,
-                    line_number,
-                    precedence: precedence::NONE,
-                }));
+                if current_char != '{' {
+                    tokens.push(TokenType::String(Token {
+                        lexeme,
+                        line_number,
+                        precedence: precedence::NONE,
+                    }));
+                }
+
                 i += 1;
             } else if current_char.is_ascii_alphabetic()
                 || current_char == '@'
@@ -194,8 +245,12 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
             i += len;
         }
     }
+    if interpolation > 0 {
+        return Err("missing '}' in string interpolation");
+    }
     tokens.push(TokenType::Eof);
-    tokens
+    //dbg!(&tokens);
+    Ok(tokens)
 }
 
 fn is_word(code: &str, i: usize) -> bool {

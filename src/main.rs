@@ -47,39 +47,54 @@ fn main() {
 fn interpret(contents: &str) -> Result<String, String> {
     let tokens = crate::scanner::tokenize(&contents);
 
-    let mut instructions: Vec<compiler::OpCode> = Vec::new();
-    let mut line_numbers: Vec<u32> = Vec::new();
-    let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
-    compiler.compile();
-    if compiler.in_error {
-        return Result::Err(String::from("Compile Error"));
-    }
+    match tokens {
+        Ok(tokens) => {
+            let mut instructions: Vec<compiler::OpCode> = Vec::new();
+            let mut line_numbers: Vec<u32> = Vec::new();
+            let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
+            compiler.compile();
+            if compiler.in_error {
+                return Result::Err(String::from("Compile Error"));
+            }
 
-    let mut vm = Vm::new(&mut line_numbers);
-    let result = vm.run(&instructions);
-    if !result {
-        return Result::Err(String::from("Runtime Error"));
-    }
+            let mut vm = Vm::new(&mut line_numbers);
+            let result = vm.run(&instructions);
+            if !result {
+                return Result::Err(String::from("Runtime Error"));
+            }
 
-    if let Some(val) = vm.return_value {
-        Result::Ok(format!("{:?}", val))
-    } else {
-        Result::Ok(String::new())
+            if let Some(val) = vm.return_value {
+                Result::Ok(format!("{:?}", val))
+            } else {
+                Result::Ok(String::new())
+            }
+        }
+        Err(msg) => {
+            eprintln!("Tokenize Error: {}", msg.red());
+            Result::Err(String::from("Tokenize Error"))
+        }
     }
 }
 
 fn compile(contents: &str) {
     let tokens = crate::scanner::tokenize(&contents);
 
-    let mut instructions: Vec<compiler::OpCode> = Vec::new();
-    let mut line_numbers: Vec<u32> = Vec::new();
-    let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
-    compiler.compile();
-    if compiler.in_error {
-        return;
-    }
+    match tokens {
+        Ok(tokens) => {
+            let mut instructions: Vec<compiler::OpCode> = Vec::new();
+            let mut line_numbers: Vec<u32> = Vec::new();
+            let mut compiler = Compiler::new(&tokens, &mut instructions, &mut line_numbers);
+            compiler.compile();
+            if compiler.in_error {
+                return;
+            }
 
-    compiler::print_instr(instructions);
+            compiler::print_instr(instructions);
+        }
+        Err(msg) => {
+            eprintln!("{}", msg.red());
+        }
+    }
 }
 
 #[cfg(test)]
@@ -93,6 +108,24 @@ mod tests {
             Ok(s) => s,
             Err(s) => s,
         }
+    }
+
+    #[test]
+    fn interpolation() {
+        let code = "\"a {1+1} b\"";
+        assert_eq!(interpret_test(code), "String(\"a 2 b\")");
+    }
+
+    #[test]
+    fn interpolation2() {
+        let code = "\"a {\"2\"} b\"";
+        assert_eq!(interpret_test(code), "String(\"a 2 b\")");      
+    }
+
+    #[test]
+    fn interpolation3() {
+        let code = "\"{\"hello {66}\"}\"";
+        assert_eq!(interpret_test(code), "String(\"hello 66\")");      
     }
 
     #[test]
@@ -427,7 +460,7 @@ mod tests {
             end
             z=\"string\"
         ";
-        let tokens = crate::scanner::tokenize(code);
+        let tokens = crate::scanner::tokenize(code).unwrap();
         //dbg!(tokens.len());
         assert_eq!(tokens.len(), 32);
         let t = &tokens[10]; // if
