@@ -216,9 +216,12 @@ creates a new file writes text to it. Will overwrite any existing file.
 
 appends text to a file. If the file doesn't exist it will be created.
 
-### _str(value)_
+### _str(value, [format_string])_
 
-Converts any value to a string
+Converts any value to a string, optionally applying formatting to numbers.
+
+- Nx format to x decimal places, use thousands separator e.g. `str(123456.456,"N2") => 123,456.46`
+- Fx format to x decimal places, don't use thousands separator e.g. `str(123456.456,"F2") => 123456.46`
 
 ### _val(string)_
 
