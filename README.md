@@ -157,6 +157,21 @@ print("hello, world");
 !#$ print("goodbye")
 ```
 
+## String Interpolation
+
+Very Basic supports string interpolation. Any expression between '{' and '}' will be interpreted and inserted into to the string.  
+See example below:
+
+```
+print ("The result is {1+1}")
+```
+
+String interpolation is just syntatic sugar. The above string in converted to the following:
+
+```
+"The result is " + str(1+1) + ""
+```
+
 ## Built-in functions
 
 ### _array([element],...)_
@@ -165,9 +180,9 @@ creates a new array, optionally populating with elements
 
 ### _command()_
 
-returns command line arguments as an array.  
+returns command line arguments as an array.
 
-NOTE: The first argument will be the full path of vbas.exe, 2nd argument name of the script. 
+NOTE: The first argument will be the full path of vbas.exe, 2nd argument name of the script.
 
 ### _print(string, [newline=true], [colour=""])_
 
@@ -201,9 +216,12 @@ creates a new file writes text to it. Will overwrite any existing file.
 
 appends text to a file. If the file doesn't exist it will be created.
 
-### _str(value)_
+### _str(value, [format_string])_
 
-Converts any value to a string
+Converts any value to a string, optionally applying formatting to numbers.
+
+- Nx format to x decimal places, use thousands separator e.g. `str(123456.456,"N2") => 123,456.46`
+- Fx format to x decimal places, don't use thousands separator e.g. `str(123456.456,"F2") => 123456.46`
 
 ### _val(string)_
 

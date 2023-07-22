@@ -13,3 +13,4 @@ raqote = "0.8.2"
 minifb = "0.24.0"
 hex = "0.4.3"
 clap = { version = "4.3.11", features = ["derive"] }
+num-runtime-fmt = "0.1.2"

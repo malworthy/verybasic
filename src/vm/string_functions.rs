@@ -1,4 +1,6 @@
 use crate::vm::ValueType;
+//use runtime_fmt::rt_format;
+use num_runtime_fmt::NumFmt;
 
 // String functions
 pub fn mid(params: Vec<ValueType>) -> Result<ValueType, &str> {
@@ -85,11 +87,51 @@ pub fn right(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::String(String::from(&string[start..])))
 }
 
+// really rust - no library function to do this???
+fn round(number: f64, decimal_places: u32) -> f64 {
+    let y = 10i32.pow(decimal_places) as f64;
+    (number * y).round() / y
+}
+
+pub fn vb_format_num(format: String, number: f64) -> (String, f64) {
+    //N
+    if format.starts_with("N") {
+        let precision = if format.len() == 1 { "2" } else { &format[1..] };
+        if let Ok(prec) = precision.parse::<u32>() {
+            return (format!("{}.{prec},", prec + 2), round(number, prec));
+        }
+    }
+
+    //F
+    if format.starts_with("F") {
+        let precision = if format.len() == 1 { "2" } else { &format[1..] };
+        if let Ok(prec) = precision.parse::<u32>() {
+            return (format!("{}.{prec}", prec + 2), round(number, prec));
+        }
+    }
+
+    return (format, number);
+}
+
 pub fn str(params: Vec<ValueType>) -> Result<ValueType, &str> {
     if params.len() == 0 {
         return Err("Incorrect number of parameters passed to function str(value)");
     }
-    let string = params[0].to_string();
+
+    let mut string = params[0].to_string();
+    if let Some(format) = params.iter().nth(1) {
+        if let ValueType::Number(number) = params[0] {
+            let (format_string, number) = vb_format_num(format.to_string(), number);
+            if let Ok(formatter) = NumFmt::from_str(format_string.as_str()) {
+                if let Ok(formatted) = formatter.fmt(number) {
+                    string = formatted;
+                    if string.ends_with('.') {
+                        string = string[..string.len() - 1].to_string();
+                    }
+                }
+            }
+        }
+    }
 
     Ok(ValueType::String(string))
 }
@@ -166,5 +208,17 @@ pub fn instr(params: Vec<ValueType>) -> Result<ValueType, &str> {
         Ok(ValueType::Number((index - start_index + 1) as f64))
     } else {
         Ok(ValueType::Number(0.0))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::round;
+
+    #[test]
+    fn test_round() {
+        assert_eq!(round(123.45999, 2), 123.46);
+        assert_eq!(round(123.454, 2), 123.45);
+        assert_eq!(round(123.455, 2), 123.46);
     }
 }

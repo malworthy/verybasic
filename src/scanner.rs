@@ -96,10 +96,11 @@ impl TokenType {
     }
 }
 
-pub fn tokenize(code: &str) -> Vec<TokenType> {
+pub fn tokenize(code: &str) -> Result<Vec<TokenType>, &str> {
     let mut i = 0;
     let mut line_number = 1;
     let mut tokens: Vec<TokenType> = Vec::new();
+    let mut interpolation = 0;
 
     while i < code.len() {
         let mut current_char = code.chars().nth(i).unwrap();
@@ -114,10 +115,31 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
             line_number += 1;
         }
         if i >= code.len() {
-            return tokens;
+            if interpolation > 0 {
+                return Err("missing '}' in string interpolation");
+            }
+            return Ok(tokens);
         }
 
-        let (token, len) = make_keyword(&code[i..], line_number);
+        // ending interpolation
+        let (token, len) = if interpolation > 0 && current_char == '}' {
+            interpolation -= 1;
+            // )
+            let (t, _) = make_keyword(")", line_number);
+            tokens.push(t);
+
+            // +
+            let (t, _) = make_keyword("+", line_number);
+            tokens.push(t);
+
+            current_char = '"';
+
+            (TokenType::None, 0)
+        } else {
+            make_keyword(&code[i..], line_number)
+        };
+
+        //let (token, len) = make_keyword(&code[i..], line_number);
         if let TokenType::None = token {
             //Numbers
             if current_char.is_numeric() {
@@ -136,9 +158,10 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                     line_number,
                     precedence: precedence::NONE,
                 }));
-            // Strings
-            } else if current_char == '"' {
+            // raw string (""")
+            } else if start_raw_string(&code[i..]) {
                 let mut lexeme = String::new();
+                i += 2;
                 loop {
                     i += 1;
                     if let Some(char) = code.chars().nth(i) {
@@ -146,7 +169,8 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                     } else {
                         break;
                     }
-                    if current_char != '"' {
+
+                    if !end_raw_string(&code[i..]) {
                         lexeme.push(current_char);
                     } else {
                         break;
@@ -160,6 +184,62 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
                     line_number,
                     precedence: precedence::NONE,
                 }));
+
+                i += 3;
+
+            // Strings
+            } else if current_char == '"' {
+                let mut lexeme = String::new();
+                loop {
+                    i += 1;
+                    if let Some(char) = code.chars().nth(i) {
+                        current_char = char;
+                    } else {
+                        break;
+                    }
+                    if current_char == '{' {
+                        interpolation += 1;
+
+                        // first bit of string
+                        tokens.push(TokenType::String(Token {
+                            lexeme: lexeme.clone(),
+                            line_number,
+                            precedence: precedence::NONE,
+                        }));
+                        // plus
+                        let (t, _) = make_keyword("+", line_number);
+                        tokens.push(t);
+                        // str
+                        tokens.push(TokenType::Identifier(Token {
+                            lexeme: String::from("str"),
+                            line_number,
+                            precedence: precedence::NONE,
+                        }));
+
+                        // (
+                        let (t, _) = make_keyword("(", line_number);
+                        tokens.push(t);
+
+                        break;
+                    }
+
+                    if current_char != '"' {
+                        lexeme.push(current_char);
+                    } else {
+                        break;
+                    }
+                    if current_char == '\n' {
+                        line_number += 1;
+                    }
+                }
+                if current_char != '{' {
+                    tokens.push(TokenType::String(Token {
+                        lexeme,
+                        line_number,
+                        precedence: precedence::NONE,
+                    }));
+                }
+
                 i += 1;
             } else if current_char.is_ascii_alphabetic()
                 || current_char == '@'
@@ -194,8 +274,26 @@ pub fn tokenize(code: &str) -> Vec<TokenType> {
             i += len;
         }
     }
+    if interpolation > 0 {
+        return Err("missing '}' in string interpolation");
+    }
     tokens.push(TokenType::Eof);
-    tokens
+    //dbg!(&tokens);
+    Ok(tokens)
+}
+
+fn start_raw_string(code: &str) -> bool {
+    let mut chars = code.chars();
+    code.len() >= 3 && code[..3] == *"\"\"\""
+}
+
+fn end_raw_string(code: &str) -> bool {
+    let only_three_quotes = if let Some(ch) = code.chars().nth(3) {
+        ch != '"'
+    } else {
+        true
+    };
+    only_three_quotes && code.len() >= 3 && code[..3] == *"\"\"\""
 }
 
 fn is_word(code: &str, i: usize) -> bool {
