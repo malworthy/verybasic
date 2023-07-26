@@ -14,3 +14,6 @@ minifb = "0.24.0"
 hex = "0.4.3"
 clap = { version = "4.3.11", features = ["derive"] }
 num-runtime-fmt = "0.1.2"
+chrono = "0.4.26"
+serde = "1.0.174"
+serde_json = "1.0"

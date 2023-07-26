@@ -3,7 +3,7 @@ mod scanner;
 mod vm;
 
 use colored::Colorize;
-use std::{fs, io, process};
+use std::{fs, io, path::PathBuf, process};
 
 use crate::{compiler::Compiler, vm::Vm};
 use clap::Parser;
@@ -21,11 +21,15 @@ fn main() {
 
     if let Some(file_path) = args.path {
         let contents =
-            fs::read_to_string(file_path).expect("Should have been able to read the file");
+            fs::read_to_string(file_path.clone()).expect("Should have been able to read the file");
+
+        let mut config_file = file_path;
+
+        config_file.set_extension("vbas.json");
 
         if args.compile {
             compile(&contents);
-        } else if let Result::Err(_) = interpret(&contents) {
+        } else if let Result::Err(_) = interpret(&contents, config_file) {
             process::exit(1);
         }
     } else {
@@ -35,7 +39,7 @@ fn main() {
             io::stdin()
                 .read_line(&mut line)
                 .expect("Failed to read line");
-            let result = interpret(&line);
+            let result = interpret(&line, PathBuf::from("settings.json"));
             match result {
                 Ok(s) => println!("{}", s.bright_black()),
                 Err(_) => println!(""),
@@ -44,7 +48,7 @@ fn main() {
     }
 }
 
-fn interpret(contents: &str) -> Result<String, String> {
+fn interpret(contents: &str, config_file: PathBuf) -> Result<String, String> {
     let tokens = crate::scanner::tokenize(&contents);
 
     match tokens {
@@ -58,6 +62,7 @@ fn interpret(contents: &str) -> Result<String, String> {
             }
 
             let mut vm = Vm::new(&mut line_numbers);
+            vm.config_file = config_file;
             let result = vm.run(&instructions);
             if !result {
                 return Result::Err(String::from("Runtime Error"));
@@ -99,11 +104,13 @@ fn compile(contents: &str) {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use crate::interpret;
     use crate::scanner::TokenType;
 
     fn interpret_test(contents: &str) -> String {
-        let result = interpret(contents);
+        let result = interpret(contents, PathBuf::from("settings_test.json"));
         match result {
             Ok(s) => s,
             Err(s) => s,
@@ -111,9 +118,24 @@ mod tests {
     }
 
     #[test]
+    fn block_scope_while() {
+        let code = "
+            i=0
+            
+            while i < 10
+                x = 20
+                i = i + 1
+            end
+            print(x)
+        ";
+        // x is out of scope so runtime error
+        assert_eq!(interpret_test(code), "Compile Error");
+    }
+
+    #[test]
     fn format_string() {
         let code = "str(1234.5678,\"N2\")";
-        assert_eq!(interpret_test(code), "String(\"a 2 b\")");
+        assert_eq!(interpret_test(code), "String(\"1,234.57\")");
     }
 
     #[test]
@@ -156,8 +178,8 @@ mod tests {
                 word = get_word()
                 print(word)
                 i=i+1
+                word
             end
-            word
         end
         
         function get_word()

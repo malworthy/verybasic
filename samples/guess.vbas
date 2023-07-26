@@ -5,44 +5,52 @@ stats_file = "./stats.txt"
 cr = chr(10)
 
 valid_words = readlines("./samples/validwords.txt")
-stats = readlines(stats_file) 'array(0,0,0,0,0,0,0,0,0,0,0)
-if len(stats) <> 11 then
-    stats = array(0,0,0,0,0,0,0,0,0,0,0)
-end
+' stats = readlines(stats_file) 'array(0,0,0,0,0,0,0,0,0,0,0)
+' if len(stats) <> 11 then
+'     stats = array(0,0,0,0,0,0,0,0,0,0,0)
+'end
 
 result = main()
 if result < 10 then
     print("You got it in ", false)
     print(result+1)
 end
-save_stats(stats, result)
-stats = readlines(stats_file)
-print_stats(stats)
+save_stats(result)
+'stats = readlines(stats_file)
+print_stats()
 
-function save_stats(stats, result)
-    i = 1
+function save_stats(result)
+    max_streak = val(setting_get("max_streak"))
+    streak = val(setting_get("streak"))
+    value = 0
+    fails = 0
     if result < 10 then
-        write(stats_file, str(val(stats[0]) + 1) + cr)
+        streak = streak + 1
+        value = val(setting_get(result))
+        setting_set(result, value + 1)
     else
-        write(stats_file, str(0) + cr)
+        streak = 0
+        fails = val(setting_get("fails"))
+        fails = fails + 1
+        setting_set("fails", fails)
     end
-    while i < len(stats)    
-        if i == (result+1) then
-            append(stats_file, str(val(stats[i]) + 1) + cr)
-        else
-            append(stats_file, str(val(stats[i])) + cr)
-        end
-        i=i+1
-    end
+    setting_set("streak", streak)
+    if streak > max_streak then
+        setting_set("max_streak", streak)
+    end   
 end
 
-function print_stats(stats)
-    print("Streak: " + stats[0])
-    i = 1
-    while i <= 10
-        num = val(stats[i])
+function print_stats()
+    print("Streak: {setting_get("streak")}")
+    print("Max Streak: {setting_get("max_streak")}")
+    
+    i = 0
+    total = 0
+    while i < 10
+        num = val(setting_get(i))
+        total = total + num
         j = 0
-        print(str(i) + " ", false)
+        print("{i+1} ", false)
         while j < num
             print("*", false)
             j=j+1
@@ -50,6 +58,9 @@ function print_stats(stats)
         print("")
         i=i+1
     end
+    fails = val(setting_get("fails"))
+    print("Fails: {fails}")
+    print("Win ratio: {total / (total + fails) * 100,"N2"}%")
 end
 
 function main()

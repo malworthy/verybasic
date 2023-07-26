@@ -235,7 +235,7 @@ Returns a one character string using ascii encoding. Invalid ascii value will re
 
 Returns the largest integer not greater than _number_
 
-## String function
+## String functions
 
 ### _instr()_
 
@@ -255,6 +255,14 @@ abcdefghijklmopqrstuvwxyz
 ### _right()_
 
 ### _ucase()_
+
+## Date and Time functions
+
+Dates are stored as strings in ISO8601 format. There is no native datetime format. Functions that use dates will convert the string value to a date internally, and then convert the date back to a IOS8601 format string for any dates returned.
+
+### _now()_
+
+returns the current date using the local timezone
 
 ## Graphic functions
 

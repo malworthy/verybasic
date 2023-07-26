@@ -1,0 +1,11 @@
+
+function test(result)
+    streak = 0
+    fails = val(setting_get("fails"))
+    print("setting fails {fails}")
+    fails = fails + 1
+    print("after setting fails {fails}")
+    setting_set("fails", fails)
+end
+
+test(5)

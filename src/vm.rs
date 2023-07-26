@@ -1,11 +1,10 @@
 mod functions;
 mod graphics;
 mod string_functions;
-use std::{collections::HashMap, process::Command};
-
-use colored::Colorize;
+use std::{collections::HashMap, path::PathBuf, process::Command};
 
 use crate::compiler::OpCode;
+use colored::Colorize;
 
 #[derive(Debug, Clone)]
 pub enum ValueType<'a> {
@@ -93,6 +92,7 @@ pub struct Vm<'a> {
     gr: graphics::Graphics,
     line_numbers: &'a mut Vec<u32>,
     ip: usize,
+    pub config_file: PathBuf,
 }
 
 impl<'a> Vm<'a> {
@@ -106,10 +106,14 @@ impl<'a> Vm<'a> {
             stack_pointer: 0,
             ip: 0,
             line_numbers,
+            config_file: PathBuf::from("settings.txt"),
         }
     }
-
-    pub const NATIVES: [(fn(Vec<ValueType>) -> Result<ValueType, &str>, &str); 22] = [
+    //fn rgb<'a>(params: Vec<ValueType<'a>>, _: &Vm<'a>) -> Result<ValueType<'a>, &'a str>
+    pub const NATIVES: [(
+        fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
+        &str,
+    ); 30] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (functions::array, "array"),
@@ -132,17 +136,24 @@ impl<'a> Vm<'a> {
         (string_functions::lcase, "lcase"),
         (string_functions::instr, "instr"),
         (functions::command, "command"),
-    ];
-
-    pub const NATIVES_GR: [(
-        fn(Vec<ValueType<'a>>, &'a mut graphics::Graphics) -> Result<ValueType<'a>, &'a str>,
-        &str,
-    ); 4] = [
+        (functions::now, "now"),
         (functions::window, "window"),
         (functions::plot, "plot"),
         (functions::clear_graphics, "cleargraphics"),
         (functions::init_graphics, "initgraphics"),
+        (functions::setting_set, "setting_set"),
+        (functions::setting_get, "setting_get"),
+        (functions::stack, "stack"),
     ];
+
+    pub fn debug_stack(&mut self) {
+        dbg!(&self.stack[0..self.stack_pointer + 1]);
+    }
+
+    // pub const NATIVES_GR: [(
+    //     fn(Vec<ValueType<'a>>, &'a mut graphics::Graphics) -> Result<ValueType<'a>, &'a str>,
+    //     &str,
+    // ); 3] = [];
 
     fn runtime_error(&mut self, message: &str) {
         let line_number = self.line_numbers[self.ip];
@@ -302,6 +313,8 @@ impl<'a> Vm<'a> {
         pop!(self, b);
         pop!(self, a);
 
+        //println!("Add {:?} + {:?}", a, b);
+
         let result = match a {
             ValueType::Number(a) => {
                 if let ValueType::Number(b) = b {
@@ -335,6 +348,7 @@ impl<'a> Vm<'a> {
             }
             ValueType::Boolean(_) => {
                 self.runtime_error("Cannot add a boolean");
+                self.debug_stack();
                 return false;
             }
             ValueType::Array(_) => {
@@ -465,7 +479,7 @@ impl<'a> Vm<'a> {
                         pop!(self, v);
                         args.insert(0, v.clone());
                     }
-                    let result = func(args);
+                    let result = func(args, self);
 
                     match result {
                         Ok(value) => self.push(value),
@@ -475,22 +489,22 @@ impl<'a> Vm<'a> {
                         }
                     }
                 }
-                OpCode::CallNativeGr(index, argc) => {
-                    let mut args: Vec<ValueType> = Vec::new();
-                    let func = Vm::NATIVES_GR[*index].0;
+                // OpCode::CallNativeGr(index, argc) => {
+                //     let mut args: Vec<ValueType> = Vec::new();
+                //     let func = Vm::NATIVES_GR[*index].0;
 
-                    // call a native/built-in function
-                    for _i in 0..*argc {
-                        pop!(self, v);
-                        args.insert(0, v.clone());
-                    }
-                    if let Err(msg) = func(args, &mut self.gr) {
-                        let message = format!("{}", msg);
-                        self.runtime_error(&message);
-                        return false;
-                    }
-                    self.push(ValueType::Boolean(true));
-                }
+                //     // call a native/built-in function
+                //     for _i in 0..*argc {
+                //         pop!(self, v);
+                //         args.insert(0, v.clone());
+                //     }
+                //     if let Err(msg) = func(args, &mut self.gr) {
+                //         let message = format!("{}", msg);
+                //         self.runtime_error(&message);
+                //         return false;
+                //     }
+                //     self.push(ValueType::Boolean(true));
+                // }
                 OpCode::CallSystem(name, argc, _) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     for _i in 0..*argc {

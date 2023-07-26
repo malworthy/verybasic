@@ -1,19 +1,21 @@
 use crate::vm::ValueType;
+use chrono::{DateTime, Local};
 use glob::glob;
 use hex;
 use rand;
 use std::{
+    collections::HashMap,
     env,
     fs::{read_to_string, File, OpenOptions},
     io::{self, Write},
     time::SystemTime,
 };
 
-use super::graphics::Graphics;
+use super::Vm;
 use colored::Colorize;
 
 // Parameters: 0(string) = string to print, 1(bool) = print new line if true
-pub fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn print<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if let Some(val) = params.first() {
         let s = val.to_string();
         let new_line = if let Some(print_new_line) = params.get(1) {
@@ -54,7 +56,7 @@ pub fn print(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 }
 
-pub fn input(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn input<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if let Some(val) = params.first() {
         let s = val.to_string();
         print!("{s} ");
@@ -67,7 +69,7 @@ pub fn input(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 }
 
-pub fn array(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn array<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let mut array: Vec<ValueType> = Vec::new();
     for value in params {
         array.push(value)
@@ -75,7 +77,12 @@ pub fn array(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::Array(array))
 }
 
-pub fn command(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn stack<'a>(_params: Vec<ValueType<'a>>, vm: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    vm.debug_stack();
+    Ok(ValueType::Boolean(true))
+}
+
+pub fn command<'a>(_params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let mut array: Vec<ValueType> = Vec::new();
     let args: Vec<String> = env::args().collect();
     for value in args {
@@ -84,14 +91,22 @@ pub fn command(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::Array(array))
 }
 
-pub fn seconds(_params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn seconds<'a>(_params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
         Ok(n) => Ok(ValueType::Number(n.as_secs_f64())),
         Err(_) => Err("SystemTime before UNIX EPOCH!"),
     }
 }
 
-pub fn len(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn now<'a>(_params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    let now = SystemTime::now();
+    let now: DateTime<Local> = now.into();
+    let now = now.to_rfc3339();
+
+    Ok(ValueType::String(now))
+}
+
+pub fn len<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if let Some(val) = params.first() {
         let len = match val {
             ValueType::Array(v) => v.len(),
@@ -107,7 +122,7 @@ pub fn len(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 }
 
-pub fn dir(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn dir<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if let Some(val) = params.first() {
         let pattern = val.to_string();
         let file = glob(pattern.as_str());
@@ -132,12 +147,12 @@ pub fn dir(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 }
 
-pub fn random(_params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn random<'a>(_params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let number = rand::random::<f64>();
     Ok(ValueType::Number(number))
 }
 
-pub fn chr(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn chr<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if let Some(param) = params.first() {
         if let ValueType::Number(num) = param {
             if *num >= 0.0 && *num <= 255.0 {
@@ -152,7 +167,7 @@ pub fn chr(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::Str(""))
 }
 
-pub fn readlines(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn readlines<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if let Some(param) = params.first() {
         let filename = param.to_string();
 
@@ -173,7 +188,69 @@ pub fn readlines(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 }
 
-pub fn write(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn setting_set<'a>(
+    params: Vec<ValueType<'a>>,
+    vm: &mut Vm<'a>,
+) -> Result<ValueType<'a>, &'a str> {
+    let result = read_to_string(&vm.config_file);
+    let mut settings: HashMap<&str, String> = HashMap::new();
+
+    let file_contents = match result {
+        Ok(lines) => lines,
+        Err(_) => String::new(),
+    };
+    if !file_contents.is_empty() {
+        settings = serde_json::from_str(&file_contents).unwrap();
+    }
+
+    //TODO: check params exist!
+    let key = params[0].to_string();
+    let value = params[1].to_string();
+
+    settings.insert(key.as_str(), value);
+
+    let json = serde_json::to_string(&settings).unwrap();
+    let data_file = File::create(&vm.config_file);
+
+    match data_file {
+        Ok(mut file) => {
+            let result = file.write(json.as_bytes());
+            return match result {
+                Ok(_) => Ok(ValueType::Boolean(true)),
+                Err(msg) => Ok(ValueType::String(msg.to_string())),
+            };
+        }
+        Err(msg) => {
+            return Ok(ValueType::String(msg.to_string()));
+        }
+    }
+}
+
+pub fn setting_get<'a>(
+    params: Vec<ValueType<'a>>,
+    vm: &mut Vm<'a>,
+) -> Result<ValueType<'a>, &'a str> {
+    let result = read_to_string(&vm.config_file);
+    let settings: HashMap<&str, String>;
+
+    let file_contents = match result {
+        Ok(lines) => lines,
+        Err(_) => return Ok(ValueType::Str("")),
+    };
+    settings = serde_json::from_str(&file_contents).unwrap();
+    //TODO: check params exist!
+    let key = params[0].to_string();
+
+    let value = if let Some(value) = settings.get(&key.as_str()) {
+        value
+    } else {
+        ""
+    };
+
+    Ok(ValueType::String(value.to_string()))
+}
+
+pub fn write<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let mut params_iter = params.iter();
     let p1 = params_iter.next();
     let p2 = params_iter.next();
@@ -203,7 +280,7 @@ pub fn write(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 }
 
-pub fn append(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn append<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let mut params_iter = params.iter();
     let p1 = params_iter.next();
     let p2 = params_iter.next();
@@ -233,7 +310,7 @@ pub fn append(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 }
 
-pub fn val(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn val<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() == 0 {
         return Err("Incorrect number of parameters passed to function str(value)");
     }
@@ -245,7 +322,7 @@ pub fn val(params: Vec<ValueType>) -> Result<ValueType, &str> {
     }
 }
 
-pub fn floor(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn floor<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if let Some(param) = params.get(0) {
         if let ValueType::Number(val) = param {
             return Ok(ValueType::Number(val.floor()));
@@ -258,7 +335,7 @@ pub fn floor(params: Vec<ValueType>) -> Result<ValueType, &str> {
 }
 
 // Graphics functions
-pub fn rgb(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn rgb<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let r: u8;
     let g: u8;
     let b: u8;
@@ -306,25 +383,22 @@ pub fn rgb(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::String(hex_string))
 }
 
-pub fn window<'a>(
-    _params: Vec<ValueType<'a>>,
-    g: &'a mut Graphics,
-) -> Result<ValueType<'a>, &'a str> {
-    g.show_window();
+pub fn window<'a>(_params: Vec<ValueType<'a>>, vm: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    vm.gr.show_window();
     Ok(ValueType::Boolean(true))
 }
 
 pub fn clear_graphics<'a>(
     _params: Vec<ValueType<'a>>,
-    g: &'a mut Graphics,
+    vm: &mut Vm<'a>,
 ) -> Result<ValueType<'a>, &'a str> {
-    g.clear();
+    vm.gr.clear();
     Ok(ValueType::Boolean(true))
 }
 
 pub fn init_graphics<'a>(
     params: Vec<ValueType<'a>>,
-    g: &'a mut Graphics,
+    vm: &mut Vm<'a>,
 ) -> Result<ValueType<'a>, &'a str> {
     if params.len() < 2 {
         return Err("Not enough parameters passed to function initgraphics(width, height)");
@@ -341,11 +415,11 @@ pub fn init_graphics<'a>(
     } else {
         return Err("parameter y must be a number in initgraphics(width, height)");
     }
-    g.init(width, height);
+    vm.gr.init(width, height);
     Ok(ValueType::Boolean(true))
 }
 
-pub fn plot<'a>(params: Vec<ValueType<'a>>, g: &'a mut Graphics) -> Result<ValueType<'a>, &'a str> {
+pub fn plot<'a>(params: Vec<ValueType<'a>>, vm: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() < 3 {
         return Err("Not enough parameters passed to function plot(x,y,c)");
     }
@@ -377,7 +451,7 @@ pub fn plot<'a>(params: Vec<ValueType<'a>>, g: &'a mut Graphics) -> Result<Value
         _ => hex_to_rgb(&colour),
     };
 
-    g.draw_rect(x, y, 1.0, 1.0, rgb);
+    vm.gr.draw_rect(x, y, 1.0, 1.0, rgb);
 
     Ok(ValueType::Boolean(true))
 }

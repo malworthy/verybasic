@@ -30,7 +30,7 @@ pub enum OpCode {
     Call(usize, u32),
     CallSystem(String, u32, u32),
     CallNative(usize, u32),
-    CallNativeGr(usize, u32),
+    //CallNativeGr(usize, u32),
     Pop,
     SetLocal(usize),
     DefineLocal(usize),
@@ -48,7 +48,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::Add => format!("{:05} ADD", addr),
             OpCode::Call(ptr, argc) => format!("{:05} CALL {} {}", addr, ptr, argc),
             OpCode::CallNative(index, argc) => format!("{:05} CALN {} {}", addr, index, argc),
-            OpCode::CallNativeGr(index, argc) => format!("{:05} CALG {} {}", addr, index, argc),
+            //OpCode::CallNativeGr(index, argc) => format!("{:05} CALG {} {}", addr, index, argc),
             OpCode::And => format!("{:05} AND", addr),
             OpCode::CallSystem(name, argc, _) => format!("{} SYS  {} {}", addr, name, argc),
             OpCode::ConstantNum(num) => format!("{:05} NUM  {}", addr, num),
@@ -117,12 +117,12 @@ fn is_native(name: &str) -> Result<usize, usize> {
     Err(1)
 }
 
-fn is_native_graphics(name: &str) -> Result<usize, usize> {
-    if let Some(i) = Vm::NATIVES_GR.into_iter().position(|x| x.1 == name) {
-        return Ok(i);
-    }
-    Err(1)
-}
+// fn is_native_graphics(name: &str) -> Result<usize, usize> {
+//     if let Some(i) = Vm::NATIVES_GR.into_iter().position(|x| x.1 == name) {
+//         return Ok(i);
+//     }
+//     Err(1)
+// }
 
 impl Compiler<'_> {
     pub fn new<'a>(
@@ -225,8 +225,8 @@ impl Compiler<'_> {
                     // check if it's native
                     if let Ok(index) = is_native(name.as_str()) {
                         self.add_instr(OpCode::CallNative(index, arguments), token.line_number);
-                    } else if let Ok(index) = is_native_graphics(name.as_str()) {
-                        self.add_instr(OpCode::CallNativeGr(index, arguments), token.line_number);
+                    // } else if let Ok(index) = is_native_graphics(name.as_str()) {
+                    //     self.add_instr(OpCode::CallNativeGr(index, arguments), token.line_number);
                     } else {
                         // get index of fn
                         if let Some(index) = self.functions.iter().position(|x| x.0 == name) {
@@ -271,27 +271,25 @@ impl Compiler<'_> {
     fn add_variable(&mut self, name: String) -> (Option<usize>, bool) {
         let index: Option<usize>;
         let mut added = false;
-        if let Some(i) = self.variables.iter().position(|x| x.name == name) {
+
+        // 0  1  2  3  4  5
+        // a0 b0 c1 x1 e1 f1
+        // x = 2 len = 6
+        if let Some(i) = self.variables.iter().rev().position(|x| x.name == name) {
+            let i = self.variables.len() - 1 - i;
             if self.variables[i].depth > 0 {
-                let start = self
-                    .variables
-                    .iter()
-                    .position(|x| x.depth == self.depth)
-                    .unwrap();
+                let start = self.variables.iter().position(|x| x.depth == 1).unwrap();
                 index = Some(i - start);
             } else {
                 index = None; // global, so we don't use index.
             }
         } else {
             self.variables.push(Variable::new(name, self.depth));
-            let start = self
-                .variables
-                .iter()
-                .position(|x| x.depth == self.depth)
-                .unwrap();
+
             if self.depth == 0 {
                 index = None
             } else {
+                let start = self.variables.iter().position(|x| x.depth == 1).unwrap();
                 index = Some(self.variables.len() - start - 1);
             }
 
@@ -311,13 +309,7 @@ impl Compiler<'_> {
             let message = format!("Duplicate parameters in function {name}");
             self.compile_error_message(&message);
         } else {
-            // let start = if let Some(i) = self.variables.iter().position(|x| x.depth == self.depth) {
-            //     i
-            // } else {
-            //     self.variables.len()
-            // };
             self.variables.push(Variable::new(name, self.depth));
-            // index = self.variables.len() - start - 1;
             added = true;
         }
         added
@@ -326,7 +318,6 @@ impl Compiler<'_> {
     fn variable(&mut self, token: &Token, can_assign: bool) {
         //check to see if this is a function call
         if let TokenType::LeftParan(_) = self.tokens[self.token_pointer] {
-            //self.advance();
             return;
         };
 
@@ -366,11 +357,7 @@ impl Compiler<'_> {
                 if self.variables[index].depth == 0 {
                     self.add_instr(OpCode::GetGlobal(token.lexeme.clone()), token.line_number);
                 } else {
-                    let start = self
-                        .variables
-                        .iter()
-                        .position(|x| x.depth == self.depth)
-                        .unwrap();
+                    let start = self.variables.iter().position(|x| x.depth == 1).unwrap();
                     let index = index - start;
                     self.add_instr(OpCode::GetLocal(index), token.line_number);
                 }
@@ -571,13 +558,17 @@ impl Compiler<'_> {
         if let TokenType::Then(t) = token {
             self.advance();
             let if_index = self.add_instr(OpCode::JumpIfFalse(0), if_token.line_number);
+            self.begin_scope();
             self.block();
+            self.end_scope();
             let else_index = self.add_instr(OpCode::Jump(0), if_token.line_number);
             self.instructions[if_index] =
                 OpCode::JumpIfFalse(self.instructions.len() - if_index - 1);
             if let TokenType::Else(_) = self.tokens[self.token_pointer] {
                 self.advance();
+                self.begin_scope();
                 self.block();
+                self.end_scope();
                 self.instructions[else_index] = OpCode::Jump(
                     (self.instructions.len() - else_index - 1)
                         .try_into()
@@ -601,9 +592,13 @@ impl Compiler<'_> {
         }
         self.expression();
         let jump_index = self.add_instr(OpCode::JumpIfFalse(0), while_token.line_number);
+
+        self.begin_scope();
         if !self.block() {
             return;
         }
+        self.end_scope();
+
         let len: i32 = self.instructions.len().try_into().unwrap();
         self.add_instr(
             OpCode::Jump((loop_start - len).try_into().unwrap()),
@@ -617,6 +612,21 @@ impl Compiler<'_> {
         } else {
             self.compile_error("while without end", while_token)
         }
+    }
+
+    fn begin_scope(&mut self) {
+        self.depth += 1;
+    }
+
+    fn end_scope(&mut self) {
+        if let Some(index) = self.variables.iter().position(|x| x.depth == self.depth) {
+            self.variables.truncate(index);
+
+            for _ in index..self.variables.len() {
+                self.add_instr(OpCode::Pop, 0);
+            }
+        }
+        self.depth -= 1;
     }
 
     fn def_fn(&mut self, fn_token: &Token) {

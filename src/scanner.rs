@@ -283,7 +283,6 @@ pub fn tokenize(code: &str) -> Result<Vec<TokenType>, &str> {
 }
 
 fn start_raw_string(code: &str) -> bool {
-    let mut chars = code.chars();
     code.len() >= 3 && code[..3] == *"\"\"\""
 }
 
@@ -310,7 +309,6 @@ fn match_word(code: &str, word: &str) -> bool {
 }
 
 fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
-    //if code.len() >= 8 && &code[..8] == "function" {
     if match_word(code, "function") {
         (
             TokenType::Function(Token {

@@ -2,8 +2,10 @@ use crate::vm::ValueType;
 //use runtime_fmt::rt_format;
 use num_runtime_fmt::NumFmt;
 
+use super::Vm;
+
 // String functions
-pub fn mid(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn mid<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() < 2 {
         return Err(
             "Incorrect number of parameters passed to function mid(string, start[,length])",
@@ -47,7 +49,7 @@ pub fn mid(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::String(String::from(result)))
 }
 
-pub fn left(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn left<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() < 2 {
         return Err("Incorrect number of parameters passed to function left(string, length)");
     }
@@ -67,7 +69,7 @@ pub fn left(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::String(String::from(&string[..start])))
 }
 
-pub fn right(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn right<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() < 2 {
         return Err("Incorrect number of parameters passed to function right(string, length)");
     }
@@ -113,7 +115,7 @@ pub fn vb_format_num(format: String, number: f64) -> (String, f64) {
     return (format, number);
 }
 
-pub fn str(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn str<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() == 0 {
         return Err("Incorrect number of parameters passed to function str(value)");
     }
@@ -136,7 +138,7 @@ pub fn str(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::String(string))
 }
 
-pub fn lcase(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn lcase<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() == 0 {
         return Err("Incorrect number of parameters passed to function lcase(value)");
     }
@@ -145,7 +147,7 @@ pub fn lcase(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::String(string))
 }
 
-pub fn ucase(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn ucase<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() == 0 {
         return Err("Incorrect number of parameters passed to function ucase(value)");
     }
@@ -154,7 +156,7 @@ pub fn ucase(params: Vec<ValueType>) -> Result<ValueType, &str> {
     Ok(ValueType::String(string))
 }
 
-pub fn instr(params: Vec<ValueType>) -> Result<ValueType, &str> {
+pub fn instr<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let mut params_iter = params.iter();
     let str1 = params_iter.next();
     let str2 = params_iter.next();
