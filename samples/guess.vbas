@@ -5,18 +5,13 @@ stats_file = "./stats.txt"
 cr = chr(10)
 
 valid_words = readlines("./samples/validwords.txt")
-' stats = readlines(stats_file) 'array(0,0,0,0,0,0,0,0,0,0,0)
-' if len(stats) <> 11 then
-'     stats = array(0,0,0,0,0,0,0,0,0,0,0)
-'end
 
 result = main()
 if result < 10 then
-    print("You got it in ", false)
+    print("You got it in ", false, "green")
     print(result+1)
 end
 save_stats(result)
-'stats = readlines(stats_file)
 print_stats()
 
 function save_stats(result)
@@ -41,6 +36,7 @@ function save_stats(result)
 end
 
 function print_stats()
+    print("================")
     print("Streak: {setting_get("streak")}")
     print("Max Streak: {setting_get("max_streak")}")
     
@@ -82,7 +78,6 @@ function main()
             if word < answer then
                 print(word + " is less than the answer")
             else
-                print("you got it")
                 i exit
             end
         end
