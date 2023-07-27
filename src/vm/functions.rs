@@ -192,6 +192,10 @@ pub fn setting_set<'a>(
     params: Vec<ValueType<'a>>,
     vm: &mut Vm<'a>,
 ) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 2 {
+        return Err("Incorrect number of parameters passed to setting_set(key, value)");
+    }
+
     let result = read_to_string(&vm.config_file);
     let mut settings: HashMap<&str, String> = HashMap::new();
 
@@ -203,7 +207,6 @@ pub fn setting_set<'a>(
         settings = serde_json::from_str(&file_contents).unwrap();
     }
 
-    //TODO: check params exist!
     let key = params[0].to_string();
     let value = params[1].to_string();
 
@@ -230,6 +233,10 @@ pub fn setting_get<'a>(
     params: Vec<ValueType<'a>>,
     vm: &mut Vm<'a>,
 ) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 1 {
+        return Err("Incorrect number of parameters passed to setting_get(key)");
+    }
+
     let result = read_to_string(&vm.config_file);
     let settings: HashMap<&str, String>;
 
@@ -238,7 +245,6 @@ pub fn setting_get<'a>(
         Err(_) => return Ok(ValueType::Str("")),
     };
     settings = serde_json::from_str(&file_contents).unwrap();
-    //TODO: check params exist!
     let key = params[0].to_string();
 
     let value = if let Some(value) = settings.get(&key.as_str()) {

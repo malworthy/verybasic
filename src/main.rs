@@ -128,8 +128,75 @@ mod tests {
             end
             print(x)
         ";
-        // x is out of scope so runtime error
+        // x is out of scope so compile error
         assert_eq!(interpret_test(code), "Compile Error");
+    }
+
+    #[test]
+    fn block_scope_if() {
+        let code = "
+            global = 0
+            if true then
+                final = 0
+                a = 1
+                if true then
+                    b = a + 1
+                    if true then 
+                        c = a + b + 1
+                        final = c
+                        if true then
+                            ' do nothing - no crashing cause no variables in scope!
+                        end
+                    end
+                end
+                global = final
+            end
+
+            global
+        ";
+        assert_eq!(interpret_test(code), "Number(4.0)");
+    }
+
+    #[test]
+    fn block_scope_if_else() {
+        let code = "
+            function test(x)
+                result = 0
+                if x == 1 then
+                    b = 20
+                    result = b
+                else
+                    c = 10
+                    result = c
+                end
+
+                result
+            end
+
+            test(1)
+        ";
+        assert_eq!(interpret_test(code), "Number(20.0)");
+    }
+
+    #[test]
+    fn block_scope_if_else2() {
+        let code = "
+            function test(x)
+                result = 0
+                if x == 1 then
+                    b = 20
+                    result = b
+                else
+                    c = 10 
+                    result = c + x
+                end
+
+                result
+            end
+
+            test(2)
+        ";
+        assert_eq!(interpret_test(code), "Number(12.0)");
     }
 
     #[test]

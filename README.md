@@ -174,9 +174,17 @@ String interpolation is just syntatic sugar. The above string in converted to th
 
 ## Built-in functions
 
+### _append(filename, text)_
+
+appends text to a file. If the file doesn't exist it will be created.
+
 ### _array([element],...)_
 
 creates a new array, optionally populating with elements
+
+### _chr(ascii_value)_
+
+Returns a one character string using ascii encoding. Invalid ascii value will return an empty string.
 
 ### _command()_
 
@@ -184,21 +192,21 @@ returns command line arguments as an array.
 
 NOTE: The first argument will be the full path of vbas.exe, 2nd argument name of the script.
 
-### _print(string, [newline=true], [colour=""])_
+### _dir(pattern)_
 
-Prints a string to the console.
+will query the filesystem for all files that match a particular pattern. Uses Unix shell style patterns.
+
+### _floor(number)_
+
+Returns the largest integer not greater than _number_
 
 ### _input([prompt=""])_
 
 reads input from the console
 
-### _seconds()_
+### _print(string, [newline=true], [colour=""])_
 
-returns the number of seconds since the unix epoch
-
-### _dir(pattern)_
-
-will query the filesystem for all files that match a particular pattern. Uses Unix shell style patterns.
+Prints a string to the console.
 
 ### _rand()_
 
@@ -208,13 +216,18 @@ returns a random number between 0 and 1
 
 returns an array of all lines in a text file
 
-### _write(filename, text)_
+### _seconds()_
 
-creates a new file writes text to it. Will overwrite any existing file.
+returns the number of seconds since the unix epoch
 
-### _append(filename, text)_
+### _setting_get(key)_
 
-appends text to a file. If the file doesn't exist it will be created.
+reads a value from the settings. value returns will always be converted to a string.
+Will return an empty string if the setting doesn't exist.
+
+### _setting_set(key, value)_
+
+saves a key/pair value to a config file. config file default name is [name of script].json.
 
 ### _str(value, [format_string])_
 
@@ -227,13 +240,9 @@ Converts any value to a string, optionally applying formatting to numbers.
 
 Converts a string to a number. Will return zero if string cannot be converted to a number, or if the data type is not a string.
 
-### _chr(ascii_value)_
+### _write(filename, text)_
 
-Returns a one character string using ascii encoding. Invalid ascii value will return an empty string.
-
-### _floor(number)_
-
-Returns the largest integer not greater than _number_
+creates a new file writes text to it. Will overwrite any existing file.
 
 ## String functions
 
@@ -249,8 +258,6 @@ Returns a substring containing a specified number of characters from the beginni
 
 returns part of a string using a 1 based index.
 e.g mid("hello",3) returns "llo", mid("hello",3, 2) return "lo"
-
-abcdefghijklmopqrstuvwxyz
 
 ### _right()_
 
@@ -268,13 +275,13 @@ returns the current date using the local timezone
 
 Very Basic has the ability to do basic 2D graphics. You can draw to a canvas and then display the canvas in a window, or save it as a image file.
 
-### _initgraphics(width, height)_
-
-creates a new canvas for drawing. You must call this before calling any other graphics functions.
-
 ### _cleargraphics()_
 
 sets all pixels on the canvas to white
+
+### _initgraphics(width, height)_
+
+creates a new canvas for drawing. You must call this before calling any other graphics functions.
 
 ### _plot(x, y, colour)_
 
