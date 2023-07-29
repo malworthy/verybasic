@@ -38,6 +38,7 @@ pub enum OpCode {
     JumpIfFalse(usize),
     Jump(i32),
     Subscript,
+    SubscriptSet,
     Return,
 }
 
@@ -76,6 +77,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::SetGlobal(name) => format!("{:05} SETG {}", addr, name),
             OpCode::SetLocal(index) => format!("{:05} SET  {}", addr, index),
             OpCode::Subscript => format!("{:05} SBPT", addr),
+            OpCode::SubscriptSet => format!("{:05} SSET", addr),
             OpCode::Subtract => format!("{:05} SUB", addr),
             OpCode::ConstantBool(val) => format!("{:05} BOOL {}", addr, val),
         };
@@ -191,11 +193,49 @@ impl Compiler<'_> {
     }
 
     fn subscript(&mut self, token: &Token) -> bool {
+        let mut can_set = true;
+        // save the variable name
+        let variable = if let TokenType::Identifier(t) = &self.tokens[self.token_pointer - 2] {
+            t
+        } else {
+            can_set = false;
+            token
+        };
+
+        //dbg!(&variable);
         // get the index of the array
         self.expression();
         if let TokenType::RightBracket(_) = &self.tokens[self.token_pointer] {
-            self.add_instr(OpCode::Subscript, token.line_number);
-            self.advance();
+            if let TokenType::Equals(_) = &self.tokens[self.token_pointer + 1] {
+                if !can_set {
+                    self.compile_error(
+                        "Cannot set value of subscript on something that is not a variable!",
+                        token,
+                    );
+                    return false;
+                }
+                // subscript set
+                self.advance(); // over ]
+                self.advance(); // over =
+                self.expression();
+                self.add_instr(OpCode::SubscriptSet, token.line_number);
+                // copy result back into the variable
+                let (index, _) = self.add_variable(variable.lexeme.clone());
+                match index {
+                    Some(index) => {
+                        self.add_instr(OpCode::SetLocal(index), token.line_number);
+                    }
+                    None => {
+                        self.add_instr(
+                            OpCode::SetGlobal(variable.lexeme.clone()),
+                            token.line_number,
+                        );
+                    }
+                }
+            } else {
+                self.add_instr(OpCode::Subscript, token.line_number);
+                self.advance();
+            }
         } else {
             self.compile_error("Missing ]", token);
             return false;

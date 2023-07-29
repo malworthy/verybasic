@@ -3,6 +3,7 @@ use chrono::{DateTime, Local};
 use glob::glob;
 use hex;
 use rand;
+use serde_json::Value;
 use std::{
     collections::HashMap,
     env,
@@ -150,6 +151,43 @@ pub fn dir<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'
 pub fn random<'a>(_params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let number = rand::random::<f64>();
     Ok(ValueType::Number(number))
+}
+
+pub fn compare(a: &ValueType, b: &ValueType) -> std::cmp::Ordering {
+    let a = match a {
+        ValueType::Number(n) => n,
+        _ => &0.0,
+    };
+    let b = match b {
+        ValueType::Number(n) => n,
+        _ => &0.0,
+    };
+    a.partial_cmp(&b).unwrap()
+}
+
+pub fn sort<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if let Some(param) = params.first() {
+        if let ValueType::Array(vec) = param {
+            let mut result = vec.clone();
+            result.sort_by(|a, b| compare(a, b));
+            return Ok(ValueType::Array(result));
+        }
+    }
+    Err("Incorrect parameters passed to sort(array)")
+}
+
+pub fn push<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 2 {
+        return Err("Incorrect parameters passed to push(array, value)");
+    }
+    let array = &params[0];
+    let value = params[1].clone();
+    if let ValueType::Array(vec) = array {
+        let mut result = vec.clone();
+        result.push(value);
+        return Ok(ValueType::Array(result));
+    }
+    Err("Incorrect parameters passed to  push(array, value)")
 }
 
 pub fn chr<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {

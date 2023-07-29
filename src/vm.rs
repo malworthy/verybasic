@@ -113,7 +113,7 @@ impl<'a> Vm<'a> {
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
         &str,
-    ); 30] = [
+    ); 32] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (functions::array, "array"),
@@ -144,6 +144,8 @@ impl<'a> Vm<'a> {
         (functions::setting_set, "setting_set"),
         (functions::setting_get, "setting_get"),
         (functions::stack, "stack"),
+        (functions::sort, "sort"),
+        (functions::push, "push"),
     ];
 
     pub fn debug_stack(&mut self) {
@@ -601,6 +603,32 @@ impl<'a> Vm<'a> {
                                 self.runtime_error("Subscript out of range");
                                 return false;
                             }
+                        } else {
+                            self.runtime_error("Subscript index must be a number");
+                            return false;
+                        }
+                    } else {
+                        self.runtime_error("Subscript only works on arrays");
+                        return false;
+                    }
+                }
+                OpCode::SubscriptSet => {
+                    pop!(self, value);
+                    pop!(self, index);
+                    pop!(self, array);
+                    let mut x = array.clone();
+                    if let ValueType::Array(ref mut a) = x {
+                        if let ValueType::Number(index) = index {
+                            let i = *index as usize;
+                            a[i] = value.clone();
+                            self.push(x);
+
+                            // if let Some(val) = a.get(i) {
+                            //     self.push(val.clone());
+                            // } else {
+                            //     self.runtime_error("Subscript out of range");
+                            //     return false;
+                            // }
                         } else {
                             self.runtime_error("Subscript index must be a number");
                             return false;

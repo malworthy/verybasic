@@ -1,0 +1,84 @@
+bowls = array(
+    array(10,0),
+    array(10,0),
+    array(10,0),
+    array(10,0),
+    array(10,0),
+    array(10,0),
+    array(10,0),
+    array(10,0),
+)
+
+function move(num, force)
+    yv = 1
+    xv = 0.4
+    bias = -((xv / force) * 2)
+    i = 0
+    x = bowls[num][0]
+    y = bowls[num][1]
+    while i < force
+        x = x + xv
+        y = y + yv
+        i=i+1
+        xv = xv + bias
+    end
+    bowls[num] = array(x,y)
+end
+
+function contains(array, val)
+    i = 0
+    while i < len(array)
+        if array[i] == val then
+            true exit
+        end
+        i = i + 1
+    end
+    false
+end
+
+function display()
+    row = 20
+    while row > 0
+        b = 0
+        cols_a = array()
+        cols_b = array()
+        while b < 8
+            coord = bowls[b]
+            x = floor(coord[0])
+            y = floor(coord[1])
+            if row == y then
+                if b mod 2 == 0 then
+                    cols_a = push(cols_a, x)
+                else
+                    cols_b = push(cols_b, x)
+                end
+            end
+            b=b+1
+        end
+
+        print("|", false)
+        col = 0 
+        while col < 20
+            if contains(cols_a, col) then
+                print("*", false, "red")
+            else
+                if contains(cols_b, col) then
+                    print("*", false, "blue")
+                else
+                    print(" ", false)
+                end
+            end
+            col = col + 1
+        end
+        print("|")
+        row=row-1
+    end
+end
+
+
+move(0,15)
+move(1,17)
+move(2,10)
+move(3,8)
+display()
+

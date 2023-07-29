@@ -118,6 +118,27 @@ mod tests {
     }
 
     #[test]
+    fn array_in_array() {
+        let code = "
+            a = array(array(5,10), array(6,11), array(7,12))
+            a[1][1]
+        ";
+        // x is out of scope so compile error
+        assert_eq!(interpret_test(code), "Number(11.0)");
+    }
+
+    #[test]
+    fn subscript_set() {
+        let code = "
+            a = array(1,2,3)
+            a[0] = 5
+            a[0]
+        ";
+        // x is out of scope so compile error
+        assert_eq!(interpret_test(code), "Number(5.0)");
+    }
+
+    #[test]
     fn block_scope_while() {
         let code = "
             i=0
