@@ -33,9 +33,7 @@ struct Frame {
     frame_pointer: usize,
 }
 
-// fn runtime_error(message: &str, line_number: u32) {
-//     eprintln!("Runtime error: {} in line {line_number}", message.red());
-// }
+const MAX_STACK: usize = 512;
 
 fn system_command<'a>(
     command: &'a String,
@@ -85,7 +83,7 @@ macro_rules! pop {
 }
 
 pub struct Vm<'a> {
-    stack: [ValueType<'a>; 256],
+    stack: [ValueType<'a>; MAX_STACK],
     stack_pointer: usize,
     globals: HashMap<&'a String, ValueType<'a>>,
     pub return_value: Option<ValueType<'a>>,
@@ -99,7 +97,7 @@ impl<'a> Vm<'a> {
     pub fn new(line_numbers: &'a mut Vec<u32>) -> Self {
         Vm {
             //stack: Vec::new(),
-            stack: [EMPTY_ELEMENT; 256],
+            stack: [EMPTY_ELEMENT; MAX_STACK],
             globals: HashMap::new(),
             return_value: Option::None,
             gr: graphics::Graphics::new(),
@@ -163,7 +161,7 @@ impl<'a> Vm<'a> {
     }
 
     fn push(&mut self, value: ValueType<'a>) {
-        if self.stack_pointer > 255 {
+        if self.stack_pointer >= MAX_STACK {
             self.runtime_error("Stack Overflow");
         }
         self.stack[self.stack_pointer] = value;

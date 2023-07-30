@@ -118,6 +118,45 @@ mod tests {
     }
 
     #[test]
+    fn for_loop() {
+        let code = "
+            for i = 1 to 5
+                print(i)
+            next
+        ";
+
+        assert_eq!(interpret_test(code), "String(\"5\")");
+    }
+
+    #[test]
+    fn for_loop2() {
+        let code = "
+            for i = 0 to 0
+                print(i)
+            next
+
+            for i = 10 to 0
+                1234
+            next
+        ";
+
+        assert_eq!(interpret_test(code), "String(\"0\")");
+    }
+
+    #[test]
+    fn for_loop_scope() {
+        let code = "
+            i = 10
+            for i = 1 to 5
+                print(i)
+            next
+            i
+        ";
+
+        assert_eq!(interpret_test(code), "Number(10.0)");
+    }
+
+    #[test]
     fn array_in_array() {
         let code = "
             a = array(array(5,10), array(6,11), array(7,12))

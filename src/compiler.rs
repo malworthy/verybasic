@@ -355,6 +355,41 @@ impl Compiler<'_> {
         added
     }
 
+    fn for_variable(&mut self, token: &Token) -> usize {
+        //check to see if we are setting a variable
+        if let TokenType::Equals(_) = self.tokens[self.token_pointer] {
+            self.advance();
+        } else {
+            panic!("Invalid use of for: TODO: Handle this!");
+        };
+
+        self.expression();
+        //let (index, added) = self.add_variable(token.lexeme.clone());
+
+        self.variables
+            .push(Variable::new(token.lexeme.clone(), self.depth));
+
+        let start = self.variables.iter().position(|x| x.depth == 1).unwrap();
+        let index = self.variables.len() - start - 1;
+        self.add_instr(OpCode::DefineLocal(index), token.line_number);
+
+        index
+
+        // match index {
+        //     Some(index) => {
+        //         if added {
+        //             self.add_instr(OpCode::DefineLocal(index), token.line_number);
+        //         } else {
+        //             panic!("Must always create new loop variable");
+        //         }
+        //         return index;
+        //     }
+        //     None => {
+        //         panic!("Attempt to make loop variable global");
+        //     }
+        // }
+    }
+
     fn variable(&mut self, token: &Token, can_assign: bool) {
         //check to see if this is a function call
         if let TokenType::LeftParan(_) = self.tokens[self.token_pointer] {
@@ -544,6 +579,7 @@ impl Compiler<'_> {
 
         // run prefix rule
         let token = &self.tokens[self.token_pointer - 1];
+        //dbg!(&token);
         let can_assign = precedence <= precedence::ASSIGNMENT;
         match token {
             TokenType::Number(t) => self.number(t),
@@ -652,6 +688,64 @@ impl Compiler<'_> {
         } else {
             self.compile_error("while without end", while_token)
         }
+    }
+
+    fn for_statement(&mut self, token: &Token) {
+        //dbg!(&self.tokens);
+        if !self.advance() {
+            self.compile_error("Invalid use of 'for' statement", token);
+            return;
+        }
+        self.begin_scope();
+        // define the loop variable
+        let var_index =
+            if let TokenType::Identifier(variable_token) = &self.tokens[self.token_pointer] {
+                if !self.advance() {
+                    self.compile_error("Invalid use of 'for' statement", token);
+                    return;
+                }
+                self.for_variable(&variable_token)
+            } else {
+                self.compile_error("Invalid use of 'for' statement", token);
+                return;
+            };
+
+        let loop_start: i32 = (self.instructions.len() - 1) as i32;
+
+        // to [expression]
+        if let TokenType::To(_) = &self.tokens[self.token_pointer] {
+            if !self.advance() {
+                self.compile_error("Invalid use of 'for' statement", token);
+                return;
+            }
+            self.expression();
+            self.add_instr(OpCode::GetLocal(var_index), token.line_number);
+            self.add_instr(OpCode::GreaterThanEq, token.line_number);
+            let jump_index = self.add_instr(OpCode::JumpIfFalse(0), token.line_number);
+            self.for_block();
+
+            // inc the variable
+            self.add_instr(OpCode::GetLocal(var_index), token.line_number);
+            self.add_instr(OpCode::ConstantNum(1.0), token.line_number);
+            self.add_instr(OpCode::Add, token.line_number);
+            self.add_instr(OpCode::SetLocal(var_index), token.line_number);
+
+            self.advance();
+
+            //
+            let len: i32 = self.instructions.len() as i32;
+            self.add_instr(OpCode::Jump((loop_start - len) as i32), token.line_number);
+            self.instructions[jump_index] =
+                OpCode::JumpIfFalse(self.instructions.len() - jump_index - 1);
+            //
+        } else {
+            self.compile_error("Invalid use of 'for' statement", token);
+            return;
+        }
+        // to 10 < x
+        //dbg!(&self.instructions);
+
+        self.end_scope();
     }
 
     fn begin_scope(&mut self) {
@@ -789,12 +883,30 @@ impl Compiler<'_> {
         true
     }
 
+    fn for_block(&mut self) -> bool {
+        loop {
+            if let Some(token) = self.tokens.get(self.token_pointer) {
+                match token {
+                    TokenType::Next(_) | TokenType::Eof => break,
+                    _ => {
+                        self.statement();
+                    }
+                }
+            } else {
+                self.compile_error_message("For without next");
+                return false;
+            }
+        }
+        true
+    }
+
     fn statement(&mut self) {
         let token = &self.tokens[self.token_pointer];
         match token {
             TokenType::If(t) => self.if_statement(t),
             TokenType::While(t) => self.while_statement(t),
             TokenType::Function(t) => self.def_fn(t),
+            TokenType::For(t) => self.for_statement(t),
             TokenType::Return(t) => {
                 self.add_instr(OpCode::Return, t.line_number);
                 self.advance();

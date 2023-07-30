@@ -7,54 +7,75 @@ bowls = array(
     array(10,0),
     array(10,0),
     array(10,0),
+    array(10,0),
 )
+
+function check_collision(x, y, other)
+    other_x = bowls[other][0]
+    other_y = bowls[other][1]
+    floor(x) == floor(other_x) and floor(y) == floor(other_y)
+end
 
 function move(num, force)
     yv = 1
     xv = 0.4
     bias = -((xv / force) * 2)
-    i = 0
+
+    xv = xv - 0.1 + (rand()*0.2)
+
     x = bowls[num][0]
     y = bowls[num][1]
-    while i < force
+    
+    for i = 1 to force
         x = x + xv
         y = y + yv
-        i=i+1
         xv = xv + bias
-    end
-    bowls[num] = array(x,y)
+        for b = 0 to len(bowls)-1
+            if b <> num and check_collision(x,y,b) then
+                'print("0: {bowls[0]} 1: {bowls[1]}")
+                'print("{num} hit {b} : i {i}, force {force}")
+                'if i == force then exit end
+                move(b, force+1-i)
+            end
+        next
+        bowls[num] = array(x,y)
+    next  
 end
 
 function contains(array, val)
-    i = 0
-    while i < len(array)
+    for i = 0 to len(array) - 1
         if array[i] == val then
             true exit
         end
-        i = i + 1
-    end
+    next
     false
 end
 
 function display()
     row = 20
     while row > 0
-        b = 0
+        'b = 0
         cols_a = array()
         cols_b = array()
-        while b < 8
+        col_jack = -1
+
+        for b = 0 to len(bowls) - 1
             coord = bowls[b]
             x = floor(coord[0])
             y = floor(coord[1])
             if row == y then
-                if b mod 2 == 0 then
-                    cols_a = push(cols_a, x)
+                if b == 0 then
+                    col_jack = x
                 else
-                    cols_b = push(cols_b, x)
+                    if b mod 2 == 0 then
+                        cols_a = push(cols_a, x)
+                    else
+                        cols_b = push(cols_b, x)
+                    end
                 end
             end
-            b=b+1
-        end
+            'b=b+1
+        next
 
         print("|", false)
         col = 0 
@@ -65,7 +86,11 @@ function display()
                 if contains(cols_b, col) then
                     print("*", false, "blue")
                 else
-                    print(" ", false)
+                    if col_jack == col then
+                        print(".", false)
+                    else
+                        print(" ", false)
+                    end
                 end
             end
             col = col + 1
@@ -76,9 +101,15 @@ function display()
 end
 
 
-move(0,15)
+bowls[0] = array(10,17)
 move(1,17)
-move(2,10)
-move(3,8)
+move(2,17)
+move(3,17)
+move(4,17)
+
+move(5,17)
+move(6,17)
+move(7,17)
+move(8,17)
 display()
 

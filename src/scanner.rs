@@ -53,6 +53,12 @@ pub enum TokenType {
     Bool(Token),
     Hat(Token),
     Mod(Token),
+
+    For(Token),
+    Next(Token),
+    To(Token),
+    Step(Token),
+
     Eof,
 }
 
@@ -90,6 +96,10 @@ impl TokenType {
             | TokenType::Number(t)
             | TokenType::Hat(t)
             | TokenType::Mod(t)
+            | TokenType::For(t)
+            | TokenType::To(t)
+            | TokenType::Step(t)
+            | TokenType::Next(t)
             | TokenType::Bool(t) => Some(t),
             _ => None,
         }
@@ -371,6 +381,42 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                 precedence: precedence::NONE,
             }),
             4,
+        )
+    } else if match_word(code, "next") {
+        (
+            TokenType::Next(Token {
+                lexeme: String::from("next"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            4,
+        )
+    } else if match_word(code, "step") {
+        (
+            TokenType::Step(Token {
+                lexeme: String::from("step"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            4,
+        )
+    } else if match_word(code, "for") {
+        (
+            TokenType::For(Token {
+                lexeme: String::from("for"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            3,
+        )
+    } else if match_word(code, "to") {
+        (
+            TokenType::To(Token {
+                lexeme: String::from("to"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            2,
         )
     } else if match_word(code, "and") {
         (
