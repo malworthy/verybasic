@@ -120,24 +120,29 @@ mod tests {
     #[test]
     fn for_loop() {
         let code = "
+            glob = 0
             for i = 1 to 5
                 print(i)
+                glob = i
             next
+            glob
         ";
 
-        assert_eq!(interpret_test(code), "String(\"5\")");
+        assert_eq!(interpret_test(code), "Number(5.0)");
     }
 
     #[test]
     fn for_loop2() {
         let code = "
+            result = 0
             for i = 0 to 0
-                print(i)
+                result = print(i)
             next
 
             for i = 10 to 0
                 1234
             next
+            result
         ";
 
         assert_eq!(interpret_test(code), "String(\"0\")");
@@ -527,6 +532,12 @@ mod tests {
         end
         ";
         assert_eq!(interpret_test(code), "Compile Error");
+    }
+
+    #[test]
+    fn stack_overflow() {
+        let code = "function stack_overflow(x) stack_overflow(x+1) end stack_overflow(1)";
+        assert_eq!(interpret_test(code), "Runtime Error");
     }
 
     #[test]

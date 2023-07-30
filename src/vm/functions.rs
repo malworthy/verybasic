@@ -378,6 +378,18 @@ pub fn floor<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType
     }
 }
 
+pub fn sqrt<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if let Some(param) = params.get(0) {
+        if let ValueType::Number(val) = param {
+            return Ok(ValueType::Number(val.sqrt()));
+        } else {
+            return Err("Parameter passed to function 'floor(num)' must be a number.");
+        }
+    } else {
+        return Err("Incorrect number of parameters passed to function 'floor(num)'");
+    }
+}
+
 // Graphics functions
 pub fn rgb<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let r: u8;

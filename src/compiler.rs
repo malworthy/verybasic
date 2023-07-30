@@ -32,6 +32,7 @@ pub enum OpCode {
     CallNative(usize, u32),
     //CallNativeGr(usize, u32),
     Pop,
+    Pop2,
     SetLocal(usize),
     DefineLocal(usize),
     GetLocal(usize),
@@ -73,6 +74,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::NotEqual => format!("{:05} NEQ", addr),
             OpCode::Or => format!("{:05} OR", addr),
             OpCode::Pop => format!("{:05} POP", addr),
+            OpCode::Pop2 => format!("{:05} POP2", addr),
             OpCode::Return => format!("{:05} RET", addr),
             OpCode::SetGlobal(name) => format!("{:05} SETG {}", addr, name),
             OpCode::SetLocal(index) => format!("{:05} SET  {}", addr, index),
@@ -729,6 +731,7 @@ impl Compiler<'_> {
             self.add_instr(OpCode::ConstantNum(1.0), token.line_number);
             self.add_instr(OpCode::Add, token.line_number);
             self.add_instr(OpCode::SetLocal(var_index), token.line_number);
+            self.add_instr(OpCode::Pop, token.line_number);
 
             self.advance();
 
@@ -754,10 +757,11 @@ impl Compiler<'_> {
 
     fn end_scope(&mut self) {
         if let Some(index) = self.variables.iter().position(|x| x.depth == self.depth) {
+            let vars_to_pop = self.variables.len() - index;
             self.variables.truncate(index);
 
-            for _ in index..self.variables.len() {
-                self.add_instr(OpCode::Pop, 0);
+            for _ in index..vars_to_pop {
+                self.add_instr(OpCode::Pop2, 0);
             }
         }
         self.depth -= 1;

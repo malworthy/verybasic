@@ -1,19 +1,22 @@
 bowls = array(
-    array(10,0),
-    array(10,0),
-    array(10,0),
-    array(10,0),
-    array(10,0),
-    array(10,0),
-    array(10,0),
-    array(10,0),
-    array(10,0),
+    array(10,0) ' the jack
+    ' array(10,0), ' Player 1
+    ' array(10,0), ' Player 2
+    ' array(10,0), ' etc
+    ' array(10,0),
+    ' array(10,0),
+    ' array(10,0),
+    ' array(10,0),
+    ' array(10,0),
 )
+' Constants
+WIDTH = 20
+HEIGHT = 20
 
 function check_collision(x, y, other)
     other_x = bowls[other][0]
     other_y = bowls[other][1]
-    floor(x) == floor(other_x) and floor(y) == floor(other_y)
+    floor(x + 0.5) == floor(other_x + 0.5) and floor(y + 0.5) == floor(other_y + 0.5)
 end
 
 function move(num, force)
@@ -42,74 +45,96 @@ function move(num, force)
     next  
 end
 
-function contains(array, val)
+function find_index(array, val)
     for i = 0 to len(array) - 1
-        if array[i] == val then
-            true exit
+        if array[i][0] == val then
+            i exit
         end
     next
-    false
+    -1
 end
 
 function display()
-    row = 20
+    row = HEIGHT
     while row > 0
-        'b = 0
         cols_a = array()
         cols_b = array()
         col_jack = -1
 
+        cols = array()
+
         for b = 0 to len(bowls) - 1
             coord = bowls[b]
-            x = floor(coord[0])
-            y = floor(coord[1])
+            x = floor(coord[0] + 0.5)
+            y = floor(coord[1] + 0.5)
             if row == y then
-                if b == 0 then
-                    col_jack = x
-                else
-                    if b mod 2 == 0 then
-                        cols_a = push(cols_a, x)
-                    else
-                        cols_b = push(cols_b, x)
-                    end
-                end
+                cols = push(cols, array(x,b))
             end
-            'b=b+1
         next
 
-        print("|", false)
-        col = 0 
-        while col < 20
-            if contains(cols_a, col) then
-                print("*", false, "red")
-            else
-                if contains(cols_b, col) then
-                    print("*", false, "blue")
+        print("{row,"3.0"}|", false)
+        'col = 0 
+        'while col < 20
+        for col = 0 to WIDTH
+            index = find_index(cols, col)
+            if index >= 0 then
+                b = cols[index][1]
+                if b == 0 then
+                    print(".", false)
                 else
-                    if col_jack == col then
-                        print(".", false)
+                    if b mod 2 == 0 then
+                        print("{b}", false, "red")
                     else
-                        print(" ", false)
+                        print("{b}", false, "blue")
                     end
                 end
+            else
+                print(" ", false)
             end
-            col = col + 1
-        end
+            
+            'col = col + 1
+        next
         print("|")
         row=row-1
     end
 end
 
+function calc_distance(bowl)
+    jack_x = bowls[0][0]
+    jack_y = bowls[0][1]
+    x = bowls[bowl][0]
+    y = bowls[bowl][1]
+
+    sqrt((x - jack_x)^2 + (y - jack_y)^2)
+end
+
 
 bowls[0] = array(10,17)
-move(1,17)
-move(2,17)
-move(3,17)
-move(4,17)
+' move(1,17)
+' move(2,17)
+' move(3,17)
+' move(4,17)
 
-move(5,17)
-move(6,17)
-move(7,17)
-move(8,17)
+' move(5,17)
+' move(6,17)
+' move(7,17)
+' move(8,17)
+
 display()
+
+for go = 1 to 8
+    inp = input("")
+    bowls = push(bowls, array(10 , 0))
+    move(go, 17)
+
+    for i = 1 to len(bowls) - 1
+        print("bowl {i} is {calc_distance(i)} from the jack")
+    next
+
+    display()
+next
+
+
+
+
 
