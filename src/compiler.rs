@@ -331,7 +331,7 @@ impl Compiler<'_> {
             if self.depth == 0 {
                 index = None
             } else {
-                let start = self.variables.iter().position(|x| x.depth == 1).unwrap();
+                let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
                 index = Some(self.variables.len() - start - 1);
             }
 
@@ -434,7 +434,7 @@ impl Compiler<'_> {
                 if self.variables[index].depth == 0 {
                     self.add_instr(OpCode::GetGlobal(token.lexeme.clone()), token.line_number);
                 } else {
-                    let start = self.variables.iter().position(|x| x.depth == 1).unwrap();
+                    let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
                     let index = index - start;
                     self.add_instr(OpCode::GetLocal(index), token.line_number);
                 }

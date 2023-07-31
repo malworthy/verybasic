@@ -118,6 +118,25 @@ mod tests {
     }
 
     #[test]
+    fn while_loop_crash() {
+        let code = "
+        function get_human_move()
+            while true
+                inp = 1 'input(\"Enter your move: \")
+                direction = left(inp,1)
+                force = val(mid(inp,2))
+                if force > 5 and direction ==  \"<\" or direction == \">\"  then
+                    inp exit
+                else
+                    print(\"invalid bowl\")
+                end
+            end
+        end
+        ";
+        interpret_test(code);
+    }
+
+    #[test]
     fn for_loop() {
         let code = "
             glob = 0

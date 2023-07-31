@@ -1,14 +1,7 @@
 bowls = array(
     array(10,0) ' the jack
-    ' array(10,0), ' Player 1
-    ' array(10,0), ' Player 2
-    ' array(10,0), ' etc
-    ' array(10,0),
-    ' array(10,0),
-    ' array(10,0),
-    ' array(10,0),
-    ' array(10,0),
 )
+
 ' Constants
 WIDTH = 20
 HEIGHT = 20
@@ -19,12 +12,17 @@ function check_collision(x, y, other)
     floor(x + 0.5) == floor(other_x + 0.5) and floor(y + 0.5) == floor(other_y + 0.5)
 end
 
-function move(num, force)
+function move(num, force, direction)
     yv = 1
     xv = 0.4
     bias = -((xv / force) * 2)
 
     xv = xv - 0.1 + (rand()*0.2)
+
+    if direction == "<" then
+        xv = -xv
+        bias = -bias
+    end
 
     x = bowls[num][0]
     y = bowls[num][1]
@@ -35,10 +33,7 @@ function move(num, force)
         xv = xv + bias
         for b = 0 to len(bowls)-1
             if b <> num and check_collision(x,y,b) then
-                'print("0: {bowls[0]} 1: {bowls[1]}")
-                'print("{num} hit {b} : i {i}, force {force}")
-                'if i == force then exit end
-                move(b, force+1-i)
+                move(b, force+1-i, direction)
             end
         next
         bowls[num] = array(x,y)
@@ -54,8 +49,44 @@ function find_index(array, val)
     -1
 end
 
+function text_line(char, len)
+    for i = 0 to len
+        print(char, false)
+    next
+end
+
+function round(n)
+    floor(n+0.5)
+end
+
 function display()
     row = HEIGHT
+    ' print bank
+    for b = 1 to len(bowls)-1
+        if round(bowls[b][1]) > HEIGHT then
+            if b mod 2 == 0 then
+                print("{b}", false, "red")
+            else
+                print("{b}", false, "blue")
+            end
+        end
+    next
+    ' print ditch
+    print("")
+    text_line("=", WIDTH+4)
+    print("")
+    print(" D|", false)
+    for col = 0 to WIDTH
+        if round(bowls[0][1]) > HEIGHT and round(bowls[0][0]) == col then
+            print(".", false)
+        else
+            print(" ", false)
+        end
+    next
+    print("|")
+    text_line("=", WIDTH+4)
+    print("")
+    ' print rink
     while row > 0
         cols_a = array()
         cols_b = array()
@@ -73,8 +104,6 @@ function display()
         next
 
         print("{row,"3.0"}|", false)
-        'col = 0 
-        'while col < 20
         for col = 0 to WIDTH
             index = find_index(cols, col)
             if index >= 0 then
@@ -91,8 +120,6 @@ function display()
             else
                 print(" ", false)
             end
-            
-            'col = col + 1
         next
         print("|")
         row=row-1
@@ -108,24 +135,87 @@ function calc_distance(bowl)
     sqrt((x - jack_x)^2 + (y - jack_y)^2)
 end
 
+function calc_score()
+    team_a = array()
+    team_b = array()
+    if round(bowls[0][1]) > HEIGHT then
+        bowls[0]=array(bowls[0][0], HEIGHT + 1)
+    end
+    for b = 1 to len(bowls)-1
+        dist = 0
+        if round(bowls[b][1]) > HEIGHT then
+            ' ditch no score
+            dist = 999
+        else
+            dist = calc_distance(b)
+        end
+        if b mod 2 == 0 then
+            team_a = push(team_a, dist)
+        else
+            team_b = push(team_b, dist)
+        end
+    next
+    score = 0
+    team_a = sort(team_a)
+    team_b = sort(team_b)
+    if team_a[0] < team_b[0] then
+        ' player a winner
+        for i = 0 to len(team_a)-1
+            if team_a[i] < team_b[0] then
+                score = score + 1
+            end
+        next
+        print("red player won with {score}")
+    else
+        ' player b winner
+        for i = 0 to len(team_b)-1
+            if team_b[i] < team_a[0] then
+                score = score + 1
+            end
+        next
+        print("blue player won with {score}")
+    end
+
+end
+
+function get_computer_move()
+    dir = ">"
+    if rand() > 0.5 then dir = "<" end
+    force = bowls[0][1]
+    "{dir}{force}"
+end
+
+function get_human_move()
+    while true
+        inp = input("Enter your move: ")
+        direction = left(inp,1)
+        force = val(mid(inp,2))
+        if force > 5 and direction ==  "<" or direction == ">"  then
+            inp exit
+        else
+            print("invalid bowl")
+        end
+    end
+end
+
 
 bowls[0] = array(10,17)
-' move(1,17)
-' move(2,17)
-' move(3,17)
-' move(4,17)
-
-' move(5,17)
-' move(6,17)
-' move(7,17)
-' move(8,17)
-
 display()
 
 for go = 1 to 8
-    inp = input("")
+    inp = ""
+    if go mod 2 == 0 then
+        inp = get_computer_move()
+    else
+        inp = get_human_move()
+    end
+    direction = left(inp,1)
+    force = val(mid(inp,2))
+    if force == 0 then
+        print("invalid bowl")
+    end
     bowls = push(bowls, array(10 , 0))
-    move(go, 17)
+    move(go, force, direction)
 
     for i = 1 to len(bowls) - 1
         print("bowl {i} is {calc_distance(i)} from the jack")
@@ -133,6 +223,8 @@ for go = 1 to 8
 
     display()
 next
+
+calc_score()
 
 
 

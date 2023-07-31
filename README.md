@@ -236,6 +236,10 @@ Converts any value to a string, optionally applying formatting to numbers.
 - Nx format to x decimal places, use thousands separator e.g. `str(123456.456,"N2") => 123,456.46`
 - Fx format to x decimal places, don't use thousands separator e.g. `str(123456.456,"F2") => 123456.46`
 
+### _sqrt(num)_
+
+returns the square root of _num_
+
 ### _val(string)_
 
 Converts a string to a number. Will return zero if string cannot be converted to a number, or if the data type is not a string.
@@ -287,13 +291,13 @@ creates a new canvas for drawing. You must call this before calling any other gr
 
 sets the colour at x,y coordinates on the canvas. Colour can either be a pre-defined colour string or a hex code (e.g. #ADFF2F)
 
-### _window()_
-
-display a window showing the canvas. Size of window will be the same as the canvas
-
 ### _rgb(red,green,blue)_
 
 returns a hex code for the specified red, green and blue values.
+
+### _window()_
+
+display a window showing the canvas. Size of window will be the same as the canvas
 
 ### Colours
 
