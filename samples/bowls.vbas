@@ -2,9 +2,33 @@ bowls = array(
     array(10,0) ' the jack
 )
 
+' scores
+human = 0
+computer = 0
+
 ' Constants
 WIDTH = 20
 HEIGHT = 20
+
+' Entry point
+instructions()
+while (human < 5 and computer < 5) or human == computer
+    
+    play_end()
+    calc_score()
+
+    ' reset bowls
+    bowls = array(
+        array(10,0) ' the jack
+    )
+end
+
+if human > computer then
+    print("You win!")
+else
+    print("Compuer wins!")
+end
+' Functions
 
 function check_collision(x, y, other)
     other_x = bowls[other][0]
@@ -26,6 +50,10 @@ function move(num, force, direction)
 
     x = bowls[num][0]
     y = bowls[num][1]
+
+    if force > HEIGHT + 1 then
+        force = HEIGHT + 1
+    end
     
     for i = 1 to force
         x = x + xv
@@ -165,7 +193,8 @@ function calc_score()
                 score = score + 1
             end
         next
-        print("red player won with {score}")
+        computer = computer + score
+        print("Computer won this end with {score}", true, "red")
     else
         ' player b winner
         for i = 0 to len(team_b)-1
@@ -173,21 +202,24 @@ function calc_score()
                 score = score + 1
             end
         next
-        print("blue player won with {score}")
+        human = human + score
+        print("You won this end with {score}", true, "blue")
     end
-
+    print("Human: {human}")
+    print("Computer: {computer}")
 end
 
 function get_computer_move()
     dir = ">"
     if rand() > 0.5 then dir = "<" end
     force = bowls[0][1]
+    if force > HEIGHT then force =  HEIGHT end
     "{dir}{force}"
 end
 
 function get_human_move()
     while true
-        inp = input("Enter your move: ")
+        inp = input("Deliver your bowl: ")
         direction = left(inp,1)
         force = val(mid(inp,2))
         if force > 5 and direction ==  "<" or direction == ">"  then
@@ -198,33 +230,72 @@ function get_human_move()
     end
 end
 
+function instructions()
+    art = "
+        B A S I C    B O W L S
 
-bowls[0] = array(10,17)
-display()
+        o  o                
+     o        o              
+    o          o      
+    o          o         o     
+     o        o        o   o
+        o  o             o 
 
-for go = 1 to 8
-    inp = ""
-    if go mod 2 == 0 then
-        inp = get_computer_move()
-    else
-        inp = get_human_move()
+    To roll:  [Direction][Force]
+      < = backhand (left)
+      > = forehand (right)
+
+      e.g. >17 = Forehand with a force of 17
+
+    To roll the jack enter force only.
+
+    No touchers - Bowls in the ditch out of play
+    Jack in the ditch still counts
+    Physics of ball collisions not realistic
+    Human always rolls the jack
+
+    Have fun!
+
+    "
+    print(art)
+    print("Human player is BLUE", true, "blue")
+    print("Computer player is RED", true, "red")
+   
+end
+
+function play_end()
+    inp = input("Roll the jack: ")
+    force = val(inp)
+    if force < 10 or force > HEIGHT then
+        force = 15
     end
-    direction = left(inp,1)
-    force = val(mid(inp,2))
-    if force == 0 then
-        print("invalid bowl")
-    end
-    bowls = push(bowls, array(10 , 0))
-    move(go, force, direction)
-
-    for i = 1 to len(bowls) - 1
-        print("bowl {i} is {calc_distance(i)} from the jack")
-    next
-
+    bowls[0] = array(10,force)
     display()
-next
 
-calc_score()
+    for go = 1 to 8
+        inp = ""
+        if go mod 2 == 0 then
+            inp = get_computer_move()
+        else
+            inp = get_human_move()
+        end
+        direction = left(inp,1)
+        force = val(mid(inp,2))
+        if force == 0 then
+            print("invalid bowl")
+        end
+        bowls = push(bowls, array(10 , 0))
+        move(go, force, direction)
+
+        for i = 1 to len(bowls) - 1
+            print("bowl {i} is {calc_distance(i)} from the jack")
+        next
+
+        display()
+    next
+end
+
+
 
 
 
