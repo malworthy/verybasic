@@ -26,7 +26,7 @@ end
 if human > computer then
     print("You win!")
 else
-    print("Compuer wins!")
+    print("Computer wins!")
 end
 ' Functions
 
@@ -62,6 +62,9 @@ function move(num, force, direction)
         for b = 0 to len(bowls)-1
             if b <> num and check_collision(x,y,b) then
                 move(b, force+1-i, direction)
+                if force+1-i > 1 then
+                    i=i+1 ' lost force after hiting ball
+                end
             end
         next
         bowls[num] = array(x,y)
