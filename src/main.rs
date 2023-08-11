@@ -4,15 +4,23 @@ mod vm;
 
 use colored::Colorize;
 use std::{fs, io, path::PathBuf, process};
+use vm::DebugSettings;
 
 use crate::{compiler::Compiler, vm::Vm};
 use clap::Parser;
 
+/// Very Basic - A Basic interpreted programming language
 #[derive(Debug, Parser)]
 struct Cli {
     path: Option<std::path::PathBuf>,
+
+    /// Output the compiled bytecode to console
     #[arg(short, long)]
     compile: bool,
+
+    /// Set breakpoints to debug code, lines numbers separated by commas
+    #[arg(short, long)]
+    breakpoints: Option<String>,
     args_to_script: Vec<String>,
 }
 
@@ -29,7 +37,7 @@ fn main() {
 
         if args.compile {
             compile(&contents);
-        } else if let Result::Err(_) = interpret(&contents, config_file) {
+        } else if let Result::Err(_) = interpret(&contents, config_file, args.breakpoints) {
             process::exit(1);
         }
     } else {
@@ -39,7 +47,7 @@ fn main() {
             io::stdin()
                 .read_line(&mut line)
                 .expect("Failed to read line");
-            let result = interpret(&line, PathBuf::from("settings.json"));
+            let result = interpret(&line, PathBuf::from("settings.json"), None);
             match result {
                 Ok(s) => println!("{}", s.bright_black()),
                 Err(_) => println!(""),
@@ -48,7 +56,11 @@ fn main() {
     }
 }
 
-fn interpret(contents: &str, config_file: PathBuf) -> Result<String, String> {
+fn interpret(
+    contents: &str,
+    config_file: PathBuf,
+    breakpoints: Option<String>,
+) -> Result<String, String> {
     let tokens = crate::scanner::tokenize(&contents);
 
     match tokens {
@@ -61,7 +73,19 @@ fn interpret(contents: &str, config_file: PathBuf) -> Result<String, String> {
                 return Result::Err(String::from("Compile Error"));
             }
 
-            let mut vm = Vm::new(&mut line_numbers);
+            let source_lines: Vec<&str> = contents.lines().collect();
+
+            //let mut vm = Vm::new(&mut line_numbers);
+            let mut vm = match breakpoints {
+                Some(break_points) => {
+                    let test = DebugSettings::new(10, break_points.as_str());
+                    Vm::new_debug(&mut line_numbers, &source_lines, test)
+                }
+                None => Vm::new(&mut line_numbers),
+            };
+
+            //let mut vm = Vm::new_debug(&mut line_numbers, &source_lines, test);
+
             vm.config_file = config_file;
             let result = vm.run(&instructions);
             if !result {
@@ -110,7 +134,7 @@ mod tests {
     use crate::scanner::TokenType;
 
     fn interpret_test(contents: &str) -> String {
-        let result = interpret(contents, PathBuf::from("settings_test.json"));
+        let result = interpret(contents, PathBuf::from("settings_test.json"), None);
         match result {
             Ok(s) => s,
             Err(s) => s,

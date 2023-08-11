@@ -1,11 +1,31 @@
-
-function test(result)
-    streak = 0
-    fails = val(setting_get("fails"))
-    print("setting fails {fails}")
-    fails = fails + 1
-    print("after setting fails {fails}")
-    setting_set("fails", fails)
+global = 1
+if global == 1 then
+    x = 10
+    y = 20
+    z = 30
+    print("hi")
 end
 
-test(5)
+if global == 1 then
+    a = 5
+    b = 6
+    c = 7
+    print(c)
+end
+
+if true then
+    a = "hello"
+    d = 1
+    d = d + 1
+    print(a)
+end
+
+print(breakit())
+
+function breakit()
+    if true then
+        a = "hello"
+        d = 1
+        d = d + 1
+    end
+end

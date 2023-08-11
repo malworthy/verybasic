@@ -1,7 +1,12 @@
 mod functions;
 mod graphics;
 mod string_functions;
-use std::{collections::HashMap, path::PathBuf, process::Command};
+use std::{
+    collections::HashMap,
+    io::{self, Write},
+    path::PathBuf,
+    process::Command,
+};
 
 use crate::compiler::OpCode;
 use colored::Colorize;
@@ -82,6 +87,34 @@ macro_rules! pop {
     };
 }
 
+pub struct DebugSettings {
+    pub break_points: Vec<u32>,
+    pub code_window: u32,
+}
+
+impl DebugSettings {
+    pub fn new(code_window: u32, break_points: &str) -> Self {
+        let iter = break_points.split(',');
+        let mut break_points: Vec<u32> = Vec::new();
+        for i in iter {
+            let parsed = i.parse::<u32>();
+            if let Ok(line_num) = parsed {
+                break_points.push(line_num);
+            }
+        }
+        DebugSettings {
+            break_points,
+            code_window,
+        }
+    }
+}
+
+enum DebugStep {
+    Continue,
+    StepInto,
+    StepOver,
+}
+
 pub struct Vm<'a> {
     stack: [ValueType<'a>; MAX_STACK],
     stack_pointer: usize,
@@ -92,6 +125,11 @@ pub struct Vm<'a> {
     ip: usize,
     pub config_file: PathBuf,
     in_error: bool,
+    // for debugging
+    source_code: Option<&'a Vec<&'a str>>,
+    debug_settings: Option<DebugSettings>,
+    step: DebugStep,
+    break_frame: usize,
 }
 
 impl<'a> Vm<'a> {
@@ -107,6 +145,32 @@ impl<'a> Vm<'a> {
             line_numbers,
             config_file: PathBuf::from("settings.txt"),
             in_error: false,
+            source_code: None,
+            debug_settings: None,
+            step: DebugStep::Continue,
+            break_frame: 0,
+        }
+    }
+
+    pub fn new_debug(
+        line_numbers: &'a mut Vec<u32>,
+        source_code: &'a Vec<&'a str>,
+        settings: DebugSettings,
+    ) -> Self {
+        Vm {
+            stack: [EMPTY_ELEMENT; MAX_STACK],
+            globals: HashMap::new(),
+            return_value: Option::None,
+            gr: graphics::Graphics::new(),
+            stack_pointer: 0,
+            ip: 0,
+            line_numbers,
+            config_file: PathBuf::from("settings.txt"),
+            in_error: false,
+            source_code: Some(source_code),
+            debug_settings: Some(settings),
+            step: DebugStep::Continue,
+            break_frame: 0,
         }
     }
     //fn rgb<'a>(params: Vec<ValueType<'a>>, _: &Vm<'a>) -> Result<ValueType<'a>, &'a str>
@@ -362,6 +426,80 @@ impl<'a> Vm<'a> {
         true
     }
 
+    fn debug(&mut self, ip: usize, frame: &Frame, frame_index: usize) {
+        let settings = self.debug_settings.as_ref().unwrap();
+
+        let mut break_line: u32 = 0;
+        let source_lines = self.source_code.unwrap();
+        let step_into = match self.step {
+            DebugStep::StepOver => {
+                if self.line_numbers[ip] > 0 {
+                    break_line = self.line_numbers[ip];
+                }
+                false
+            }
+            DebugStep::Continue => {
+                if settings.break_points.contains(&self.line_numbers[ip]) {
+                    break_line = self.line_numbers[ip];
+                }
+                false
+            }
+            DebugStep::StepInto => {
+                if self.line_numbers[ip] > 0 {
+                    break_line = self.line_numbers[ip];
+                }
+                true
+            }
+        };
+
+        if self.line_numbers[ip] == break_line
+            && break_line > 0
+            && (ip == 0 || self.line_numbers[ip - 1] != break_line)
+            && (frame_index <= self.break_frame || step_into)
+        {
+            self.break_frame = frame_index;
+            let code_window = self.debug_settings.as_ref().unwrap().code_window;
+            let start = if break_line > code_window {
+                break_line - code_window
+            } else {
+                0
+            };
+            let end = if source_lines.len() > code_window as usize
+                && break_line < source_lines.len() as u32 - code_window
+            {
+                break_line + code_window
+            } else {
+                source_lines.len() as u32
+            };
+
+            println!("<--------CODE------------>");
+            for i in start..end {
+                if (i + 1) == break_line {
+                    println!(">{:5.0} {}", i + 1, source_lines[i as usize].yellow());
+                } else {
+                    println!("{:6.0} {}", i + 1, source_lines[i as usize]);
+                }
+            }
+
+            println!("<---- Stack (Locals) --->");
+            println!("{:?}", &self.stack[frame.frame_pointer..self.stack_pointer]);
+
+            println!("<------- Globals ------->");
+            println!("{:?}", &self.globals);
+            println!("<----------------------->");
+            let mut input = String::new();
+            print!("(S)tep over, step (I)nto, (C)ontinue: ");
+            std::io::stdout().flush().unwrap();
+            io::stdin().read_line(&mut input).unwrap();
+            let input = input.trim();
+            match input {
+                "i" => self.step = DebugStep::StepInto,
+                "c" => self.step = DebugStep::Continue,
+                _ => self.step = DebugStep::StepOver,
+            }
+        }
+    }
+
     pub fn run(&mut self, instructions: &'a Vec<OpCode>) -> bool {
         //dbg!(&instructions);
         if instructions.len() == 0 {
@@ -374,6 +512,9 @@ impl<'a> Vm<'a> {
         };
         let mut frame = main_frame;
         loop {
+            if let Some(_) = self.debug_settings {
+                self.debug(frame.ip, &frame, call_frames.len());
+            }
             let instr = &instructions[frame.ip];
             self.ip = frame.ip;
             match instr {

@@ -320,7 +320,7 @@ impl Compiler<'_> {
         if let Some(i) = self.variables.iter().rev().position(|x| x.name == name) {
             let i = self.variables.len() - 1 - i;
             if self.variables[i].depth > 0 {
-                let start = self.variables.iter().position(|x| x.depth == 1).unwrap();
+                let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
                 index = Some(i - start);
             } else {
                 index = None; // global, so we don't use index.
@@ -760,7 +760,7 @@ impl Compiler<'_> {
             let vars_to_pop = self.variables.len() - index;
             self.variables.truncate(index);
 
-            for _ in index..vars_to_pop {
+            for _ in 0..vars_to_pop {
                 self.add_instr(OpCode::Pop2, 0);
             }
         }

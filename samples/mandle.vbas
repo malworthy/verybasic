@@ -1,6 +1,4 @@
 ' mandlebot
-
-
 width = 900
 height = 700
 max_iteration = 50
