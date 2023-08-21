@@ -3,7 +3,6 @@ use chrono::{DateTime, Local};
 use glob::glob;
 use hex;
 use rand;
-use serde_json::Value;
 use std::{
     collections::HashMap,
     env,
@@ -41,7 +40,8 @@ pub fn print<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType
             "cyan" => s.cyan(),
             "magenta" => s.magenta(),
             "purple" => s.purple(),
-            "black" => s.black(),
+            "black" => s.bright_black(),
+            "*red" => s.bright_red(),
             _ => s.normal(),
         };
         if new_line {

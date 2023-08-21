@@ -371,7 +371,7 @@ impl Compiler<'_> {
         self.variables
             .push(Variable::new(token.lexeme.clone(), self.depth));
 
-        let start = self.variables.iter().position(|x| x.depth == 1).unwrap();
+        let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
         let index = self.variables.len() - start - 1;
         self.add_instr(OpCode::DefineLocal(index), token.line_number);
 
@@ -639,7 +639,7 @@ impl Compiler<'_> {
             self.begin_scope();
             self.block();
             self.end_scope();
-            let else_index = self.add_instr(OpCode::Jump(0), if_token.line_number);
+            let else_index = self.add_instr(OpCode::Jump(0), 0); // if_token.line_number);
             self.instructions[if_index] =
                 OpCode::JumpIfFalse(self.instructions.len() - if_index - 1);
             if let TokenType::Else(_) = self.tokens[self.token_pointer] {
@@ -652,6 +652,16 @@ impl Compiler<'_> {
                         .try_into()
                         .unwrap(),
                 );
+            }
+            if let TokenType::ElseIf(token) = &self.tokens[self.token_pointer] {
+                self.if_statement(&token);
+
+                self.instructions[else_index] = OpCode::Jump(
+                    (self.instructions.len() - else_index - 1)
+                        .try_into()
+                        .unwrap(),
+                );
+                return;
             }
             if let TokenType::End(_) = self.tokens[self.token_pointer] {
                 self.advance();
@@ -721,14 +731,53 @@ impl Compiler<'_> {
                 return;
             }
             self.expression();
+            // Step
+            let mut step: f64 = 1.0;
+            let mut step_down: bool = false;
+            if let TokenType::Step(_) = &self.tokens[self.token_pointer] {
+                self.advance();
+                step_down = if let TokenType::Minus(_) = &self.tokens[self.token_pointer] {
+                    self.advance();
+                    true
+                } else {
+                    false
+                };
+                if let TokenType::Number(number_token) = &self.tokens[self.token_pointer] {
+                    step = match number_token.lexeme.parse::<f64>() {
+                        Ok(v) => v,
+                        Err(_) => {
+                            self.compile_error("Could not parse number", token);
+                            return;
+                        }
+                    };
+                } else {
+                    self.compile_error("Step must be a number not equal to zero", token);
+                    return;
+                }
+            }
+
+            if step == 0.0 {
+                self.compile_error("Step cannot be zero", token);
+                return;
+            }
+
+            if step_down {
+                step = -step;
+            }
+
             self.add_instr(OpCode::GetLocal(var_index), token.line_number);
-            self.add_instr(OpCode::GreaterThanEq, token.line_number);
+            if step > 0.0 {
+                self.add_instr(OpCode::GreaterThanEq, token.line_number);
+            } else {
+                self.add_instr(OpCode::LessThanEq, token.line_number);
+            }
+
             let jump_index = self.add_instr(OpCode::JumpIfFalse(0), token.line_number);
             self.for_block();
 
             // inc the variable
             self.add_instr(OpCode::GetLocal(var_index), token.line_number);
-            self.add_instr(OpCode::ConstantNum(1.0), token.line_number);
+            self.add_instr(OpCode::ConstantNum(step), token.line_number);
             self.add_instr(OpCode::Add, token.line_number);
             self.add_instr(OpCode::SetLocal(var_index), token.line_number);
             self.add_instr(OpCode::Pop, token.line_number);
@@ -874,7 +923,10 @@ impl Compiler<'_> {
         loop {
             if let Some(token) = self.tokens.get(self.token_pointer) {
                 match token {
-                    TokenType::Else(_) | TokenType::End(_) | TokenType::Eof => break,
+                    TokenType::Else(_)
+                    | TokenType::ElseIf(_)
+                    | TokenType::End(_)
+                    | TokenType::Eof => break,
                     _ => {
                         self.statement();
                     }

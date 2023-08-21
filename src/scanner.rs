@@ -59,6 +59,8 @@ pub enum TokenType {
     To(Token),
     Step(Token),
 
+    ElseIf(Token),
+
     Eof,
 }
 
@@ -100,6 +102,7 @@ impl TokenType {
             | TokenType::To(t)
             | TokenType::Step(t)
             | TokenType::Next(t)
+            | TokenType::ElseIf(t)
             | TokenType::Bool(t) => Some(t),
             _ => None,
         }
@@ -307,7 +310,7 @@ fn end_raw_string(code: &str) -> bool {
 
 fn is_word(code: &str, i: usize) -> bool {
     if let Some(ch) = code.chars().nth(i) {
-        !ch.is_ascii_alphanumeric()
+        !(ch.is_ascii_alphanumeric() || ch == '_' || ch == '@')
     } else {
         true
     }
@@ -327,6 +330,15 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                 precedence: precedence::NONE,
             }),
             8,
+        )
+    } else if match_word(code, "elseif") {
+        (
+            TokenType::ElseIf(Token {
+                lexeme: String::from("elseif"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            6,
         )
     } else if match_word(code, "while") {
         (

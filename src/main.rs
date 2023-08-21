@@ -142,6 +142,81 @@ mod tests {
     }
 
     #[test]
+    fn else_if() {
+        let code = "
+            x = 5
+            if x == 3 then
+                print(1)
+                print(123)
+            elseif x == 4 then
+                print(1)
+                print(2)
+                print(456)
+            elseif x == 5 then
+                (666)
+            else
+                print(777)
+            end
+                ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(666.0)");
+    }
+
+    #[test]
+    fn else_if2() {
+        let code = "
+            x = 3
+            if x == 3 then
+                1
+            elseif x == 4 then
+                2
+            elseif x == 5 then
+                3
+            else
+                4
+            end
+                ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(1.0)");
+    }
+
+    #[test]
+    fn else_if3() {
+        let code = "
+            x = 4
+            if x == 3 then
+                1
+            elseif x == 4 then
+                2
+            elseif x == 5 then
+                3
+            else
+                4
+            end
+                ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(2.0)");
+    }
+
+    #[test]
+    fn else_if4() {
+        let code = "
+            x = 666
+            if x == 3 then
+                1
+            elseif x == 4 then
+                2
+            elseif x == 5 then
+                3
+            else
+                4
+            end
+                ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(4.0)");
+    }
+
+    #[test]
     fn while_loop_crash() {
         let code = "
         function get_human_move()
@@ -189,6 +264,32 @@ mod tests {
         ";
 
         assert_eq!(interpret_test(code), "String(\"0\")");
+    }
+
+    #[test]
+    fn for_step_up() {
+        let code = "
+            result = 0
+            for i = 0 to 10 step 2
+                result = result + 1
+            next
+            result
+        ";
+
+        assert_eq!(interpret_test(code), "Number(6.0)");
+    }
+
+    #[test]
+    fn for_step_down() {
+        let code = "
+            result = 0
+            for i = 5 to 1 step -1
+                result = result + 1
+            next
+            result
+        ";
+
+        assert_eq!(interpret_test(code), "Number(5.0)");
     }
 
     #[test]

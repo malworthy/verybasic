@@ -1,0 +1,519 @@
+NAME = 0
+GROUP = 1
+PRICE = 2
+RENT = 3
+HOUSE_COST = 4
+OWNER = 5
+HOUSES = 6
+MORTGAGED = 7
+HOUSE_RENT = 8
+COLOUR = 13
+
+HUMAN = 0
+COMPUTER = 1
+
+board = array(
+    array("GO"),
+    array("Old Kent Road",       0, 60,   2, 50, -1, 0, false, 10, 30,  90, 160, 250,"black"),
+    array("Community Chest"),
+    array("Whitechapel Road",    0, 60,   4, 50, -1, 0, false, 20, 60, 180, 320, 450,"black"),
+    array("Income Tax"),
+    array("Kings Cross Station", 1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+    array("The Angel Islington", 2, 100,  6, 50, -1, 0, false, 30, 90, 270, 400, 550,"cyan"),
+    array("Chance"),
+    array("Euston Road",         2, 100,  6, 50, -1, 0, false, 30, 90, 270, 400, 550,"cyan"),
+    array("Pentonville Road",    2, 120,  8, 50, -1, 0, false, 40,100, 300, 450, 600,"cyan"),
+    array("Jail"),
+    array("Pall Mall",           3, 140, 10,100, -1, 0, false, 50,150, 450, 625, 750,"magenta"),
+    array("Electric Company",    4, 200,  0,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+    array("Whitehall",           3, 140, 10,100, -1, 0, false, 50,150, 450, 625, 750,"magenta"),
+    array("Northumberland Av",   3, 160, 12,100, -1, 0, false, 60,180, 500, 700, 900,"magenta"),
+    array("Marylebone Station",  1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+
+    array("Bow Street",          5, 180, 14,100, -1, 0, false, 70,200, 550, 750, 950,"*red"),
+    array("Community Chest"),
+    array("Marlborough Street",  5, 180, 14,100, -1, 0, false, 70,200, 550, 750, 950,"*red"),
+    array("Vine Street",         5, 200, 16,100, -1, 0, false, 80,220, 600, 800,1000,"*red"),
+
+    array("Strand",              6, 220, 18,150, -1, 0, false, 90,250, 700, 875,1050,"red"),
+    array("Chance"),
+    array("Fleet Street",        6, 220, 18,150, -1, 0, false, 90,250, 700, 875,1050,"red"),
+    array("Trafalgar Square",    6, 240, 20,150, -1, 0, false,100,300, 750, 925,1100,"red"),
+)
+
+'Name, Type (
+'   0=advance to, 
+'    1 = +-cash, 
+'    2 = nearest, 
+'    3 = get out jail, 
+'    4= property repairs, 
+'    5 = back 3 spaces, 
+'    6 = pay player, 
+'    7 = Go to Jail), 
+'Value
+chance = shuffle(array(
+    array("Advance to GO", 0, 0),
+    array("Advance to the nearest station.  If unowned, you may buy it from the Bank. If owned, pay owner twice the rental to which they are otherwise entitled.", 2, 1),
+    array("Bank pays you dividend of $50", 1, 50),
+    array("Get Out of Jail Free", 3, 0),
+    array("Go Back 3 Spaces", 3, 0),
+    array("Go to Jail. Go directly to Jail, do not pass Go, do not collect $200",7,0)
+))
+'print("{chance}")
+chance_counter = 0
+
+position = array(0,0)
+jail = array(0, 0)
+money = array(1500,1500)
+computer_pos = 0
+
+game_loop()
+
+function advance_to(player, value)
+    ' passed go
+    if value <= position[player] then
+        money[player] = money[player] + 200
+    end
+    position[player] = value
+end
+
+function nearest(player, value)
+    while true
+        position[player] = position[player] + 1
+        ' passed go
+        if position[player] >= len(board) then
+            money[player] = money[player] + 200
+            position[player] = 0
+        end
+        prop = board[position[player]]
+        if len(prop) > 2 then
+            if prop[GROUP] == value then
+                exit
+            end
+        end
+    end
+end
+
+function chance_or_cc(player, type)
+    card = chance[chance_counter]
+    print(card[0], true, "yellow")
+    chance_counter = chance_counter + 1
+    if chance_counter >= len(chance) then
+        chance_counter = 0
+    end
+    type = card[1]
+    value = card[2]
+    if type == 0 then
+        advance_to(player, value)
+        true
+    elseif type == 1 then
+        money[player] = money[player] + value
+        false
+    elseif type == 2 then
+        nearest(player, value)
+        true
+    elseif type == 3 then
+        ' get out of jail
+        false
+    elseif type == 4 then
+        ' property repairs
+        false
+    elseif type == 5 then
+        ' back 3 spaces
+        position[player] = position[player] - 3
+        if position[player] < 0 then
+            position[player] = len(board) + position[player]
+        end
+        true ' change to true
+    elseif type == 6 then
+        money[player] = money[player] - value
+        money[other_player(player)] = money[other_player(player)] + value
+        false
+    elseif type == 7 then
+        'goto jail
+        position[player] = 10
+        jail[player] = 1
+        false
+    end
+    
+end
+
+function count_owned(player, group)
+    result = 0
+    for i = 0 to len(board) - 1
+        prop = board[i]
+        if len(prop) > OWNER then
+            if prop[OWNER] == player and prop[GROUP] == group then
+                result = result + 1
+            end
+        end
+    next
+    result
+end
+
+function print_properties(player)
+    name = "the computer"
+    if player == HUMAN then
+        name = "you"
+    end
+    print(" --- Properties owned by {name} ---")
+    for i = 0 to len(board) - 1
+        prop = board[i]
+        if len(prop) > 5 then
+            if prop[OWNER] == player then
+                print("{i,"3.0"} {prop[NAME]} {prop[HOUSES]}", true, prop[COLOUR])
+            end
+        end
+    next
+    print("")
+end
+
+function if_you(player, a, b)
+    if player == HUMAN then
+        a 
+    else
+        b
+    end
+end
+
+function input_trade(message, player)
+    while true
+        inp = input(message)
+        if inp == "" then
+            0 exit
+        end
+        trade = val(inp)
+        
+        if trade == 0 or trade >= len(board) then
+            print("Not a valid property number")
+        else
+            prop = board[trade]
+            if len(prop) < 2 then
+                print("Not a valid property number")
+            elseif prop[OWNER] <> player then
+                print("{if_you(player,"You don't", "The computer doesn't")} own that property")
+            else
+                trade
+                exit
+            end 
+        end
+    end
+end
+
+function trade()
+    trade1 = input_trade("Property to trade? ", HUMAN)
+    if trade1 == 0 then
+        exit
+    end
+    trade2 = input_trade("Another property to trade? (or ENTER for None)", HUMAN)
+    other = input_trade("For what other property? ", COMPUTER)
+    ' check if computer accepts
+
+    computer_val = board[other][PRICE]
+    trade_val = board[trade1][PRICE] 
+    if trade2 > 0 then
+        trade_val = trade_val + board[trade2][PRICE] 
+    end
+
+    ' computer does accept trades of lesser value
+    if trade_val < computer_val  then
+        print("Computer says NO")
+        exit 
+    end
+
+    ' computer only accepts trades where it gets a group of properties
+    group1 = board[trade1][GROUP]
+    owned = count_owned(COMPUTER, group1)
+    yes = owned == 2 and group1 <> 1 
+    if not yes then
+        yes = owned == 1 and group1 <> 4 and group1 == 0 ' for group of 2 properies (no electric)
+    end
+    if not yes and trade2 > 0 then
+        group2 = board[trade2][GROUP]
+        owned = count_owned(COMPUTER, group1)
+        yes = owned == 2 and group2 <> 1 
+        if not yes then
+            yes = owned == 1 and group2 <> 4 and group2 == 0 ' for group of 2 properies (no electric)
+        end
+    end
+
+    if not yes then
+        print("Computer says NO")
+        exit 
+    end
+        
+    ' do the swap
+    prop = board[trade1]
+    prop[OWNER] = COMPUTER
+    board[trade1] = prop
+    if trade2 > 0 then
+        prop = board[trade2]
+        prop[OWNER] = COMPUTER
+        board[trade2] = prop
+    end
+
+    prop = board[other]
+    prop[OWNER] = HUMAN
+    board[other] = prop
+end
+
+function buy_house_human()
+    while true
+        i = input_trade("Property to buy house for? ", HUMAN)
+        if i == 0 then exit end
+
+        prop = board[i]
+        
+        if prop[HOUSES] >= 5 then
+            print("That property also has a hotel on it")
+        elseif prop[HOUSE_COST] > money[HUMAN] then
+            print("You don't have enough money")
+        elseif not own_a_group(HUMAN, prop[GROUP]) then
+            print("You don't own that group")
+        else
+            prop[HOUSES] = prop[HOUSES] + 1
+            board[i] = prop
+            money[HUMAN] = money[HUMAN] - prop[HOUSE_COST]
+            exit
+        end
+        
+    end
+end
+
+function buy_house_computer()
+    for i = len(board) - 1 to 1 step -1
+        prop = board[i]
+        if len(prop) > 2 then
+            g = prop[GROUP]
+            if g <> 1 and g <> 4 and prop[OWNER] == COMPUTER then ' not station or utility
+                if own_a_group(COMPUTER, g) then
+                    house_price = prop[HOUSE_COST]
+                    if money[COMPUTER] - house_price > 200 and prop[HOUSES] < 5 and rand() > 0.5 then
+                        prop[HOUSES] = prop[HOUSES] + 1
+                        board[i] = prop
+                        money[COMPUTER] = money[COMPUTER] - house_price
+                        print("The computer just bought a house on {prop[NAME]}", true, "red")
+                        exit
+                    end
+                end
+            end
+        end
+    next
+
+end
+
+function dice_roll()
+    floor(1 + rand() * 5.9999)
+end
+
+function game_loop()
+    print("")
+    print("You have ${money[HUMAN],"N0"}, Computer has ${money[COMPUTER], "N0"} ")
+    print("")
+    while true
+        move_player(HUMAN)
+        print("")
+        buy_house_computer()
+        move_player(COMPUTER)
+        print("")
+        print_properties(HUMAN)
+        print_properties(COMPUTER)
+
+        if money[HUMAN] < 0 then
+            print("You're bankrupt! - COMPUTER WON!", true, "red")
+            exit
+        end
+        if money[COMPUTER] < 0 then
+            print("The computer is bankrupt! - YOU WON!", true, "green")
+            exit
+        end
+
+        print("")
+        print("You have ${money[HUMAN],"N0"}, Computer has ${money[COMPUTER], "N0"} ")
+        print("")
+        inp = input("t = Trade, h = Buy a house, [Enter] = Roll again > ")
+        print("")
+        if inp == "t" then
+            trade()
+        elseif inp == "h" then
+            buy_house_human()
+        end
+    end
+end
+
+' 0 = next player, 1 = roll again, 2 = goto jail
+function move_player(player)
+    name = "You"
+    if player == COMPUTER then
+        name = "Computer"
+    end
+    dice1 = dice_roll()
+    dice2 = dice_roll()
+    moves = dice1 + dice2
+    if jail[player] > 0 then
+        if dice1 == dice2 then
+            print("{name} threw a double and you get out of jail")
+            jail[player] = 0
+        else
+            jail[player] = jail[player] + 1
+            if jail[player] > 3 then
+                print("{name} are now out of jail after a $50 fine.")
+                money[player] = money[player] - 50
+            end
+            exit
+        end
+    end
+    print("{name} rolled: {dice1} and {dice2}. Move {moves} spaces.")
+    position[player] = position[player] + moves
+    while position[player] > len(board) - 1 
+        position[player] = position[player] - (len(board)) 
+        money[player] = money[player] + 200
+    end
+
+    property = board[position[player]]
+
+    n = property[NAME]
+
+    process_move(name, n, player, moves)
+end
+
+function process_move(name, n, player, moves)
+    print("{name} landed on {n}")
+
+    if n == "GO" or n == "Jail" then
+        ' nothing
+    elseif n == "Community Chest" then
+        ' do something
+    elseif n == "Chance" then
+        if chance_or_cc(player, "chance") then
+            property = board[position[player]]
+            n = property[NAME]
+            process_move(name, n, player, moves)
+        end    
+    elseif n == "Income Tax" then
+        ' pay tax
+        money[player] = money[player] - 200
+    else
+        ' property
+        property(player, moves)
+    end
+end
+
+function property(player, moves)
+    pos = position[player]
+    prop = board[pos]
+    if prop[OWNER] < 0 then
+        inp = ""
+        if player == HUMAN then
+            inp = input("Do you wish to buy {prop[NAME]} for ${prop[PRICE],"N0"} (y/n)? ")
+        else
+            inp = property_input(prop[PRICE])
+        end
+        if inp == "y" then
+            prop[OWNER] = player
+            board[pos] = prop
+            money[player] = money[player] - prop[PRICE]
+        end
+    elseif prop[OWNER] <> player then
+        
+        rent = get_rent(prop, player, moves)
+        money[player] = money[player] - rent
+        if player == HUMAN then
+            money[COMPUTER] = money[COMPUTER] + rent
+        else
+            money[HUMAN] = money[HUMAN] + rent
+        end
+        print("Pay ${rent,"N0"} rent")
+    end
+end
+
+function other_player(player)
+    if player == 1 then 0 else 1 end
+end
+
+function get_rent(prop, player, moves)
+    group = prop[GROUP]
+    rent = prop[RENT]
+    own_group = own_a_group(other_player(player), group)
+    if group == 4 and own_group == false then 'utility
+        rent = moves * 4
+    elseif group == 4 and own_group == true then
+        rent = moves * 10
+    elseif group == 1 then
+        rent = get_station_rent(other_player(player))
+    elseif own_group then
+        if prop[HOUSES] > 0 then
+            prop[HOUSE_RENT + prop[HOUSES] - 1]
+            exit
+        end
+        rent = rent * 2
+    end
+    rent
+end
+
+function get_station_rent(station_owner)
+    rent = 0
+    for i = 0 to len(board) - 1
+        prop = board[i]
+        if len(prop) > 1 then
+            g = prop[GROUP]
+            if g == 1 then
+                if rent > 0 then
+                    rent = rent * 2
+                else
+                    rent = 25
+                end
+            end
+        end 
+    next
+    rent
+end
+
+function own_a_group(player, group)
+    group_total = 0
+    group_owned = 0
+    for i = 0 to len(board) - 1
+        prop = board[i]
+        if len(prop) > 1 then
+            g = prop[GROUP]
+            if g == group then
+                group_total = group_total + 1
+            end
+            if g == group and prop[OWNER] == player then
+                group_owned = group_owned + 1
+            end
+        end 
+    next
+
+    group_owned == group_total
+end
+
+function property_input(price)
+    if money[COMPUTER] - price > 200 then "y" else "n" end
+end
+
+function shuffle(cards)
+    group1 = array()
+    group2 = array()
+    index = floor(rand() * len(cards))
+    for i = 0 to len(cards) - 1
+        if rand() > 0.5 then
+            group1 = push(group1, cards[index])
+        else
+            group2 = push(group2, cards[index])
+        end
+        index = index + 1
+        if index >= len(cards) then
+            index = 0
+        end
+    next
+    result = array()
+    for i = 0 to len(group1)-1
+        result = push(result, group1[i])
+    next
+    for i = 0 to len(group2)-1
+        result = push(result, group2[i])
+    next
+
+    result
+end

@@ -1,31 +1,13 @@
-global = 1
-if global == 1 then
-    x = 10
-    y = 20
-    z = 30
-    print("hi")
-end
-
-if global == 1 then
-    a = 5
-    b = 6
-    c = 7
-    print(c)
-end
-
-if true then
-    a = "hello"
-    d = 1
-    d = d + 1
-    print(a)
-end
-
-print(breakit())
-
-function breakit()
-    if true then
-        a = "hello"
-        d = 1
-        d = d + 1
-    end
+x = 3
+if x == 3 then
+    print(1)
+    print(123)
+elseif x == 4 then
+    print(1)
+    print(2)
+    print(456)
+elseif x == 5 then
+    (666)
+else
+    print(777)
 end

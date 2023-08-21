@@ -270,10 +270,13 @@ impl<'a> Vm<'a> {
                     return false;
                 }
             },
-            ValueType::Boolean(_) => {
-                self.runtime_error("Boolean not valid for comparison operation");
-                return false;
-            }
+            ValueType::Boolean(a) => match b {
+                ValueType::Boolean(b) => ValueType::Boolean(a == b),
+                _ => {
+                    self.runtime_error("Cannot compare a boolean to a non boolean type.");
+                    return false;
+                }
+            },
             ValueType::Array(_) => {
                 self.runtime_error("Array not valid for comparison operation");
                 return false;
@@ -441,6 +444,7 @@ impl<'a> Vm<'a> {
             DebugStep::Continue => {
                 if settings.break_points.contains(&self.line_numbers[ip]) {
                     break_line = self.line_numbers[ip];
+                    self.break_frame = frame_index;
                 }
                 false
             }

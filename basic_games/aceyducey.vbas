@@ -1,0 +1,77 @@
+function tab(num)
+    result = ""
+    for x = 1 to num
+        result = result + " "
+    next
+    result
+end
+
+function rand_card() 
+    floor((rand() * 12.999999)) 
+end
+
+cards = array("2","3","4","5","6","7","8","9","10","JACK","QUEEN","KING","ACE")
+
+print("{tab(26)}ACEY DUCEY CARD GAME")
+print("{tab(15)}CREATIVE COMPUTING  MORRISTOWN, NEW JERSEY")
+print("")
+print("")
+print("ACEY-DUCEY IS PLAYED IN THE FOLLOWING MANNER ")
+print("THE DEALER (COMPUTER) DEALS TWO CARDS FACE UP")
+print("YOU HAVE AN OPTION TO BET OR NOT BET DEPENDING")
+print("ON WHETHER OR NOT YOU FEEL THE CARD WILL HAVE")
+print("A VALUE BETWEEN THE FIRST TWO.")
+print("IF YOU DO NOT WANT TO BET, INPUT A 0")
+cash = 100
+while cash > 0
+    print("YOU NOW HAVE {cash} DOLLARS.")
+    print("")
+    a = 0
+    b = 0
+    while a >= b
+        a = rand_card()
+        b = rand_card()
+    end
+    
+    print("HERE ARE YOUR NEXT TWO CARDS: ")
+    print(cards[a])
+    print(cards[b])
+    print("")
+    valid = false
+    bet = 0
+    while not valid
+        bet = val(input("WHAT IS YOUR BET"))
+        if bet > cash then
+            print("SORRY, MY FRIEND, BUT YOU BET TOO MUCH.")
+            print("YOU HAVE ONLY {cash} DOLLARS TO BET.")
+        else
+            valid = true
+        end
+    end
+    
+    if bet == 0 then
+        print("CHICKEN!!")
+    else
+        c = rand_card()
+        print(cards[c])
+        if c >= a and c <= b then
+            print("YOU WIN!!!")
+            cash = cash + bet
+        else
+            print("SORRY, YOU LOSE")
+            cash = cash - bet
+        end
+    end
+
+    if cash <= 0 then
+        print("SORRY, FRIEND, BUT YOU BLEW YOUR WAD.")
+        print(""):print("")
+        inp = input("TRY AGAIN (YES OR NO)")
+        print(""):print("")
+        if lcase(inp) == "yes" then 
+            cash = 100
+        end
+    end
+end
+
+print("O.K., HOPE YOU HAD FUN!")

@@ -21,7 +21,7 @@ cargo build
 
 ## Control Flow/Looping
 
-Very simple. if/then/else and while.
+### if/then/else
 
 ```
 if <expression> then <statement> [else <statement>] end
@@ -34,11 +34,6 @@ else
     print("x is something other than one")
 end
 
-x = 0
-while x < 10
-    print("X is " + x)
-    x = x + 1
-end
 ```
 
 Using 'else if' like below will not work and results in a compile error. Very basic is too basic to understand this.
@@ -64,6 +59,40 @@ end
 ```
 
 Note: The expression evaluated for if and while must return a boolean. For example `if 1 then print("hello") end` won't work.
+
+### while
+
+Example:
+
+```
+x = 0
+while x < 10
+    print("X is " + x)
+    x = x + 1
+end
+```
+
+### for next
+
+- step is optional
+- the step must be a number, an expression is not allowed
+- the for loop variable will only exist in scope of the loop
+
+Example:
+
+```
+for x = 1 to 10
+   print(x)
+next
+
+for x = 1 to 10 step 2
+    print(x)
+next
+
+for x = 10 to 0 step - 1
+    print(x)
+next
+```
 
 ## Functions
 
@@ -107,16 +136,21 @@ x = array(1,1,1) ' create an array of 3 elements with the number 1
 
 ## Arrays
 
-Arrays are immutable. You can read an element as follows:
+Arrays are acually vectors
+
+Example:
 
 ```
-x = array(4,5,6)
+x = array(4,5,6) ' create an array with 3 elements
+
 print(x[0]) ' prints 4
 print(x[1]) ' prints 5
 print(x[1]) ' prints 6
-```
 
-There is no ability to change values in an array. Something like `x[0] = 0` won't work.
+x[0] = 10 ' change first element from 4 to 10
+
+x = push(x,15) ' adds an element to the end of the array
+```
 
 ## Operators
 
@@ -177,10 +211,6 @@ String interpolation is just syntatic sugar. The above string in converted to th
 ### _append(filename, text)_
 
 appends text to a file. If the file doesn't exist it will be created.
-
-### _array([element],...)_
-
-creates a new array, optionally populating with elements
 
 ### _chr(ascii_value)_
 
@@ -247,6 +277,20 @@ Converts a string to a number. Will return zero if string cannot be converted to
 ### _write(filename, text)_
 
 creates a new file writes text to it. Will overwrite any existing file.
+
+## Array functions
+
+### _array([element],...)_
+
+creates a new array, optionally populating with elements
+
+### _sort(array)_
+
+sorts an array
+
+### _push(array, val)_
+
+adds a value to the end of an array
 
 ## String functions
 
