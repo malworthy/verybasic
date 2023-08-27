@@ -47,6 +47,7 @@ pub enum TokenType {
     LeftBracket(Token),
     RightBracket(Token),
     Comma(Token),
+    Dot(Token),
     Identifier(Token),
     String(Token),
     Number(Token),
@@ -60,6 +61,7 @@ pub enum TokenType {
     Step(Token),
 
     ElseIf(Token),
+    Eol(Token),
 
     Eof,
 }
@@ -91,6 +93,7 @@ impl TokenType {
             | TokenType::LeftParan(t)
             | TokenType::RightParan(t)
             | TokenType::Comma(t)
+            | TokenType::Dot(t)
             | TokenType::Identifier(t)
             | TokenType::String(t)
             | TokenType::LeftBracket(t)
@@ -109,6 +112,16 @@ impl TokenType {
     }
 }
 
+fn continue_line(token_type: Option<&TokenType>) -> bool {
+    match token_type {
+        Some(token_type) => match token_type {
+            TokenType::LeftParan(_) | TokenType::RightParan(_) | TokenType::Comma(_) => true,
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
 pub fn tokenize(code: &str) -> Result<Vec<TokenType>, &str> {
     let mut i = 0;
     let mut line_number = 1;
@@ -118,6 +131,14 @@ pub fn tokenize(code: &str) -> Result<Vec<TokenType>, &str> {
     while i < code.len() {
         let mut current_char = code.chars().nth(i).unwrap();
         if current_char == '\n' {
+            if !continue_line(tokens.last()) {
+                tokens.push(TokenType::Eol(Token {
+                    lexeme: String::new(),
+                    line_number,
+                    precedence: precedence::NONE,
+                }));
+            }
+
             line_number += 1;
         }
 
@@ -591,6 +612,11 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                     lexeme: single_char.to_string(),
                     line_number,
                     precedence: precedence::NONE,
+                }),
+                "." => TokenType::Dot(Token {
+                    lexeme: single_char.to_string(),
+                    line_number,
+                    precedence: precedence::CALL,
                 }),
                 _ => TokenType::None,
             },

@@ -18,6 +18,7 @@ pub enum ValueType<'a> {
     Boolean(bool),
     String(String),
     Array(Vec<ValueType<'a>>),
+    Struct(HashMap<&'a str, ValueType<'a>>),
 }
 
 impl ValueType<'_> {
@@ -28,14 +29,18 @@ impl ValueType<'_> {
             ValueType::Str(str) => str.to_string(),
             ValueType::String(str) => str.to_string(),
             ValueType::Array(a) => format!("{:?}", a),
+            ValueType::Struct(s) => format!("{:?}", s),
         }
     }
 }
 
 #[derive(Copy, Clone, Debug)]
-struct Frame {
+struct Frame<'a> {
     ip: usize,
     frame_pointer: usize,
+    mut_call: bool,
+    local: usize,
+    global: &'a str,
 }
 
 const MAX_STACK: usize = 128;
@@ -118,7 +123,7 @@ enum DebugStep {
 pub struct Vm<'a> {
     stack: [ValueType<'a>; MAX_STACK],
     stack_pointer: usize,
-    globals: HashMap<&'a String, ValueType<'a>>,
+    globals: HashMap<&'a str, ValueType<'a>>,
     pub return_value: Option<ValueType<'a>>,
     gr: graphics::Graphics,
     line_numbers: &'a mut Vec<u32>,
@@ -173,7 +178,11 @@ impl<'a> Vm<'a> {
             break_frame: 0,
         }
     }
-    //fn rgb<'a>(params: Vec<ValueType<'a>>, _: &Vm<'a>) -> Result<ValueType<'a>, &'a str>
+    pub const MUT_NATIVES: [(
+        fn(array: &mut ValueType<'a>, params: Vec<ValueType<'a>>) -> Result<ValueType<'a>, &'a str>,
+        &str,
+    ); 1] = [(functions::push_mut, "push")];
+
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
         &str,
@@ -281,6 +290,10 @@ impl<'a> Vm<'a> {
                 self.runtime_error("Array not valid for comparison operation");
                 return false;
             }
+            ValueType::Struct(_) => {
+                self.runtime_error("Data structure not valid for comparison operation");
+                return false;
+            }
         };
 
         self.push(result);
@@ -368,7 +381,11 @@ impl<'a> Vm<'a> {
             ValueType::Str(a) => ValueType::Boolean(a.len() == 0),
             ValueType::String(a) => ValueType::Boolean(a.len() == 0),
             ValueType::Array(_) => {
-                self.runtime_error("not invalid for an array");
+                self.runtime_error("'not' invalid for an array");
+                return false;
+            }
+            ValueType::Struct(_) => {
+                self.runtime_error("'not' invalid for an data structure");
                 return false;
             }
         };
@@ -421,6 +438,10 @@ impl<'a> Vm<'a> {
             }
             ValueType::Array(_) => {
                 self.runtime_error("Cannot add an array");
+                return false;
+            }
+            ValueType::Struct(_) => {
+                self.runtime_error("Cannot add a data structure");
                 return false;
             }
         };
@@ -513,6 +534,9 @@ impl<'a> Vm<'a> {
         let main_frame = Frame {
             ip: 0,
             frame_pointer: 0,
+            mut_call: false,
+            local: 0,
+            global: "",
         };
         let mut frame = main_frame;
         loop {
@@ -606,12 +630,37 @@ impl<'a> Vm<'a> {
                     self.globals.insert(name, v.clone());
                 }
                 OpCode::GetGlobal(name) => {
-                    if let Some(value) = self.globals.get(&name) {
+                    if let Some(value) = self.globals.get(&name.as_str()) {
                         self.push(value.to_owned());
                     } else {
                         let message = format!("Global variable {name} does not exist.");
                         self.runtime_error(&message);
                         return false;
+                    }
+                }
+                OpCode::CallNativeMut(index, argc, local, global) => {
+                    let mut args: Vec<ValueType> = Vec::new();
+
+                    let func = Vm::MUT_NATIVES[*index].0;
+                    for _i in 0..*argc {
+                        pop!(self, v);
+                        args.insert(0, v.clone());
+                    }
+
+                    let result = func(&mut self.stack[self.stack_pointer - 1], args);
+                    pop!(self, v);
+                    if global.is_empty() {
+                        self.stack[local + frame.frame_pointer] = v.clone();
+                    } else {
+                        self.globals.insert(global, v.clone());
+                    }
+
+                    match result {
+                        Ok(value) => self.push(value),
+                        Err(message) => {
+                            self.runtime_error(&message);
+                            return false;
+                        }
                     }
                 }
                 OpCode::CallNative(index, argc) => {
@@ -620,8 +669,6 @@ impl<'a> Vm<'a> {
                     let func = Vm::NATIVES[*index].0;
                     // call a native/built-in function
                     for _i in 0..*argc {
-                        // self.stack_pointer -= 1;
-                        // let v = &self.stack[self.stack_pointer];
                         pop!(self, v);
                         args.insert(0, v.clone());
                     }
@@ -658,6 +705,20 @@ impl<'a> Vm<'a> {
                     frame = Frame {
                         ip: pointer - 1,
                         frame_pointer: self.stack_pointer - argc,
+                        mut_call: false,
+                        local: 0,
+                        global: "",
+                    };
+                }
+                OpCode::CallMut(pointer, argc, local, global) => {
+                    call_frames.push(frame); // save current frame
+                    let argc = *argc as usize;
+                    frame = Frame {
+                        ip: pointer - 1,
+                        frame_pointer: self.stack_pointer - argc - 1,
+                        mut_call: true,
+                        local: *local,
+                        global,
                     };
                 }
                 OpCode::Pop => {
@@ -708,8 +769,20 @@ impl<'a> Vm<'a> {
                     if let Some(value) = call_frames.pop() {
                         // get rid of any local variables on the stack
                         self.stack_pointer = frame.frame_pointer;
+
+                        if frame.mut_call {
+                            if frame.global.is_empty() {
+                                let val = self.stack[self.stack_pointer].clone();
+                                self.stack[frame.local + value.frame_pointer] = val;
+                            } else {
+                                let val = &self.stack[self.stack_pointer];
+                                self.globals.insert(frame.global, val.clone());
+                            }
+                        }
+
                         // set the call frame
                         frame = value;
+
                         let val = self.return_value.clone();
                         self.push(val.unwrap());
                     } else {

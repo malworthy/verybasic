@@ -14,31 +14,55 @@ COMPUTER = 1
 
 board = array(
     array("GO"),
-    array("Old Kent Road",       0, 60,   2, 50, -1, 0, false, 10, 30,  90, 160, 250,"black"),
+    array("Ross Creek Road",       0, 60,   2, 50, -1, 0, false, 10, 30,  90, 160, 250,"black"),
     array("Community Chest"),
-    array("Whitechapel Road",    0, 60,   4, 50, -1, 0, false, 20, 60, 180, 320, 450,"black"),
+    array("Bells Road",            0, 60,   4, 50, -1, 0, false, 20, 60, 180, 320, 450,"black"),
     array("Income Tax"),
-    array("Kings Cross Station", 1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
-    array("The Angel Islington", 2, 100,  6, 50, -1, 0, false, 30, 90, 270, 400, 550,"cyan"),
+    array("Southern Cross Station",1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+    
+    array("Bothe Place",           2, 100,  6, 50, -1, 0, false, 30, 90, 270, 400, 550,"cyan"),
     array("Chance"),
-    array("Euston Road",         2, 100,  6, 50, -1, 0, false, 30, 90, 270, 400, 550,"cyan"),
-    array("Pentonville Road",    2, 120,  8, 50, -1, 0, false, 40,100, 300, 450, 600,"cyan"),
+    
+    array("Tamore Close",          2, 100,  6, 50, -1, 0, false, 30, 90, 270, 400, 550,"cyan"),
+    array("Taylors Road",          2, 120,  8, 50, -1, 0, false, 40,100, 300, 450, 600,"cyan"),
+    
     array("Jail"),
-    array("Pall Mall",           3, 140, 10,100, -1, 0, false, 50,150, 450, 625, 750,"magenta"),
+
+    array("Pleasant Street",           3, 140, 10,100, -1, 0, false, 50,150, 450, 625, 750,"magenta"),
     array("Electric Company",    4, 200,  0,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
-    array("Whitehall",           3, 140, 10,100, -1, 0, false, 50,150, 450, 625, 750,"magenta"),
-    array("Northumberland Av",   3, 160, 12,100, -1, 0, false, 60,180, 500, 700, 900,"magenta"),
-    array("Marylebone Station",  1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
 
-    array("Bow Street",          5, 180, 14,100, -1, 0, false, 70,200, 550, 750, 950,"*red"),
+    array("Ripon Street",           3, 140, 10,100, -1, 0, false, 50,150, 450, 625, 750,"magenta"),
+    array("Talbot Street",   3, 160, 12,100, -1, 0, false, 60,180, 500, 700, 900,"magenta"),
+    array("Ballarat Station",  1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+
+    array("Ascot Street",          5, 180, 14,100, -1, 0, false, 70,200, 550, 750, 950,"*red"),
     array("Community Chest"),
-    array("Marlborough Street",  5, 180, 14,100, -1, 0, false, 70,200, 550, 750, 950,"*red"),
-    array("Vine Street",         5, 200, 16,100, -1, 0, false, 80,220, 600, 800,1000,"*red"),
+    array("Drummond Street",  5, 180, 14,100, -1, 0, false, 70,200, 550, 750, 950,"*red"),
+    array("Errand Street",         5, 200, 16,100, -1, 0, false, 80,220, 600, 800,1000,"*red"),
 
-    array("Strand",              6, 220, 18,150, -1, 0, false, 90,250, 700, 875,1050,"red"),
+    array("Raglan Street",              6, 220, 18,150, -1, 0, false, 90,250, 700, 875,1050,"red"),
     array("Chance"),
-    array("Fleet Street",        6, 220, 18,150, -1, 0, false, 90,250, 700, 875,1050,"red"),
-    array("Trafalgar Square",    6, 240, 20,150, -1, 0, false,100,300, 750, 925,1100,"red"),
+    array("Lyons Street",        6, 220, 18,150, -1, 0, false, 90,250, 700, 875,1050,"red"),
+    array("Dawson Street",       6, 240, 20,150, -1, 0, false,100,300, 750, 925,1100,"red"),
+
+    array("Wendouree Station",1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+
+    array("Armstrong Stret",     7, 260, 22,150, -1, 0, false,110,330, 800, 975,1150,"yellow"),
+    array("Mair Street",         7, 260, 22,150, -1, 0, false,110,330, 800, 975,1150,"yellow"),
+    array("Water Works",         4, 200,  0,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+    array("Lydiard Street",      7, 270, 24,150, -1, 0, false,120,360, 850,1025,1200,"yellow"),
+    array("Jail"),
+
+    array("Dana Street",         8, 300, 26,200, -1, 0, false,130,390, 900,1100,1275,"green"),
+    array("Eyre Street",         8, 300, 26,200, -1, 0, false,130,390, 900,1100,1275,"green"),
+    array("Community Chest"),
+    array("Sturt Street",         8, 320, 28,200, -1, 0, false,150,450,1000,1200,1400,"green"),
+
+    array("Creswick Station",    1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+    array("Chance"),
+
+    array("Webster Street",      9, 350, 35,200, -1, 0, false,175,500,1100,1300,1500,"blue"),
+    array("Wendouree Parade",    9, 400, 50,200, -1, 0, false,200,600,1400,1700,2000,"blue"),
 )
 
 'Name, Type (
@@ -66,13 +90,41 @@ position = array(0,0)
 jail = array(0, 0)
 money = array(1500,1500)
 computer_pos = 0
+loans = array(0,0)
+payments = array(0,0)
 
 game_loop()
+
+function inc(a, i, amount)
+    a[i] = a[i] + amount
+end
+
+function dec(a, i, amount)
+    a[i] = a[i] - amount 
+end
+
+function pass_go(player)
+    money[player] = money[player] + 200
+    if loans[player] > 0.05 then
+        print("Paying ${payments[player]} off the load")
+        loans.inc(player, loans[player] * 0.05)
+        loans.dec(player, payments[player])
+        if loans[player] <= 0.05 then
+            loans[player] = 0
+            payments[player] = 0
+        end
+    end
+end
+
+' Methods
+function owner(position)
+    board[position][OWNER]
+end
 
 function advance_to(player, value)
     ' passed go
     if value <= position[player] then
-        money[player] = money[player] + 200
+        pass_go(player)
     end
     position[player] = value
 end
@@ -82,7 +134,7 @@ function nearest(player, value)
         position[player] = position[player] + 1
         ' passed go
         if position[player] >= len(board) then
-            money[player] = money[player] + 200
+            pass_go(player)
             position[player] = 0
         end
         prop = board[position[player]]
@@ -198,6 +250,38 @@ function input_trade(message, player)
             end 
         end
     end
+end
+
+function calc_loan_payments(amount)
+    months = 25
+    rate = 0.05
+    rate * (1/(1-(1+rate) ^ (-months)))*amount
+end
+
+function borrow()
+    max = 1000
+    print("You can borrow up to ${max} at 5% interest.")
+    print("Term of the loan is 25 passes of GO.  Interest applied each time you pass GO")
+    print("You can make extra payments or pay out the loan at any time")
+    amount = val(input("How much to you want to borrow? "))
+    pay = calc_loan_payments(amount)
+    inp = input("You loan payments will be ${pay} each time you pass go.  Are you sure you want to borrow this amount? ")
+    if inp == "y" then
+        loans[HUMAN] = amount
+        payments[HUMAN] = pay
+        money[HUMAN] = money[HUMAN] + amount
+    end
+end
+
+function computer_borrow(amount)
+    if loans[COMPUTER] > 0 then
+        exit
+    end
+    pay = calc_loan_payments(amount)
+    loans[COMPUTER] = amount
+    payments[COMPUTER] = pay
+    money[COMPUTER] = money[HUMAN] + amount
+    print("Computer just borrowed ${amount,"N2"}", true, "yellow")
 end
 
 function trade()
@@ -329,14 +413,16 @@ function game_loop()
         end
 
         print("")
-        print("You have ${money[HUMAN],"N0"}, Computer has ${money[COMPUTER], "N0"} ")
+        print("You have ${money[HUMAN],"N0"}, loans: ${loans[HUMAN],"N0"}, Computer has ${money[COMPUTER], "N0"} ")
         print("")
-        inp = input("t = Trade, h = Buy a house, [Enter] = Roll again > ")
+        inp = input("t = Trade, h = Buy a house, b = borrow money, [Enter] = Roll again > ")
         print("")
         if inp == "t" then
             trade()
         elseif inp == "h" then
             buy_house_human()
+        elseif inp == "b" then
+            borrow()
         end
     end
 end
@@ -367,7 +453,7 @@ function move_player(player)
     position[player] = position[player] + moves
     while position[player] > len(board) - 1 
         position[player] = position[player] - (len(board)) 
-        money[player] = money[player] + 200
+        pass_go(player)
     end
 
     property = board[position[player]]
@@ -405,6 +491,7 @@ function property(player, moves)
     if prop[OWNER] < 0 then
         inp = ""
         if player == HUMAN then
+            print("You have ${money[player],"N0"}")
             inp = input("Do you wish to buy {prop[NAME]} for ${prop[PRICE],"N0"} (y/n)? ")
         else
             inp = property_input(prop[PRICE])
@@ -417,6 +504,11 @@ function property(player, moves)
     elseif prop[OWNER] <> player then
         
         rent = get_rent(prop, player, moves)
+        ' computer will borrow if they don't have enough
+        if rent > money[COMPUTER] and player == COMPUTER then
+            computer_borrow((rent - money[COMPUTER]) + 100)
+        end
+
         money[player] = money[player] - rent
         if player == HUMAN then
             money[COMPUTER] = money[COMPUTER] + rent
@@ -457,7 +549,7 @@ function get_station_rent(station_owner)
         prop = board[i]
         if len(prop) > 1 then
             g = prop[GROUP]
-            if g == 1 then
+            if g == 1 and i.owner() == station_owner then
                 if rent > 0 then
                     rent = rent * 2
                 else

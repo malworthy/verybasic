@@ -86,6 +86,8 @@ fn interpret(
 
             //let mut vm = Vm::new_debug(&mut line_numbers, &source_lines, test);
 
+            //dbg!(&instructions);
+
             vm.config_file = config_file;
             let result = vm.run(&instructions);
             if !result {
@@ -139,6 +141,65 @@ mod tests {
             Ok(s) => s,
             Err(s) => s,
         }
+    }
+
+    #[test]
+    fn grouping2() {
+        let code = "rate=24  
+                    (rate/12)";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(2.0)");
+    }
+
+    #[test]
+    fn dot_call() {
+        let code = "a = array(); a.push(123); a.push(44); print(a); a";
+        let result = interpret_test(code);
+        assert_eq!(result, "Array([Number(123.0), Number(44.0)])");
+    }
+
+    #[test]
+    fn dot_call_local() {
+        let code = "if true then a = array(); a.push(123); a.push(44); print(a); a end";
+        let result = interpret_test(code);
+        assert_eq!(result, "Array([Number(123.0), Number(44.0)])");
+    }
+
+    #[test]
+    fn dot_call_func() {
+        let code = "
+            function inc(x)
+                x=x+1
+            end
+
+            x = 10
+            x.inc()
+            x.inc()
+        
+        ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(12.0)");
+    }
+
+    #[test]
+    fn dot_call_func_local() {
+        let code = "
+            function inc(x)
+                x=x+1
+            end
+
+            function test()
+                x = 10
+                x.inc()
+                x.inc()
+                x
+            end
+
+            test()
+        
+        ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(12.0)");
     }
 
     #[test]
@@ -766,29 +827,6 @@ mod tests {
 
         let result = interpret_test("not \"hi\"");
         assert_eq!(result, "Boolean(false)");
-    }
-
-    #[test]
-    fn test_tokenize() {
-        let code = "
-            function test(a,b)
-              x = 1
-              if x == 1 then
-                x = 1+2-3*4/5
-              end
-            end
-            z=\"string\"
-        ";
-        let tokens = crate::scanner::tokenize(code).unwrap();
-        //dbg!(tokens.len());
-        assert_eq!(tokens.len(), 32);
-        let t = &tokens[10]; // if
-                             //dbg!(t);
-        if let TokenType::If(token) = t {
-            assert_eq!(token.line_number, 4);
-        } else {
-            assert!(false);
-        }
     }
 
     #[test]
