@@ -144,6 +144,41 @@ mod tests {
     }
 
     #[test]
+    fn data_statement_test1() {
+        let code = "x = data 
+                        x=1, 
+                        y=2 
+                    end
+                    \"{x.x}-{x .y}\"";
+        let result = interpret_test(code);
+        assert_eq!(result, "String(\"1-2\")");
+    }
+
+    #[test]
+    fn data_statement_test2() {
+        let code = "x = 1; y = 2
+                    s = data 
+                        x, 
+                        y 
+                    end
+                    \"{s.x}-{s.y}\"
+                    ";
+        let result = interpret_test(code);
+        assert_eq!(result, "String(\"1-2\")");
+    }
+
+    #[test]
+    fn data_statement_test3() {
+        let code = "x = data 
+                        x=1, 
+                        y=2 
+                    end
+                    \"{x.x}-{x .y}\"";
+        let result = interpret_test(code);
+        assert_eq!(result, "String(\"1-2\")");
+    }
+
+    #[test]
     fn grouping2() {
         let code = "rate=24  
                     (rate/12)";
@@ -383,8 +418,18 @@ mod tests {
             a[0] = 5
             a[0]
         ";
-        // x is out of scope so compile error
+
         assert_eq!(interpret_test(code), "Number(5.0)");
+    }
+
+    #[test]
+    fn array_in_array_set() {
+        let code = "
+            a = array(array(5,10), array(6,11), array(7,12))
+            a[1][1] = 13.5
+        ";
+
+        assert_eq!(interpret_test(code), "Compile Error");
     }
 
     #[test]

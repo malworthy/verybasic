@@ -62,6 +62,7 @@ pub enum TokenType {
 
     ElseIf(Token),
     Eol(Token),
+    Data(Token),
 
     Eof,
 }
@@ -106,6 +107,7 @@ impl TokenType {
             | TokenType::Step(t)
             | TokenType::Next(t)
             | TokenType::ElseIf(t)
+            | TokenType::Data(t)
             | TokenType::Bool(t) => Some(t),
             _ => None,
         }
@@ -374,6 +376,15 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
         (
             TokenType::Return(Token {
                 lexeme: String::from("exit"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            4,
+        )
+    } else if match_word(code, "data") {
+        (
+            TokenType::Data(Token {
+                lexeme: String::from("data"),
                 line_number,
                 precedence: precedence::NONE,
             }),

@@ -92,6 +92,13 @@ macro_rules! pop {
     };
 }
 
+macro_rules! pop_mut {
+    ($s:ident, $v:ident) => {
+        $s.stack_pointer -= 1;
+        let $v = &mut $s.stack[$s.stack_pointer];
+    };
+}
+
 pub struct DebugSettings {
     pub break_points: Vec<u32>,
     pub code_window: u32,
@@ -792,6 +799,45 @@ impl<'a> Vm<'a> {
                 OpCode::And | OpCode::Or => {
                     if !self.and_or(instr) {
                         return false;
+                    }
+                }
+                OpCode::NewStruct => {
+                    let value = ValueType::Struct(HashMap::new());
+                    self.push(value);
+                }
+                OpCode::GetProp(prop) => {
+                    pop!(self, value);
+
+                    if let ValueType::Struct(hash_map) = value {
+                        let result = hash_map.get(prop.as_str());
+                        match result {
+                            Some(v) => self.push(v.clone()),
+                            None => {
+                                let message = format!("Property {} not found", prop);
+                                self.runtime_error(&message);
+                                return false;
+                            }
+                        }
+                    } else {
+                        self.runtime_error("data type expected")
+                    }
+                }
+                OpCode::AddData(key) => {
+                    pop!(self, value);
+                    let v = match value {
+                        ValueType::Str(x) => ValueType::Str(x),
+                        ValueType::Array(x) => ValueType::Array(x.to_vec()),
+                        ValueType::Boolean(x) => ValueType::Boolean(*x),
+                        ValueType::Number(x) => ValueType::Number(*x),
+                        ValueType::String(x) => ValueType::String(x.to_string()),
+                        ValueType::Struct(x) => ValueType::Struct(x.clone()),
+                    };
+
+                    if let ValueType::Struct(ref mut hash_map) = self.stack[self.stack_pointer - 1]
+                    {
+                        hash_map.insert(key, v);
+                    } else {
+                        panic!("Expect a HashMap on top of the stack -  programmer did the wrong thing in the compiler code");
                     }
                 }
                 OpCode::Subscript => {

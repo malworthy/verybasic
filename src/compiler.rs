@@ -1,3 +1,5 @@
+use std::process::id;
+
 use crate::Vm;
 use colored::Colorize;
 
@@ -42,6 +44,9 @@ pub enum OpCode {
     Jump(i32),
     Subscript,
     SubscriptSet,
+    AddData(String),
+    GetProp(String),
+    NewStruct,
     Return,
 }
 
@@ -89,6 +94,9 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::SubscriptSet => format!("{:05} SSET", addr),
             OpCode::Subtract => format!("{:05} SUB", addr),
             OpCode::ConstantBool(val) => format!("{:05} BOOL {}", addr, val),
+            OpCode::AddData(name) => format!("{:05} ADDD {}", addr, name),
+            OpCode::GetProp(name) => format!("{:05} GETP {}", addr, name),
+            OpCode::NewStruct => format!("{:05} NEWS", addr),
         };
         addr += 1;
         println!("{}", x);
@@ -283,9 +291,26 @@ impl Compiler<'_> {
             return false;
         };
 
-        self.advance();
         // check for left paran
+        match &self.tokens[self.token_pointer] {
+            TokenType::LeftParan(_) => {
+                self.advance();
+                self.method_call(token, func_name, var_lookup, name)
+            }
+            _ => {
+                self.add_instr(OpCode::GetProp(func_name), token.line_number);
+                true
+            }
+        }
+    }
 
+    fn method_call(
+        &mut self,
+        token: &Token,
+        func_name: String,
+        var_lookup: Option<usize>,
+        name: String,
+    ) -> bool {
         let mut arguments = 0;
         loop {
             match &self.tokens[self.token_pointer] {
@@ -691,6 +716,7 @@ impl Compiler<'_> {
             }
             TokenType::LeftParan(t) => self.grouping(t),
             TokenType::Identifier(t) => self.variable(t, can_assign),
+            TokenType::Data(t) => self.data_statement(t),
             _ => {
                 let result = token.get_token();
                 if let Some(t) = result {
@@ -895,6 +921,86 @@ impl Compiler<'_> {
         self.end_scope();
     }
 
+    fn skip_eol(&mut self) {
+        loop {
+            if let TokenType::Eol(_) = &self.tokens[self.token_pointer] {
+                self.advance();
+            } else {
+                return;
+            }
+        }
+    }
+
+    fn unadvance(&mut self) {
+        loop {
+            self.token_pointer -= 1;
+            if let TokenType::Eol(_) = &self.tokens[self.token_pointer] {
+                // do nothing
+            } else {
+                return;
+            }
+        }
+    }
+
+    fn data_statement(&mut self, token: &Token) {
+        self.advance();
+        dbg!(&self.tokens[self.token_pointer]);
+        self.skip_eol();
+        self.add_instr(OpCode::NewStruct, token.line_number);
+        loop {
+            let identifier = if let TokenType::Identifier(t) = &self.tokens[self.token_pointer] {
+                t
+            } else {
+                return;
+            };
+            self.advance();
+            self.skip_eol();
+            match &self.tokens[self.token_pointer] {
+                TokenType::Equals(t) => {
+                    self.advance();
+                    self.expression();
+                }
+                TokenType::Comma(t) | TokenType::End(t) => {
+                    self.unadvance();
+                    self.expression();
+                }
+                _ => {
+                    dbg!(&self.tokens[self.token_pointer]);
+                    self.compile_error("some compile error one...", token);
+                    return;
+                }
+            }
+            self.skip_eol();
+            match &self.tokens[self.token_pointer] {
+                TokenType::Comma(_) => {
+                    println!("add field {identifier:?} and continue");
+                    self.add_instr(
+                        OpCode::AddData(identifier.lexeme.clone()),
+                        identifier.line_number,
+                    );
+                    self.advance();
+                }
+                TokenType::End(_) => {
+                    println!("add the last field {identifier:?}");
+                    self.add_instr(
+                        OpCode::AddData(identifier.lexeme.clone()),
+                        identifier.line_number,
+                    );
+                    self.skip_eol();
+                    self.advance();
+
+                    return;
+                }
+                _ => {
+                    dbg!(&self.tokens[self.token_pointer]);
+                    self.compile_error("some compile error two...", token);
+                    return;
+                }
+            }
+            self.skip_eol();
+        }
+    }
+
     fn begin_scope(&mut self) {
         self.depth += 1;
     }
@@ -1061,6 +1167,7 @@ impl Compiler<'_> {
             TokenType::While(t) => self.while_statement(t),
             TokenType::Function(t) => self.def_fn(t),
             TokenType::For(t) => self.for_statement(t),
+            //TokenType::Data(t) => self.data_statement(t),
             TokenType::Return(t) => {
                 self.add_instr(OpCode::Return, t.line_number);
                 self.advance();
