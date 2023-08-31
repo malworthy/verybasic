@@ -236,19 +236,19 @@ impl Compiler<'_> {
                 self.advance(); // over =
                 self.expression();
                 self.add_instr(OpCode::SubscriptSet, token.line_number);
-                // copy result back into the variable
-                let (index, _) = self.add_variable(variable.lexeme.clone());
-                match index {
-                    Some(index) => {
-                        self.add_instr(OpCode::SetLocal(index), token.line_number);
-                    }
-                    None => {
-                        self.add_instr(
-                            OpCode::SetGlobal(variable.lexeme.clone()),
-                            token.line_number,
-                        );
-                    }
-                }
+                // // copy result back into the variable
+                // let (index, _) = self.add_variable(variable.lexeme.clone());
+                // match index {
+                //     Some(index) => {
+                //         self.add_instr(OpCode::SetLocal(index), token.line_number);
+                //     }
+                //     None => {
+                //         self.add_instr(
+                //             OpCode::SetGlobal(variable.lexeme.clone()),
+                //             token.line_number,
+                //         );
+                //     }
+                // }
             } else {
                 self.add_instr(OpCode::Subscript, token.line_number);
                 self.advance();
@@ -296,6 +296,9 @@ impl Compiler<'_> {
             TokenType::LeftParan(_) => {
                 self.advance();
                 self.method_call(token, func_name, var_lookup, name)
+            }
+            TokenType::Equals(_) => {
+                panic!("Set property not implemented");
             }
             _ => {
                 self.add_instr(OpCode::GetProp(func_name), token.line_number);

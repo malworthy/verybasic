@@ -9,6 +9,7 @@ use std::{
 };
 
 use crate::compiler::OpCode;
+use chrono::Local;
 use colored::Colorize;
 
 #[derive(Debug, Clone)]
@@ -19,6 +20,13 @@ pub enum ValueType<'a> {
     String(String),
     Array(Vec<ValueType<'a>>),
     Struct(HashMap<&'a str, ValueType<'a>>),
+}
+
+#[derive(Debug)]
+pub enum ValuePointer {
+    Local(usize),
+    Global(String),
+    None,
 }
 
 impl ValueType<'_> {
@@ -84,6 +92,7 @@ fn string_compare<'a>(op: &OpCode, a: &str, b: &str) -> ValueType<'a> {
 }
 
 const EMPTY_ELEMENT: ValueType = ValueType::Boolean(false);
+const NO_POINTER: ValuePointer = ValuePointer::None;
 
 macro_rules! pop {
     ($s:ident, $v:ident) => {
@@ -92,10 +101,25 @@ macro_rules! pop {
     };
 }
 
+macro_rules! pop_pointer {
+    ($s:ident, $v:ident) => {
+        $s.stack_pointer -= 1;
+        let $v = &$s.value_pointers[$s.stack_pointer];
+    };
+}
+
+// if you want to use this macro, you are doing something wrong!
 macro_rules! pop_mut {
     ($s:ident, $v:ident) => {
         $s.stack_pointer -= 1;
         let $v = &mut $s.stack[$s.stack_pointer];
+    };
+}
+
+macro_rules! pop_clone {
+    ($s:ident, $v:ident) => {
+        $s.stack_pointer -= 1;
+        let $v = $s.stack[$s.stack_pointer].clone();
     };
 }
 
@@ -129,6 +153,7 @@ enum DebugStep {
 
 pub struct Vm<'a> {
     stack: [ValueType<'a>; MAX_STACK],
+    value_pointers: [ValuePointer; MAX_STACK],
     stack_pointer: usize,
     globals: HashMap<&'a str, ValueType<'a>>,
     pub return_value: Option<ValueType<'a>>,
@@ -149,6 +174,7 @@ impl<'a> Vm<'a> {
         Vm {
             //stack: Vec::new(),
             stack: [EMPTY_ELEMENT; MAX_STACK],
+            value_pointers: [NO_POINTER; MAX_STACK],
             globals: HashMap::new(),
             return_value: Option::None,
             gr: graphics::Graphics::new(),
@@ -171,6 +197,7 @@ impl<'a> Vm<'a> {
     ) -> Self {
         Vm {
             stack: [EMPTY_ELEMENT; MAX_STACK],
+            value_pointers: [NO_POINTER; MAX_STACK],
             globals: HashMap::new(),
             return_value: Option::None,
             gr: graphics::Graphics::new(),
@@ -246,6 +273,17 @@ impl<'a> Vm<'a> {
             //panic!("Stack overflow. TODO: Remove this panic and handle the error gracefully!")
         }
         self.stack[self.stack_pointer] = value;
+        self.stack_pointer += 1;
+    }
+
+    fn push_pointer(&mut self, value: ValueType<'a>, pointer: ValuePointer) {
+        if self.stack_pointer >= MAX_STACK {
+            self.runtime_error("Stack Overflow");
+            return;
+            //panic!("Stack overflow. TODO: Remove this panic and handle the error gracefully!")
+        }
+        self.stack[self.stack_pointer] = value;
+        self.value_pointers[self.stack_pointer] = pointer;
         self.stack_pointer += 1;
     }
 
@@ -638,7 +676,7 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::GetGlobal(name) => {
                     if let Some(value) = self.globals.get(&name.as_str()) {
-                        self.push(value.to_owned());
+                        self.push_pointer(value.to_owned(), ValuePointer::Global(name.clone()));
                     } else {
                         let message = format!("Global variable {name} does not exist.");
                         self.runtime_error(&message);
@@ -736,7 +774,10 @@ impl<'a> Vm<'a> {
                     pop!(self, _v);
                 }
                 OpCode::GetLocal(i) => {
-                    self.push(self.stack[i + frame.frame_pointer].clone());
+                    self.push_pointer(
+                        self.stack[i + frame.frame_pointer].clone(),
+                        ValuePointer::Local(i + frame.frame_pointer),
+                    );
                 }
                 OpCode::SetLocal(i) => {
                     let value = self.stack[self.stack_pointer - 1].clone();
@@ -771,20 +812,33 @@ impl<'a> Vm<'a> {
                     frame.ip = new_ip;
                 }
                 OpCode::Return => {
+                    dbg!(&self.stack[0..self.stack_pointer]);
+                    dbg!(&self.value_pointers[0..self.stack_pointer]);
                     // pop the frame
                     // if no frames left, then break
                     if let Some(value) = call_frames.pop() {
                         // get rid of any local variables on the stack
                         self.stack_pointer = frame.frame_pointer;
-
                         if frame.mut_call {
-                            if frame.global.is_empty() {
-                                let val = self.stack[self.stack_pointer].clone();
-                                self.stack[frame.local + value.frame_pointer] = val;
-                            } else {
-                                let val = &self.stack[self.stack_pointer];
-                                self.globals.insert(frame.global, val.clone());
+                            match &self.value_pointers[self.stack_pointer] {
+                                ValuePointer::Global(g) => {
+                                    let val = &self.stack[self.stack_pointer];
+                                    self.globals.insert(frame.global, val.clone());
+                                }
+                                ValuePointer::Local(index) => {
+                                    let val = self.stack[self.stack_pointer].clone();
+                                    self.stack[index + value.frame_pointer] = val;
+                                }
+                                _ => {}
                             }
+
+                            // if frame.global.is_empty() {
+                            //     let val = self.stack[self.stack_pointer].clone();
+                            //     self.stack[frame.local + value.frame_pointer] = val;
+                            // } else {
+                            //     let val = &self.stack[self.stack_pointer];
+                            //     self.globals.insert(frame.global, val.clone());
+                            // }
                         }
 
                         // set the call frame
@@ -862,23 +916,77 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
+                // OpCode::SubscriptSet => {
+                //     pop!(self, value);
+                //     pop!(self, index);
+                //     pop!(self, array);
+                //     let mut x = array.clone();
+                //     if let ValueType::Array(ref mut a) = x {
+                //         if let ValueType::Number(index) = index {
+                //             let i = *index as usize;
+                //             a[i] = value.clone();
+                //             self.push(x);
+                //         } else {
+                //             self.runtime_error("Subscript index must be a number");
+                //             return false;
+                //         }
+                //     } else {
+                //         self.runtime_error("Subscript only works on arrays");
+                //         return false;
+                //     }
+                // }
                 OpCode::SubscriptSet => {
-                    pop!(self, value);
-                    pop!(self, index);
-                    pop!(self, array);
-                    let mut x = array.clone();
-                    if let ValueType::Array(ref mut a) = x {
-                        if let ValueType::Number(index) = index {
-                            let i = *index as usize;
-                            a[i] = value.clone();
-                            self.push(x);
-                        } else {
+                    dbg!(&self.stack[0..10]);
+                    let mut stack = self.stack.iter();
+
+                    let index = stack.nth(self.stack_pointer - 2).unwrap();
+                    dbg!(&index);
+
+                    let value = stack.nth(0).unwrap();
+                    dbg!(&value);
+
+                    self.stack_pointer -= 2;
+
+                    let index = match index {
+                        ValueType::Number(n) => *n as usize,
+                        _ => {
                             self.runtime_error("Subscript index must be a number");
                             return false;
                         }
-                    } else {
-                        self.runtime_error("Subscript only works on arrays");
-                        return false;
+                    };
+                    let value = match value {
+                        ValueType::Str(x) => ValueType::Str(x),
+                        ValueType::Array(x) => ValueType::Array(x.to_vec()),
+                        ValueType::Boolean(x) => ValueType::Boolean(*x),
+                        ValueType::Number(x) => ValueType::Number(*x),
+                        ValueType::String(x) => ValueType::String(x.to_string()),
+                        ValueType::Struct(x) => ValueType::Struct(x.clone()),
+                    };
+                    pop_pointer!(self, array_pointer);
+                    match array_pointer {
+                        ValuePointer::Local(i) => {
+                            if let ValueType::Array(ref mut a) = self.stack[*i] {
+                                a[index] = value.clone();
+                                self.push(value);
+                            } else {
+                                self.runtime_error("Subscript only works on arrays");
+                                return false;
+                            }
+                        }
+                        ValuePointer::Global(s) => {
+                            let array = self.globals.get_mut(s.as_str()).unwrap();
+                            if let ValueType::Array(ref mut a) = array {
+                                a[index] = value.clone();
+                                self.push(value);
+                            } else {
+                                self.runtime_error("Subscript only works on arrays");
+                                return false;
+                            }
+                        }
+                        ValuePointer::None => {
+                            self.runtime_error("Invalid use of subscript");
+                            return false;
+                        }
                     }
                 }
             }

@@ -171,9 +171,11 @@ mod tests {
     fn data_statement_test3() {
         let code = "x = data 
                         x=1, 
-                        y=2 
+                        y= data
+                            z = 2
+                        end
                     end
-                    \"{x.x}-{x .y}\"";
+                    \"{x.x}-{x.y.z}\"";
         let result = interpret_test(code);
         assert_eq!(result, "String(\"1-2\")");
     }
@@ -423,10 +425,24 @@ mod tests {
     }
 
     #[test]
+    fn subscript_set_local() {
+        let code = "
+            if true then
+                a = array(1,2,3)
+                a[0] = 5
+                a[0]
+            end
+        ";
+
+        assert_eq!(interpret_test(code), "Number(5.0)");
+    }
+
+    #[test]
     fn array_in_array_set() {
         let code = "
             a = array(array(5,10), array(6,11), array(7,12))
             a[1][1] = 13.5
+            a[1]
         ";
 
         assert_eq!(interpret_test(code), "Compile Error");
