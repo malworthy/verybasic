@@ -25,7 +25,7 @@ pub enum ValueType<'a> {
 #[derive(Debug)]
 pub enum ValuePointer {
     Local(usize),
-    Global(String),
+    Global(u32),
     None,
 }
 
@@ -43,12 +43,12 @@ impl ValueType<'_> {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct Frame<'a> {
+struct Frame {
     ip: usize,
     frame_pointer: usize,
     mut_call: bool,
-    local: usize,
-    global: &'a str,
+    // local: usize,
+    // global: &'a str,
 }
 
 const MAX_STACK: usize = 128;
@@ -155,7 +155,7 @@ pub struct Vm<'a> {
     stack: [ValueType<'a>; MAX_STACK],
     value_pointers: [ValuePointer; MAX_STACK],
     stack_pointer: usize,
-    globals: HashMap<&'a str, ValueType<'a>>,
+    globals: HashMap<u32, ValueType<'a>>,
     pub return_value: Option<ValueType<'a>>,
     gr: graphics::Graphics,
     line_numbers: &'a mut Vec<u32>,
@@ -580,8 +580,8 @@ impl<'a> Vm<'a> {
             ip: 0,
             frame_pointer: 0,
             mut_call: false,
-            local: 0,
-            global: "",
+            // local: 0,
+            // global: "",
         };
         let mut frame = main_frame;
         loop {
@@ -672,33 +672,34 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::SetGlobal(name) => {
                     let v = &self.stack[self.stack_pointer - 1];
-                    self.globals.insert(name, v.clone());
+                    self.globals.insert(*name, v.clone());
                 }
                 OpCode::GetGlobal(name) => {
-                    if let Some(value) = self.globals.get(&name.as_str()) {
-                        self.push_pointer(value.to_owned(), ValuePointer::Global(name.clone()));
+                    if let Some(value) = self.globals.get(name) {
+                        self.push_pointer(value.to_owned(), ValuePointer::Global(*name));
                     } else {
                         let message = format!("Global variable {name} does not exist.");
                         self.runtime_error(&message);
                         return false;
                     }
                 }
-                OpCode::CallNativeMut(index, argc, local, global) => {
+                OpCode::CallNativeMut(index, argc) => {
                     let mut args: Vec<ValueType> = Vec::new();
-
+                    dbg!(&self.stack[0..self.stack_pointer]);
                     let func = Vm::MUT_NATIVES[*index].0;
                     for _i in 0..*argc {
                         pop!(self, v);
                         args.insert(0, v.clone());
                     }
+                    pop_pointer!(self, p);
 
-                    let result = func(&mut self.stack[self.stack_pointer - 1], args);
-                    pop!(self, v);
-                    if global.is_empty() {
-                        self.stack[local + frame.frame_pointer] = v.clone();
-                    } else {
-                        self.globals.insert(global, v.clone());
-                    }
+                    let result = match p {
+                        ValuePointer::Local(index) => func(&mut self.stack[*index], args),
+                        ValuePointer::Global(index) => {
+                            func(self.globals.get_mut(index).unwrap(), args)
+                        }
+                        _ => func(&mut self.stack[self.stack_pointer - 1], args),
+                    };
 
                     match result {
                         Ok(value) => self.push(value),
@@ -751,19 +752,17 @@ impl<'a> Vm<'a> {
                         ip: pointer - 1,
                         frame_pointer: self.stack_pointer - argc,
                         mut_call: false,
-                        local: 0,
-                        global: "",
+                        // local: 0,
+                        // global: "",
                     };
                 }
-                OpCode::CallMut(pointer, argc, local, global) => {
+                OpCode::CallMut(pointer, argc) => {
                     call_frames.push(frame); // save current frame
                     let argc = *argc as usize;
                     frame = Frame {
                         ip: pointer - 1,
                         frame_pointer: self.stack_pointer - argc - 1,
                         mut_call: true,
-                        local: *local,
-                        global,
                     };
                 }
                 OpCode::Pop => {
@@ -812,8 +811,8 @@ impl<'a> Vm<'a> {
                     frame.ip = new_ip;
                 }
                 OpCode::Return => {
-                    dbg!(&self.stack[0..self.stack_pointer]);
-                    dbg!(&self.value_pointers[0..self.stack_pointer]);
+                    //dbg!(&self.stack[0..self.stack_pointer]);
+                    //dbg!(&self.value_pointers[0..self.stack_pointer]);
                     // pop the frame
                     // if no frames left, then break
                     if let Some(value) = call_frames.pop() {
@@ -823,7 +822,7 @@ impl<'a> Vm<'a> {
                             match &self.value_pointers[self.stack_pointer] {
                                 ValuePointer::Global(g) => {
                                     let val = &self.stack[self.stack_pointer];
-                                    self.globals.insert(frame.global, val.clone());
+                                    self.globals.insert(*g, val.clone());
                                 }
                                 ValuePointer::Local(index) => {
                                     let val = self.stack[self.stack_pointer].clone();
@@ -974,7 +973,7 @@ impl<'a> Vm<'a> {
                             }
                         }
                         ValuePointer::Global(s) => {
-                            let array = self.globals.get_mut(s.as_str()).unwrap();
+                            let array = self.globals.get_mut(s).unwrap();
                             if let ValueType::Array(ref mut a) = array {
                                 a[index] = value.clone();
                                 self.push(value);

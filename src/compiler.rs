@@ -27,13 +27,13 @@ pub enum OpCode {
     Or,
     Mod,
     Pow,
-    SetGlobal(String),
-    GetGlobal(String),
+    SetGlobal(u32),
+    GetGlobal(u32),
     Call(usize, u32),
     CallSystem(String, u32, u32),
     CallNative(usize, u32),
-    CallNativeMut(usize, u32, usize, String),
-    CallMut(usize, u32, usize, String),
+    CallNativeMut(usize, u32),
+    CallMut(usize, u32),
     //CallNativeGr(usize, u32),
     Pop,
     Pop2,
@@ -50,6 +50,11 @@ pub enum OpCode {
     Return,
 }
 
+enum VarType {
+    Local(usize),
+    Global(usize),
+}
+
 pub fn print_instr(instructions: Vec<OpCode>) {
     let mut addr = 0;
     for i in instructions {
@@ -57,11 +62,11 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::Add => format!("{:05} ADD", addr),
             OpCode::Call(ptr, argc) => format!("{:05} CALL {} {}", addr, ptr, argc),
             OpCode::CallNative(index, argc) => format!("{:05} CALN {} {}", addr, index, argc),
-            OpCode::CallNativeMut(index, argc, local, global) => {
-                format!("{:05} CALG {} {} {} {}", addr, index, argc, local, global)
+            OpCode::CallNativeMut(index, argc) => {
+                format!("{:05} CALG {} {}", addr, index, argc)
             }
-            OpCode::CallMut(index, argc, local, global) => {
-                format!("{:05} CALM {} {} {} {}", addr, index, argc, local, global)
+            OpCode::CallMut(index, argc) => {
+                format!("{:05} CALM {} {}", addr, index, argc)
             }
             OpCode::And => format!("{:05} AND", addr),
             OpCode::CallSystem(name, argc, _) => format!("{} SYS  {} {}", addr, name, argc),
@@ -265,22 +270,22 @@ impl Compiler<'_> {
             self.compile_error("Unexpected end of file after '.'", token);
             return false;
         }
-        // get the name of the variable we are mutating
-        let name: String = if let TokenType::Identifier(t) = &self.tokens[self.token_pointer - 2] {
-            t.lexeme.clone()
-        } else {
-            // no variable - handle in future
-            //String::new()
-            self.compile_error("Variable expected", token);
-            return false;
-        };
+        // // get the name of the variable we are mutating
+        // let name: String = if let TokenType::Identifier(t) = &self.tokens[self.token_pointer - 2] {
+        //     t.lexeme.clone()
+        // } else {
+        //     // no variable - handle in future
+        //     //String::new()
+        //     self.compile_error("Variable expected", token);
+        //     return false;
+        // };
 
-        let (var_lookup, added) = self.add_variable(name.clone()); //TODO: create lookup function
-        if added {
-            let msg = format!("Variable {} not found", name);
-            self.compile_error(&msg, token);
-            return false;
-        }
+        // let (var_lookup, added) = self.add_variable(name.clone()); //TODO: create lookup function
+        // if added {
+        //     let msg = format!("Variable {} not found", name);
+        //     self.compile_error(&msg, token);
+        //     return false;
+        // }
 
         self.advance();
         // get name of function
@@ -295,7 +300,7 @@ impl Compiler<'_> {
         match &self.tokens[self.token_pointer] {
             TokenType::LeftParan(_) => {
                 self.advance();
-                self.method_call(token, func_name, var_lookup, name)
+                self.method_call(token, func_name)
             }
             TokenType::Equals(_) => {
                 panic!("Set property not implemented");
@@ -311,8 +316,8 @@ impl Compiler<'_> {
         &mut self,
         token: &Token,
         func_name: String,
-        var_lookup: Option<usize>,
-        name: String,
+        // var_lookup: VarType,
+        // name: String,
     ) -> bool {
         let mut arguments = 0;
         loop {
@@ -322,17 +327,7 @@ impl Compiler<'_> {
 
                     //check if it's native
                     if let Ok(index) = is_native_mut(func_name.as_str()) {
-                        if let Some(local) = var_lookup {
-                            self.add_instr(
-                                OpCode::CallNativeMut(index, arguments, local, String::new()),
-                                token.line_number,
-                            );
-                        } else {
-                            self.add_instr(
-                                OpCode::CallNativeMut(index, arguments, 0, name),
-                                token.line_number,
-                            );
-                        }
+                        self.add_instr(OpCode::CallNativeMut(index, arguments), token.line_number);
                     } else {
                         // get index of fn
                         if let Some(index) = self.functions.iter().position(|x| x.0 == func_name) {
@@ -344,17 +339,7 @@ impl Compiler<'_> {
                                 );
                                 return false;
                             }
-                            if let Some(local) = var_lookup {
-                                self.add_instr(
-                                    OpCode::CallMut(f.2, arguments, local, String::new()),
-                                    token.line_number,
-                                );
-                            } else {
-                                self.add_instr(
-                                    OpCode::CallMut(f.2, arguments, 0, name),
-                                    token.line_number,
-                                );
-                            }
+                            self.add_instr(OpCode::CallMut(f.2, arguments), token.line_number);
                         } else {
                             let msg = format!("Function {} not found", func_name);
                             self.compile_error(&msg, token);
@@ -444,8 +429,8 @@ impl Compiler<'_> {
         }
     }
 
-    fn add_variable(&mut self, name: String) -> (Option<usize>, bool) {
-        let index: Option<usize>;
+    fn add_variable(&mut self, name: String) -> (VarType, bool) {
+        let index: VarType;
         let mut added = false;
 
         // 0  1  2  3  4  5
@@ -455,18 +440,18 @@ impl Compiler<'_> {
             let i = self.variables.len() - 1 - i;
             if self.variables[i].depth > 0 {
                 let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
-                index = Some(i - start);
+                index = VarType::Local(i - start);
             } else {
-                index = None; // global, so we don't use index.
+                index = VarType::Global(i); // global, so we don't use index.
             }
         } else {
             self.variables.push(Variable::new(name, self.depth));
 
             if self.depth == 0 {
-                index = None
+                index = VarType::Global(self.variables.len() - 1)
             } else {
                 let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
-                index = Some(self.variables.len() - start - 1);
+                index = VarType::Local(self.variables.len() - start - 1);
             }
 
             added = true;
@@ -531,15 +516,15 @@ impl Compiler<'_> {
             self.expression();
             let (index, added) = self.add_variable(token.lexeme.clone());
             match index {
-                Some(index) => {
+                VarType::Local(index) => {
                     if added {
                         self.add_instr(OpCode::DefineLocal(index), token.line_number);
                     } else {
                         self.add_instr(OpCode::SetLocal(index), token.line_number);
                     }
                 }
-                None => {
-                    self.add_instr(OpCode::SetGlobal(token.lexeme.clone()), token.line_number);
+                VarType::Global(index) => {
+                    self.add_instr(OpCode::SetGlobal(index as u32), token.line_number);
                 }
             }
         } else {
@@ -552,7 +537,7 @@ impl Compiler<'_> {
             {
                 let index = self.variables.len() - 1 - index;
                 if self.variables[index].depth == 0 {
-                    self.add_instr(OpCode::GetGlobal(token.lexeme.clone()), token.line_number);
+                    self.add_instr(OpCode::GetGlobal(index as u32), token.line_number);
                 } else {
                     let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
                     let index = index - start;
