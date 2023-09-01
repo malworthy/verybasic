@@ -273,6 +273,7 @@ impl<'a> Vm<'a> {
             //panic!("Stack overflow. TODO: Remove this panic and handle the error gracefully!")
         }
         self.stack[self.stack_pointer] = value;
+        self.value_pointers[self.stack_pointer] = ValuePointer::None;
         self.stack_pointer += 1;
     }
 
@@ -915,34 +916,54 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
-                // OpCode::SubscriptSet => {
-                //     pop!(self, value);
-                //     pop!(self, index);
-                //     pop!(self, array);
-                //     let mut x = array.clone();
-                //     if let ValueType::Array(ref mut a) = x {
-                //         if let ValueType::Number(index) = index {
-                //             let i = *index as usize;
-                //             a[i] = value.clone();
-                //             self.push(x);
-                //         } else {
-                //             self.runtime_error("Subscript index must be a number");
-                //             return false;
-                //         }
-                //     } else {
-                //         self.runtime_error("Subscript only works on arrays");
-                //         return false;
-                //     }
-                // }
+                OpCode::SetProp(name) => {
+                    dbg!(&self.stack[0..self.stack_pointer]);
+                    dbg!(&self.value_pointers[0..self.stack_pointer]);
+
+                    pop!(self, value);
+                    dbg!(value);
+                    let value = match value {
+                        ValueType::Str(x) => ValueType::Str(x),
+                        ValueType::Array(x) => ValueType::Array(x.to_vec()),
+                        ValueType::Boolean(x) => ValueType::Boolean(*x),
+                        ValueType::Number(x) => ValueType::Number(*x),
+                        ValueType::String(x) => ValueType::String(x.to_string()),
+                        ValueType::Struct(x) => ValueType::Struct(x.clone()),
+                    };
+
+                    pop_pointer!(self, data_pointer);
+                    dbg!(data_pointer);
+                    match data_pointer {
+                        ValuePointer::Local(i) => {
+                            if let ValueType::Struct(ref mut a) = self.stack[*i] {
+                                a.insert(&name, value.clone());
+                                self.push(value);
+                            } else {
+                                self.runtime_error("Subscript only works on arrays");
+                                return false;
+                            }
+                        }
+                        ValuePointer::Global(s) => {
+                            let array = self.globals.get_mut(s).unwrap();
+                            if let ValueType::Struct(ref mut a) = array {
+                                a.insert(&name, value.clone());
+                                self.push(value);
+                            } else {
+                                self.runtime_error("Subscript only works on arrays");
+                                return false;
+                            }
+                        }
+                        ValuePointer::None => {
+                            self.runtime_error("Invalid use of subscript");
+                            return false;
+                        }
+                    }
+                }
+
                 OpCode::SubscriptSet => {
-                    dbg!(&self.stack[0..10]);
                     let mut stack = self.stack.iter();
-
                     let index = stack.nth(self.stack_pointer - 2).unwrap();
-                    dbg!(&index);
-
                     let value = stack.nth(0).unwrap();
-                    dbg!(&value);
 
                     self.stack_pointer -= 2;
 

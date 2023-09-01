@@ -46,6 +46,7 @@ pub enum OpCode {
     SubscriptSet,
     AddData(String),
     GetProp(String),
+    SetProp(String),
     NewStruct,
     Return,
 }
@@ -101,6 +102,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::ConstantBool(val) => format!("{:05} BOOL {}", addr, val),
             OpCode::AddData(name) => format!("{:05} ADDD {}", addr, name),
             OpCode::GetProp(name) => format!("{:05} GETP {}", addr, name),
+            OpCode::SetProp(name) => format!("{:05} SETP {}", addr, name),
             OpCode::NewStruct => format!("{:05} NEWS", addr),
         };
         addr += 1;
@@ -303,7 +305,10 @@ impl Compiler<'_> {
                 self.method_call(token, func_name)
             }
             TokenType::Equals(_) => {
-                panic!("Set property not implemented");
+                self.advance();
+                self.expression();
+                self.add_instr(OpCode::SetProp(func_name), token.line_number);
+                true
             }
             _ => {
                 self.add_instr(OpCode::GetProp(func_name), token.line_number);

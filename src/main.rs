@@ -86,7 +86,7 @@ fn interpret(
 
             //let mut vm = Vm::new_debug(&mut line_numbers, &source_lines, test);
 
-            //dbg!(&instructions);
+            dbg!(&instructions);
 
             vm.config_file = config_file;
             let result = vm.run(&instructions);
@@ -178,6 +178,21 @@ mod tests {
                     \"{x.x}-{x.y.z}\"";
         let result = interpret_test(code);
         assert_eq!(result, "String(\"1-2\")");
+    }
+
+    #[test]
+    fn data_statement_set() {
+        let code = "x = data 
+                        x=1, 
+                        y= data
+                            z = 2
+                        end
+                    end
+                    'x.x = 50
+                    x.y.z = 30
+                    '\"{x.x}-{x.y.z}\"";
+        let result = interpret_test(code);
+        assert_eq!(result, "String(\"50-30\")");
     }
 
     #[test]
