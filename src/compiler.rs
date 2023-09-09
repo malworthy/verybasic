@@ -28,7 +28,7 @@ pub enum OpCode {
     Mod,
     Pow,
     SetGlobal(u32),
-    GetGlobal(u32),
+    GetGlobal(u32, bool),
     Call(usize, u32),
     CallSystem(String, u32, u32),
     CallNative(usize, u32),
@@ -39,7 +39,7 @@ pub enum OpCode {
     Pop2,
     SetLocal(usize),
     DefineLocal(usize),
-    GetLocal(usize),
+    GetLocal(usize, bool),
     JumpIfFalse(usize),
     Jump(i32),
     Subscript,
@@ -76,8 +76,8 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::DefineLocal(num) => format!("{:05} DEF  {}", addr, num),
             OpCode::Divide => format!("{:05} DIV", addr),
             OpCode::Equal => format!("{:05} EQ", addr),
-            OpCode::GetGlobal(name) => format!("{:05} GLOB {}", addr, name),
-            OpCode::GetLocal(index) => format!("{:05} LOC  {}", addr, index),
+            OpCode::GetGlobal(name, _) => format!("{:05} GLOB {}", addr, name),
+            OpCode::GetLocal(index, _) => format!("{:05} LOC  {}", addr, index),
             OpCode::GreaterThan => format!("{:05} GT", addr),
             OpCode::GreaterThanEq => format!("{:05} GTEQ", addr),
             OpCode::Jump(ptr) => format!("{:05} JUMP {}", addr, ptr),
@@ -516,6 +516,18 @@ impl Compiler<'_> {
             false
         };
 
+        //Check to see if we are doing a varible.[something], then we use a pointer (maybe? - code may get blown away!)
+        // let matched_dot = if let TokenType::Dot(_) = self.tokens[self.token_pointer] {
+        //     true
+        // } else {
+        //     false
+        // };
+
+        let matched_dot = match self.tokens[self.token_pointer] {
+            TokenType::Dot(_) | TokenType::LeftBracket(_) => true,
+            _ => false,
+        };
+
         if can_assign && matched_equal {
             // Setting a variable
             self.expression();
@@ -542,11 +554,14 @@ impl Compiler<'_> {
             {
                 let index = self.variables.len() - 1 - index;
                 if self.variables[index].depth == 0 {
-                    self.add_instr(OpCode::GetGlobal(index as u32), token.line_number);
+                    self.add_instr(
+                        OpCode::GetGlobal(index as u32, matched_dot),
+                        token.line_number,
+                    );
                 } else {
                     let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
                     let index = index - start;
-                    self.add_instr(OpCode::GetLocal(index), token.line_number);
+                    self.add_instr(OpCode::GetLocal(index, matched_dot), token.line_number);
                 }
             } else {
                 // compile error - can't find variable
@@ -879,7 +894,7 @@ impl Compiler<'_> {
                 step = -step;
             }
 
-            self.add_instr(OpCode::GetLocal(var_index), token.line_number);
+            self.add_instr(OpCode::GetLocal(var_index, false), token.line_number);
             if step > 0.0 {
                 self.add_instr(OpCode::GreaterThanEq, token.line_number);
             } else {
@@ -890,7 +905,7 @@ impl Compiler<'_> {
             self.for_block();
 
             // inc the variable
-            self.add_instr(OpCode::GetLocal(var_index), token.line_number);
+            self.add_instr(OpCode::GetLocal(var_index, false), token.line_number);
             self.add_instr(OpCode::ConstantNum(step), token.line_number);
             self.add_instr(OpCode::Add, token.line_number);
             self.add_instr(OpCode::SetLocal(var_index), token.line_number);

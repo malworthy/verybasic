@@ -116,6 +116,8 @@ pub fn len<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'
             ValueType::Number(_) => 8,
             ValueType::Boolean(_) => 1,
             ValueType::Struct(s) => s.len(),
+            ValueType::PointerG(_) => panic!("Pointers not implemented"),
+            ValueType::PointerL(_) => panic!("Pointers not implemented"),
         };
         let len = len as f64;
         Ok(ValueType::Number(len))

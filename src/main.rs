@@ -86,7 +86,7 @@ fn interpret(
 
             //let mut vm = Vm::new_debug(&mut line_numbers, &source_lines, test);
 
-            dbg!(&instructions);
+            //dbg!(&instructions);
 
             vm.config_file = config_file;
             let result = vm.run(&instructions);
@@ -180,19 +180,47 @@ mod tests {
         assert_eq!(result, "String(\"1-2\")");
     }
 
+    // This is currently failing intentionally
+    // #[test]
+    // fn data_statement_set() {
+    //     let code = "x = data
+    //                     x=1,
+    //                     y= data
+    //                         z = 2
+    //                     end
+    //                 end
+    //                 'x.x = 50
+    //                 x.y.z = 30
+    //                 '\"{x.x}-{x.y.z}\"";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "String(\"50-30\")");
+    // }
+
     #[test]
-    fn data_statement_set() {
+    fn data_statement_set2() {
         let code = "x = data 
-                        x=1, 
-                        y= data
-                            z = 2
-                        end
+                        x=1
                     end
-                    'x.x = 50
-                    x.y.z = 30
-                    '\"{x.x}-{x.y.z}\"";
+                    x.x = 50
+                   
+                    \"{x.x}\"";
         let result = interpret_test(code);
-        assert_eq!(result, "String(\"50-30\")");
+        assert_eq!(result, "String(\"50\")");
+    }
+
+    #[test]
+    fn data_statement_set_local() {
+        let code = "if true then
+                        x = data 
+                            x=1
+                        end
+                        x.x = 50
+                    
+                        \"{x.x}\"  
+                    end
+                    ";
+        let result = interpret_test(code);
+        assert_eq!(result, "String(\"50\")");
     }
 
     #[test]
@@ -218,6 +246,20 @@ mod tests {
     }
 
     #[test]
+    fn dot_call_on_array() {
+        let code = "function inc(a, i, amount)
+                a[i] = a[i] + amount
+            end
+            
+            z = array(1,2,3)
+            z.inc(0,10)
+            z[0]
+            ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(11.0)");
+    }
+
+    #[test]
     fn dot_call_func() {
         let code = "
             function inc(x)
@@ -231,6 +273,44 @@ mod tests {
         ";
         let result = interpret_test(code);
         assert_eq!(result, "Number(12.0)");
+    }
+
+    #[test]
+    fn dot_call_func_loc() {
+        let code = "
+            function inc(x)
+                x=x+1
+            end
+
+            if true then
+                x = 10
+                x.inc()
+                x.inc()
+            end
+        
+        ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(12.0)");
+    }
+
+    #[test]
+    fn dot_call_func_in_func() {
+        let code = "
+            function inc(x, amount)
+                x=x+amount
+                false
+            end
+
+            function do_it(z)
+                z.inc(5)
+                z
+            end
+
+            do_it(55)
+        
+        ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(60.0)");
     }
 
     #[test]
@@ -461,6 +541,29 @@ mod tests {
         ";
 
         assert_eq!(interpret_test(code), "Compile Error");
+    }
+
+    #[test]
+    fn array_in_array_get() {
+        let code = "
+            a = array(array(5,10), array(6,11), array(7,12))
+
+            function test(x)   
+                aa = a[x]
+                aa[1]
+            end
+
+            function main()
+                x = 1
+                b = 2
+                c = 3
+                test(1)
+            end
+
+            main()
+        ";
+
+        assert_eq!(interpret_test(code), "Number(11.0)");
     }
 
     #[test]

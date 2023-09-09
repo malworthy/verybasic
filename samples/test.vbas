@@ -1,13 +1,71 @@
-x = 3
-if x == 3 then
-    print(1)
-    print(123)
-elseif x == 4 then
-    print(1)
-    print(2)
-    print(456)
-elseif x == 5 then
-    (666)
-else
-    print(777)
+board = array(
+    array("GO"),
+    array("Ross Creek Road",       0, 60,   2, 50, -1, 0, false, 10, 30,  90, 160, 250,"black"),
+    array("Community Chest"),
+    array("Bells Road",            0, 60,   4, 50, -1, 0, false, 20, 60, 180, 320, 450,"black"),
+    array("Income Tax"),
+    array("Southern Cross Station",1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+    
+    array("Bothe Place",           2, 100,  6, 50, -1, 0, false, 30, 90, 270, 400, 550,"cyan"),
+    array("Chance"),
+    
+    array("Tamore Close",          2, 100,  6, 50, -1, 0, false, 30, 90, 270, 400, 550,"cyan"),
+    array("Taylors Road",          2, 120,  8, 50, -1, 0, false, 40,100, 300, 450, 600,"cyan"),
+    
+    array("Jail"),
+
+    array("Pleasant Street",           3, 140, 10,100, -1, 0, false, 50,150, 450, 625, 750,"magenta"),
+    array("Electric Company",    4, 200,  0,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+
+    array("Ripon Street",           3, 140, 10,100, -1, 0, false, 50,150, 450, 625, 750,"magenta"),
+    array("Talbot Street",   3, 160, 12,100, -1, 0, false, 60,180, 500, 700, 900,"magenta"),
+    array("Ballarat Station",  1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+
+    array("Ascot Street",          5, 180, 14,100, -1, 0, false, 70,200, 550, 750, 950,"*red"),
+    array("Community Chest"),
+    array("Drummond Street",  5, 180, 14,100, -1, 0, false, 70,200, 550, 750, 950,"*red"),
+    array("Errand Street",         5, 200, 16,100, -1, 0, false, 80,220, 600, 800,1000,"*red"),
+
+    array("Raglan Street",              6, 220, 18,150, -1, 0, false, 90,250, 700, 875,1050,"red"),
+    array("Chance"),
+    array("Lyons Street",        6, 220, 18,150, -1, 0, false, 90,250, 700, 875,1050,"red"),
+    array("Dawson Street",       6, 240, 20,150, -1, 0, false,100,300, 750, 925,1100,"red"),
+
+    array("Wendouree Station",1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+
+    array("Armstrong Stret",     7, 260, 22,150, -1, 0, false,110,330, 800, 975,1150,"yellow"),
+    array("Mair Street",         7, 260, 22,150, -1, 0, false,110,330, 800, 975,1150,"yellow"),
+    array("Water Works",         4, 200,  0,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+    array("Lydiard Street",      7, 270, 24,150, -1, 0, false,120,360, 850,1025,1200,"yellow"),
+    array("Jail"),
+
+    array("Dana Street",         8, 300, 26,200, -1, 0, false,130,390, 900,1100,1275,"green"),
+    array("Eyre Street",         8, 300, 26,200, -1, 0, false,130,390, 900,1100,1275,"green"),
+    array("Community Chest"),
+    array("Sturt Street",         8, 320, 28,200, -1, 0, false,150,450,1000,1200,1400,"green"),
+
+    array("Creswick Station",    1, 200, 25,  0, -1, 0, false, 25, 50, 100, 200, 0,"white"),
+    array("Chance"),
+
+    array("Webster Street",      9, 350, 35,200, -1, 0, false,175,500,1100,1300,1500,"blue"),
+    array("Wendouree Parade",    9, 400, 50,200, -1, 0, false,200,600,1400,1700,2000,"blue"),
+)
+
+position = array(6,0)
+
+function property(player, moves)
+    pos = position[player]
+    prop = board[pos]
+    if prop[1] < 0 then
+        print("one")
+    elseif prop[1] <> player then
+        
+        print("two")
+    end
 end
+
+function main()
+    property(0,6)
+end
+
+main()

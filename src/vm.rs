@@ -2,6 +2,7 @@ mod functions;
 mod graphics;
 mod string_functions;
 use std::{
+    borrow::BorrowMut,
     collections::HashMap,
     io::{self, Write},
     path::PathBuf,
@@ -9,7 +10,6 @@ use std::{
 };
 
 use crate::compiler::OpCode;
-use chrono::Local;
 use colored::Colorize;
 
 #[derive(Debug, Clone)]
@@ -20,6 +20,8 @@ pub enum ValueType<'a> {
     String(String),
     Array(Vec<ValueType<'a>>),
     Struct(HashMap<&'a str, ValueType<'a>>),
+    PointerG(u32),
+    PointerL(usize),
 }
 
 #[derive(Debug)]
@@ -38,6 +40,8 @@ impl ValueType<'_> {
             ValueType::String(str) => str.to_string(),
             ValueType::Array(a) => format!("{:?}", a),
             ValueType::Struct(s) => format!("{:?}", s),
+            ValueType::PointerG(_) => panic!("Pointers not implemented"),
+            ValueType::PointerL(_) => panic!("Pointers not implemented"),
         }
     }
 }
@@ -94,10 +98,43 @@ fn string_compare<'a>(op: &OpCode, a: &str, b: &str) -> ValueType<'a> {
 const EMPTY_ELEMENT: ValueType = ValueType::Boolean(false);
 const NO_POINTER: ValuePointer = ValuePointer::None;
 
-macro_rules! pop {
+macro_rules! pop2 {
     ($s:ident, $v:ident) => {
         $s.stack_pointer -= 1;
         let $v = &$s.stack[$s.stack_pointer];
+    };
+}
+
+macro_rules! pop {
+    ($s:ident, $v:ident) => {
+        $s.stack_pointer -= 1;
+        let $v = match &$s.stack[$s.stack_pointer] {
+            ValueType::PointerG(p) => $s.globals.get(p).unwrap(),
+            ValueType::PointerL(p) => &$s.stack[*p],
+            _ => &$s.stack[$s.stack_pointer],
+        };
+
+        let $v = match $v {
+            ValueType::PointerG(p) => $s.globals.get(p).unwrap(),
+            ValueType::PointerL(p) => &$s.stack[*p],
+            _ => $v,
+        };
+    };
+}
+
+macro_rules! peek {
+    ($s:ident, $v:ident, $index:ident) => {
+        let mut $v = match &$s.stack[$index] {
+            ValueType::PointerG(p) => $s.globals.get_mut(p).unwrap(),
+            ValueType::PointerL(p) => &mut $s.stack[*p],
+            _ => &mut $s.stack[$index],
+        };
+
+        // let mut $v = match $v {
+        //     ValueType::PointerG(p) => $s.globals.get_mut(p).unwrap(),
+        //     ValueType::PointerL(p) => &mut $s.stack[*p],
+        //     _ => $v,
+        // };
     };
 }
 
@@ -212,6 +249,7 @@ impl<'a> Vm<'a> {
             break_frame: 0,
         }
     }
+
     pub const MUT_NATIVES: [(
         fn(array: &mut ValueType<'a>, params: Vec<ValueType<'a>>) -> Result<ValueType<'a>, &'a str>,
         &str,
@@ -340,6 +378,8 @@ impl<'a> Vm<'a> {
                 self.runtime_error("Data structure not valid for comparison operation");
                 return false;
             }
+            ValueType::PointerG(_) => panic!("Pointers not implemented"),
+            ValueType::PointerL(_) => panic!("Pointers not implemented"),
         };
 
         self.push(result);
@@ -434,6 +474,8 @@ impl<'a> Vm<'a> {
                 self.runtime_error("'not' invalid for an data structure");
                 return false;
             }
+            ValueType::PointerG(_) => panic!("Pointers not implemented"),
+            ValueType::PointerL(_) => panic!("Pointers not implemented"),
         };
 
         self.push(result);
@@ -490,6 +532,8 @@ impl<'a> Vm<'a> {
                 self.runtime_error("Cannot add a data structure");
                 return false;
             }
+            ValueType::PointerG(_) => panic!("Pointers not implemented"),
+            ValueType::PointerL(_) => panic!("Pointers not implemented"),
         };
 
         self.push(result);
@@ -555,9 +599,9 @@ impl<'a> Vm<'a> {
             println!("<---- Stack (Locals) --->");
             println!("{:?}", &self.stack[frame.frame_pointer..self.stack_pointer]);
 
-            println!("<------- Globals ------->");
-            println!("{:?}", &self.globals);
-            println!("<----------------------->");
+            //println!("<------- Globals ------->");
+            //println!("{:?}", &self.globals);
+            //println!("<----------------------->");
             let mut input = String::new();
             print!("(S)tep over, step (I)nto, (C)ontinue: ");
             std::io::stdout().flush().unwrap();
@@ -673,30 +717,40 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::SetGlobal(name) => {
                     let v = &self.stack[self.stack_pointer - 1];
+                    //pop!(self, v);
                     self.globals.insert(*name, v.clone());
+                    //self.stack_pointer += 1;
                 }
-                OpCode::GetGlobal(name) => {
-                    if let Some(value) = self.globals.get(name) {
-                        self.push_pointer(value.to_owned(), ValuePointer::Global(*name));
+                OpCode::GetGlobal(name, use_pointer) => {
+                    //let value = self.globals.get_mut(name).unwrap();
+                    if *use_pointer {
+                        self.push(ValueType::PointerG(*name));
                     } else {
-                        let message = format!("Global variable {name} does not exist.");
-                        self.runtime_error(&message);
-                        return false;
+                        if let Some(value) = self.globals.get(name) {
+                            //dbg!(&value);
+                            self.push_pointer(value.to_owned(), ValuePointer::Global(*name));
+                        } else {
+                            let message = format!("Global variable {name} does not exist.");
+                            self.runtime_error(&message);
+                            return false;
+                        }
                     }
+                    //dbg!(&self.stack[0..self.stack_pointer]);
                 }
                 OpCode::CallNativeMut(index, argc) => {
                     let mut args: Vec<ValueType> = Vec::new();
-                    dbg!(&self.stack[0..self.stack_pointer]);
+                    //dbg!(&self.stack[0..self.stack_pointer]);
                     let func = Vm::MUT_NATIVES[*index].0;
                     for _i in 0..*argc {
                         pop!(self, v);
                         args.insert(0, v.clone());
                     }
-                    pop_pointer!(self, p);
+                    //pop_pointer!(self, p);
+                    pop2!(self, p);
 
                     let result = match p {
-                        ValuePointer::Local(index) => func(&mut self.stack[*index], args),
-                        ValuePointer::Global(index) => {
+                        ValueType::PointerL(index) => func(&mut self.stack[*index], args),
+                        ValueType::PointerG(index) => {
                             func(self.globals.get_mut(index).unwrap(), args)
                         }
                         _ => func(&mut self.stack[self.stack_pointer - 1], args),
@@ -758,6 +812,7 @@ impl<'a> Vm<'a> {
                     };
                 }
                 OpCode::CallMut(pointer, argc) => {
+                    //dbg!(argc);
                     call_frames.push(frame); // save current frame
                     let argc = *argc as usize;
                     frame = Frame {
@@ -773,15 +828,28 @@ impl<'a> Vm<'a> {
                 OpCode::Pop2 => {
                     pop!(self, _v);
                 }
-                OpCode::GetLocal(i) => {
-                    self.push_pointer(
-                        self.stack[i + frame.frame_pointer].clone(),
-                        ValuePointer::Local(i + frame.frame_pointer),
-                    );
+                OpCode::GetLocal(i, use_pointer) => {
+                    if *use_pointer {
+                        self.push(ValueType::PointerL(*i + frame.frame_pointer))
+                    } else {
+                        self.push_pointer(
+                            self.stack[i + frame.frame_pointer].clone(),
+                            ValuePointer::Local(i + frame.frame_pointer),
+                        );
+                    }
                 }
                 OpCode::SetLocal(i) => {
                     let value = self.stack[self.stack_pointer - 1].clone();
-                    self.stack[i + frame.frame_pointer] = value;
+                    match self.stack[i + frame.frame_pointer] {
+                        ValueType::PointerG(p) => {
+                            self.globals.insert(p, value);
+                        }
+                        ValueType::PointerL(p) => {
+                            self.stack[p] = value;
+                        }
+                        _ => self.stack[i + frame.frame_pointer] = value,
+                    };
+                    //self.stack[i + frame.frame_pointer] = value;
                 }
                 OpCode::DefineLocal(i) => {
                     //dbg!(i);
@@ -819,27 +887,20 @@ impl<'a> Vm<'a> {
                     if let Some(value) = call_frames.pop() {
                         // get rid of any local variables on the stack
                         self.stack_pointer = frame.frame_pointer;
-                        if frame.mut_call {
-                            match &self.value_pointers[self.stack_pointer] {
-                                ValuePointer::Global(g) => {
-                                    let val = &self.stack[self.stack_pointer];
-                                    self.globals.insert(*g, val.clone());
-                                }
-                                ValuePointer::Local(index) => {
-                                    let val = self.stack[self.stack_pointer].clone();
-                                    self.stack[index + value.frame_pointer] = val;
-                                }
-                                _ => {}
-                            }
-
-                            // if frame.global.is_empty() {
-                            //     let val = self.stack[self.stack_pointer].clone();
-                            //     self.stack[frame.local + value.frame_pointer] = val;
-                            // } else {
-                            //     let val = &self.stack[self.stack_pointer];
-                            //     self.globals.insert(frame.global, val.clone());
-                            // }
-                        }
+                        //dbg!(&self.stack[self.stack_pointer]);
+                        // if frame.mut_call {
+                        //     match &self.stack[self.stack_pointer] {
+                        //         ValueType::PointerG(g) => {
+                        //             let val = &self.stack[self.stack_pointer];
+                        //             self.globals.insert(*g, val.clone());
+                        //         }
+                        //         ValueType::PointerL(index) => {
+                        //             let val = self.stack[self.stack_pointer].clone();
+                        //             self.stack[index + value.frame_pointer] = val;
+                        //         }
+                        //         _ => {}
+                        //     }
+                        // }
 
                         // set the call frame
                         frame = value;
@@ -873,6 +934,7 @@ impl<'a> Vm<'a> {
                             }
                         }
                     } else {
+                        dbg!(value);
                         self.runtime_error("data type expected")
                     }
                 }
@@ -885,6 +947,8 @@ impl<'a> Vm<'a> {
                         ValueType::Number(x) => ValueType::Number(*x),
                         ValueType::String(x) => ValueType::String(x.to_string()),
                         ValueType::Struct(x) => ValueType::Struct(x.clone()),
+                        ValueType::PointerG(_) => panic!("Pointers not implemented"),
+                        ValueType::PointerL(_) => panic!("Pointers not implemented"),
                     };
 
                     if let ValueType::Struct(ref mut hash_map) = self.stack[self.stack_pointer - 1]
@@ -895,6 +959,7 @@ impl<'a> Vm<'a> {
                     }
                 }
                 OpCode::Subscript => {
+                    //dbg!(&self.stack[0..self.stack_pointer]);
                     pop!(self, index);
                     pop!(self, array);
 
@@ -912,16 +977,18 @@ impl<'a> Vm<'a> {
                             return false;
                         }
                     } else {
+                        dbg!(&array);
+                        dbg!(index);
                         self.runtime_error("Subscript only works on arrays");
                         return false;
                     }
                 }
                 OpCode::SetProp(name) => {
-                    dbg!(&self.stack[0..self.stack_pointer]);
-                    dbg!(&self.value_pointers[0..self.stack_pointer]);
+                    //dbg!(&self.stack[0..self.stack_pointer]);
+                    //dbg!(&self.value_pointers[0..self.stack_pointer]);
 
                     pop!(self, value);
-                    dbg!(value);
+                    //dbg!(value);
                     let value = match value {
                         ValueType::Str(x) => ValueType::Str(x),
                         ValueType::Array(x) => ValueType::Array(x.to_vec()),
@@ -929,12 +996,14 @@ impl<'a> Vm<'a> {
                         ValueType::Number(x) => ValueType::Number(*x),
                         ValueType::String(x) => ValueType::String(x.to_string()),
                         ValueType::Struct(x) => ValueType::Struct(x.clone()),
+                        ValueType::PointerG(_) => panic!("Pointers not implemented"),
+                        ValueType::PointerL(_) => panic!("Pointers not implemented"),
                     };
 
-                    pop_pointer!(self, data_pointer);
-                    dbg!(data_pointer);
+                    pop2!(self, data_pointer);
+                    //dbg!(data_pointer);
                     match data_pointer {
-                        ValuePointer::Local(i) => {
+                        ValueType::PointerL(i) => {
                             if let ValueType::Struct(ref mut a) = self.stack[*i] {
                                 a.insert(&name, value.clone());
                                 self.push(value);
@@ -943,7 +1012,7 @@ impl<'a> Vm<'a> {
                                 return false;
                             }
                         }
-                        ValuePointer::Global(s) => {
+                        ValueType::PointerG(s) => {
                             let array = self.globals.get_mut(s).unwrap();
                             if let ValueType::Struct(ref mut a) = array {
                                 a.insert(&name, value.clone());
@@ -953,7 +1022,7 @@ impl<'a> Vm<'a> {
                                 return false;
                             }
                         }
-                        ValuePointer::None => {
+                        _ => {
                             self.runtime_error("Invalid use of subscript");
                             return false;
                         }
@@ -981,11 +1050,17 @@ impl<'a> Vm<'a> {
                         ValueType::Number(x) => ValueType::Number(*x),
                         ValueType::String(x) => ValueType::String(x.to_string()),
                         ValueType::Struct(x) => ValueType::Struct(x.clone()),
+                        ValueType::PointerG(_) => panic!("Pointers not implemented"),
+                        ValueType::PointerL(_) => panic!("Pointers not implemented"),
                     };
-                    pop_pointer!(self, array_pointer);
+                    //pop_pointer!(self, array_pointer);
+                    pop2!(self, array_pointer);
                     match array_pointer {
-                        ValuePointer::Local(i) => {
-                            if let ValueType::Array(ref mut a) = self.stack[*i] {
+                        ValueType::PointerL(i) => {
+                            let i = *i;
+                            peek!(self, array_value, i);
+                            if let ValueType::Array(ref mut a) = array_value {
+                                // self.stack[*i] {
                                 a[index] = value.clone();
                                 self.push(value);
                             } else {
@@ -993,7 +1068,7 @@ impl<'a> Vm<'a> {
                                 return false;
                             }
                         }
-                        ValuePointer::Global(s) => {
+                        ValueType::PointerG(s) => {
                             let array = self.globals.get_mut(s).unwrap();
                             if let ValueType::Array(ref mut a) = array {
                                 a[index] = value.clone();
@@ -1003,7 +1078,7 @@ impl<'a> Vm<'a> {
                                 return false;
                             }
                         }
-                        ValuePointer::None => {
+                        _ => {
                             self.runtime_error("Invalid use of subscript");
                             return false;
                         }
