@@ -2,7 +2,6 @@ mod functions;
 mod graphics;
 mod string_functions;
 use std::{
-    borrow::BorrowMut,
     collections::HashMap,
     io::{self, Write},
     path::PathBuf,
@@ -24,13 +23,6 @@ pub enum ValueType<'a> {
     PointerL(usize),
 }
 
-#[derive(Debug)]
-pub enum ValuePointer {
-    Local(usize),
-    Global(u32),
-    None,
-}
-
 impl ValueType<'_> {
     pub fn to_string(&self) -> String {
         match self {
@@ -50,7 +42,7 @@ impl ValueType<'_> {
 struct Frame {
     ip: usize,
     frame_pointer: usize,
-    mut_call: bool,
+    //mut_call: bool,
     // local: usize,
     // global: &'a str,
 }
@@ -96,7 +88,6 @@ fn string_compare<'a>(op: &OpCode, a: &str, b: &str) -> ValueType<'a> {
 }
 
 const EMPTY_ELEMENT: ValueType = ValueType::Boolean(false);
-const NO_POINTER: ValuePointer = ValuePointer::None;
 
 macro_rules! pop2 {
     ($s:ident, $v:ident) => {
@@ -113,7 +104,7 @@ macro_rules! pop {
             ValueType::PointerL(p) => &$s.stack[*p],
             _ => &$s.stack[$s.stack_pointer],
         };
-
+        // Need to handle more than 1 level of pointers!
         let $v = match $v {
             ValueType::PointerG(p) => $s.globals.get(p).unwrap(),
             ValueType::PointerL(p) => &$s.stack[*p],
@@ -124,7 +115,7 @@ macro_rules! pop {
 
 macro_rules! peek {
     ($s:ident, $v:ident, $index:ident) => {
-        let mut $v = match &$s.stack[$index] {
+        let $v = match &$s.stack[$index] {
             ValueType::PointerG(p) => $s.globals.get_mut(p).unwrap(),
             ValueType::PointerL(p) => &mut $s.stack[*p],
             _ => &mut $s.stack[$index],
@@ -135,28 +126,6 @@ macro_rules! peek {
         //     ValueType::PointerL(p) => &mut $s.stack[*p],
         //     _ => $v,
         // };
-    };
-}
-
-macro_rules! pop_pointer {
-    ($s:ident, $v:ident) => {
-        $s.stack_pointer -= 1;
-        let $v = &$s.value_pointers[$s.stack_pointer];
-    };
-}
-
-// if you want to use this macro, you are doing something wrong!
-macro_rules! pop_mut {
-    ($s:ident, $v:ident) => {
-        $s.stack_pointer -= 1;
-        let $v = &mut $s.stack[$s.stack_pointer];
-    };
-}
-
-macro_rules! pop_clone {
-    ($s:ident, $v:ident) => {
-        $s.stack_pointer -= 1;
-        let $v = $s.stack[$s.stack_pointer].clone();
     };
 }
 
@@ -190,7 +159,7 @@ enum DebugStep {
 
 pub struct Vm<'a> {
     stack: [ValueType<'a>; MAX_STACK],
-    value_pointers: [ValuePointer; MAX_STACK],
+    //value_pointers: [ValuePointer; MAX_STACK],
     stack_pointer: usize,
     globals: HashMap<u32, ValueType<'a>>,
     pub return_value: Option<ValueType<'a>>,
@@ -211,7 +180,7 @@ impl<'a> Vm<'a> {
         Vm {
             //stack: Vec::new(),
             stack: [EMPTY_ELEMENT; MAX_STACK],
-            value_pointers: [NO_POINTER; MAX_STACK],
+            //value_pointers: [NO_POINTER; MAX_STACK],
             globals: HashMap::new(),
             return_value: Option::None,
             gr: graphics::Graphics::new(),
@@ -234,7 +203,7 @@ impl<'a> Vm<'a> {
     ) -> Self {
         Vm {
             stack: [EMPTY_ELEMENT; MAX_STACK],
-            value_pointers: [NO_POINTER; MAX_STACK],
+            //value_pointers: [NO_POINTER; MAX_STACK],
             globals: HashMap::new(),
             return_value: Option::None,
             gr: graphics::Graphics::new(),
@@ -311,18 +280,7 @@ impl<'a> Vm<'a> {
             //panic!("Stack overflow. TODO: Remove this panic and handle the error gracefully!")
         }
         self.stack[self.stack_pointer] = value;
-        self.value_pointers[self.stack_pointer] = ValuePointer::None;
-        self.stack_pointer += 1;
-    }
-
-    fn push_pointer(&mut self, value: ValueType<'a>, pointer: ValuePointer) {
-        if self.stack_pointer >= MAX_STACK {
-            self.runtime_error("Stack Overflow");
-            return;
-            //panic!("Stack overflow. TODO: Remove this panic and handle the error gracefully!")
-        }
-        self.stack[self.stack_pointer] = value;
-        self.value_pointers[self.stack_pointer] = pointer;
+        //self.value_pointers[self.stack_pointer] = ValuePointer::None;
         self.stack_pointer += 1;
     }
 
@@ -624,7 +582,7 @@ impl<'a> Vm<'a> {
         let main_frame = Frame {
             ip: 0,
             frame_pointer: 0,
-            mut_call: false,
+            //mut_call: false,
             // local: 0,
             // global: "",
         };
@@ -728,7 +686,7 @@ impl<'a> Vm<'a> {
                     } else {
                         if let Some(value) = self.globals.get(name) {
                             //dbg!(&value);
-                            self.push_pointer(value.to_owned(), ValuePointer::Global(*name));
+                            self.push(value.to_owned());
                         } else {
                             let message = format!("Global variable {name} does not exist.");
                             self.runtime_error(&message);
@@ -806,7 +764,7 @@ impl<'a> Vm<'a> {
                     frame = Frame {
                         ip: pointer - 1,
                         frame_pointer: self.stack_pointer - argc,
-                        mut_call: false,
+                        //mut_call: false,
                         // local: 0,
                         // global: "",
                     };
@@ -818,7 +776,7 @@ impl<'a> Vm<'a> {
                     frame = Frame {
                         ip: pointer - 1,
                         frame_pointer: self.stack_pointer - argc - 1,
-                        mut_call: true,
+                        //mut_call: true,
                     };
                 }
                 OpCode::Pop => {
@@ -832,10 +790,7 @@ impl<'a> Vm<'a> {
                     if *use_pointer {
                         self.push(ValueType::PointerL(*i + frame.frame_pointer))
                     } else {
-                        self.push_pointer(
-                            self.stack[i + frame.frame_pointer].clone(),
-                            ValuePointer::Local(i + frame.frame_pointer),
-                        );
+                        self.push(self.stack[i + frame.frame_pointer].clone());
                     }
                 }
                 OpCode::SetLocal(i) => {
