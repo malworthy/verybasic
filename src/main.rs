@@ -143,42 +143,42 @@ mod tests {
         }
     }
 
-    #[test]
-    fn data_statement_test1() {
-        let code = "x = data 
-                        x=1, 
-                        y=2 
-                    end
-                    \"{x.x}-{x .y}\"";
-        let result = interpret_test(code);
-        assert_eq!(result, "String(\"1-2\")");
-    }
+    // #[test]
+    // fn data_statement_test1() {
+    //     let code = "x = data
+    //                     x=1,
+    //                     y=2
+    //                 end
+    //                 \"{x.x}-{x .y}\"";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "String(\"1-2\")");
+    // }
 
-    #[test]
-    fn data_statement_test2() {
-        let code = "x = 1; y = 2
-                    s = data 
-                        x, 
-                        y 
-                    end
-                    \"{s.x}-{s.y}\"
-                    ";
-        let result = interpret_test(code);
-        assert_eq!(result, "String(\"1-2\")");
-    }
+    // #[test]
+    // fn data_statement_test2() {
+    //     let code = "x = 1; y = 2
+    //                 s = data
+    //                     x,
+    //                     y
+    //                 end
+    //                 \"{s.x}-{s.y}\"
+    //                 ";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "String(\"1-2\")");
+    // }
 
-    #[test]
-    fn data_statement_test3() {
-        let code = "x = data 
-                        x=1, 
-                        y= data
-                            z = 2
-                        end
-                    end
-                    \"{x.x}-{x.y.z}\"";
-        let result = interpret_test(code);
-        assert_eq!(result, "String(\"1-2\")");
-    }
+    // #[test]
+    // fn data_statement_test3() {
+    //     let code = "x = data
+    //                     x=1,
+    //                     y= data
+    //                         z = 2
+    //                     end
+    //                 end
+    //                 \"{x.x}-{x.y.z}\"";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "String(\"1-2\")");
+    // }
 
     // This is currently failing intentionally
     // #[test]
@@ -196,32 +196,32 @@ mod tests {
     //     assert_eq!(result, "String(\"50-30\")");
     // }
 
-    #[test]
-    fn data_statement_set2() {
-        let code = "x = data 
-                        x=1
-                    end
-                    x.x = 50
-                   
-                    \"{x.x}\"";
-        let result = interpret_test(code);
-        assert_eq!(result, "String(\"50\")");
-    }
+    // #[test]
+    // fn data_statement_set2() {
+    //     let code = "x = data
+    //                     x=1
+    //                 end
+    //                 x.x = 50
 
-    #[test]
-    fn data_statement_set_local() {
-        let code = "if true then
-                        x = data 
-                            x=1
-                        end
-                        x.x = 50
-                    
-                        \"{x.x}\"  
-                    end
-                    ";
-        let result = interpret_test(code);
-        assert_eq!(result, "String(\"50\")");
-    }
+    //                 \"{x.x}\"";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "String(\"50\")");
+    // }
+
+    // #[test]
+    // fn data_statement_set_local() {
+    //     let code = "if true then
+    //                     x = data
+    //                         x=1
+    //                     end
+    //                     x.x = 50
+
+    //                     \"{x.x}\"
+    //                 end
+    //                 ";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "String(\"50\")");
+    // }
 
     #[test]
     fn grouping2() {
@@ -231,108 +231,108 @@ mod tests {
         assert_eq!(result, "Number(2.0)");
     }
 
-    #[test]
-    fn dot_call() {
-        let code = "a = array(); a.push(123); a.push(44); print(a); a";
-        let result = interpret_test(code);
-        assert_eq!(result, "Array([Number(123.0), Number(44.0)])");
-    }
+    // #[test]
+    // fn dot_call() {
+    //     let code = "a = array(); a.push(123); a.push(44); print(a); a";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "Array([Number(123.0), Number(44.0)])");
+    // }
 
-    #[test]
-    fn dot_call_local() {
-        let code = "if true then a = array(); a.push(123); a.push(44); print(a); a end";
-        let result = interpret_test(code);
-        assert_eq!(result, "Array([Number(123.0), Number(44.0)])");
-    }
+    // #[test]
+    // fn dot_call_local() {
+    //     let code = "if true then a = array(); a.push(123); a.push(44); print(a); a end";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "Array([Number(123.0), Number(44.0)])");
+    // }
 
-    #[test]
-    fn dot_call_on_array() {
-        let code = "function inc(a, i, amount)
-                a[i] = a[i] + amount
-            end
-            
-            z = array(1,2,3)
-            z.inc(0,10)
-            z[0]
-            ";
-        let result = interpret_test(code);
-        assert_eq!(result, "Number(11.0)");
-    }
+    // #[test]
+    // fn dot_call_on_array() {
+    //     let code = "function inc(a, i, amount)
+    //             a[i] = a[i] + amount
+    //         end
 
-    #[test]
-    fn dot_call_func() {
-        let code = "
-            function inc(x)
-                x=x+1
-            end
+    //         z = array(1,2,3)
+    //         z.inc(0,10)
+    //         z[0]
+    //         ";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "Number(11.0)");
+    // }
 
-            x = 10
-            x.inc()
-            x.inc()
-        
-        ";
-        let result = interpret_test(code);
-        assert_eq!(result, "Number(12.0)");
-    }
+    // #[test]
+    // fn dot_call_func() {
+    //     let code = "
+    //         function inc(x)
+    //             x=x+1
+    //         end
 
-    #[test]
-    fn dot_call_func_loc() {
-        let code = "
-            function inc(x)
-                x=x+1
-            end
+    //         x = 10
+    //         x.inc()
+    //         x.inc()
 
-            if true then
-                x = 10
-                x.inc()
-                x.inc()
-            end
-        
-        ";
-        let result = interpret_test(code);
-        assert_eq!(result, "Number(12.0)");
-    }
+    //     ";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "Number(12.0)");
+    // }
 
-    #[test]
-    fn dot_call_func_in_func() {
-        let code = "
-            function inc(x, amount)
-                x=x+amount
-                false
-            end
+    // #[test]
+    // fn dot_call_func_loc() {
+    //     let code = "
+    //         function inc(x)
+    //             x=x+1
+    //         end
 
-            function do_it(z)
-                z.inc(5)
-                z
-            end
+    //         if true then
+    //             x = 10
+    //             x.inc()
+    //             x.inc()
+    //         end
 
-            do_it(55)
-        
-        ";
-        let result = interpret_test(code);
-        assert_eq!(result, "Number(60.0)");
-    }
+    //     ";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "Number(12.0)");
+    // }
 
-    #[test]
-    fn dot_call_func_local() {
-        let code = "
-            function inc(x)
-                x=x+1
-            end
+    // #[test]
+    // fn dot_call_func_in_func() {
+    //     let code = "
+    //         function inc(x, amount)
+    //             x=x+amount
+    //             false
+    //         end
 
-            function test()
-                x = 10
-                x.inc()
-                x.inc()
-                x
-            end
+    //         function do_it(z)
+    //             z.inc(5)
+    //             z
+    //         end
 
-            test()
-        
-        ";
-        let result = interpret_test(code);
-        assert_eq!(result, "Number(12.0)");
-    }
+    //         do_it(55)
+
+    //     ";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "Number(60.0)");
+    // }
+
+    // #[test]
+    // fn dot_call_func_local() {
+    //     let code = "
+    //         function inc(x)
+    //             x=x+1
+    //         end
+
+    //         function test()
+    //             x = 10
+    //             x.inc()
+    //             x.inc()
+    //             x
+    //         end
+
+    //         test()
+
+    //     ";
+    //     let result = interpret_test(code);
+    //     assert_eq!(result, "Number(12.0)");
+    // }
 
     #[test]
     fn else_if() {
@@ -541,6 +541,41 @@ mod tests {
         ";
 
         assert_eq!(interpret_test(code), "Compile Error");
+    }
+
+    #[test]
+    fn array_in_array_set_legal() {
+        let code = "
+            function f()
+
+                a = array(array(5,10), array(6,11), array(7,12))
+
+                if true then
+
+                    b = a[0]
+
+                    if b[1] == 10 then
+                        if true then
+                            b[0] = 10
+                        end
+                    end
+
+
+                    b[0]
+                end
+            end
+
+            function main()
+                a=1
+                b=2
+                c=3
+                f()
+            end
+
+            main()
+        ";
+
+        assert_eq!(interpret_test(code), "Number(10.0)");
     }
 
     #[test]

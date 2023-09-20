@@ -95,20 +95,20 @@ payments = array(0,0)
 
 game_loop()
 
-function inc(a, i, amount)
-    a[i] = a[i] + amount
+function inc_loan(i, amount)
+    loans[i] = loans[i] + amount
 end
 
-function dec(a, i, amount)
-    a[i] = a[i] - amount 
+function dec_loan(i, amount)
+    loans[i] = loans[i] - amount 
 end
 
 function pass_go(player)
     money[player] = money[player] + 200
     if loans[player] > 0.05 then
         print("Paying ${payments[player]} off the load")
-        loans.inc(player, loans[player] * 0.05)
-        loans.dec(player, payments[player])
+        inc_loan(player, loans[player] * 0.05)
+        dec_loan(player, payments[player])
         if loans[player] <= 0.05 then
             loans[player] = 0
             payments[player] = 0
@@ -563,7 +563,7 @@ function get_station_rent(station_owner)
         prop = board[i]
         if len(prop) > 1 then
             g = prop[GROUP]
-            if g == 1 and i.owner() == station_owner then
+            if g == 1 and owner(i) == station_owner then
                 if rent > 0 then
                     rent = rent * 2
                 else
