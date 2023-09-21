@@ -1010,6 +1010,11 @@ impl Compiler<'_> {
                     }
 
                     self.instructions[index] = OpCode::Call(f.2, *arguments);
+                } else {
+                    if !name.starts_with('@') {
+                        let message = format!("function {} not found", name);
+                        self.compile_error_line(&message, *line_number);
+                    }
                 }
             }
             index += 1;

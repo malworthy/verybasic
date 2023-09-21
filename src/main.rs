@@ -127,6 +127,9 @@ fn compile(contents: &str) {
         }
     }
 }
+// *****************************************************
+// NOTE: DO NOT COMMIT WITHOUT FIRST RUNNING UNIT TESTS!
+// *****************************************************
 
 #[cfg(test)]
 mod tests {
@@ -148,6 +151,13 @@ mod tests {
                     (rate/12)";
         let result = interpret_test(code);
         assert_eq!(result, "Number(2.0)");
+    }
+
+    #[test]
+    fn non_existing_function() {
+        let code = "doesnt_exist()";
+        let result = interpret_test(code);
+        assert_eq!(result, "Compile Error");
     }
 
     #[test]
