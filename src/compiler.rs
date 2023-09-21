@@ -270,17 +270,11 @@ impl Compiler<'_> {
                             }
                             self.add_instr(OpCode::Call(f.2, arguments), token.line_number);
                         } else {
-                            if name.starts_with('@') {
-                                // '@' means a function call
-                                self.add_instr(
-                                    OpCode::CallSystem(name, arguments, token.line_number),
-                                    token.line_number,
-                                );
-                            } else {
-                                let message = format!("function {} not found", name);
-                                self.compile_error(&message, token);
-                                return false;
-                            }
+                            // '@' means a function call
+                            self.add_instr(
+                                OpCode::CallSystem(name, arguments, token.line_number),
+                                token.line_number,
+                            );
                         }
                     }
 
