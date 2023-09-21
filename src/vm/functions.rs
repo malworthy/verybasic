@@ -115,9 +115,9 @@ pub fn len<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'
             ValueType::String(s) => s.len(),
             ValueType::Number(_) => 8,
             ValueType::Boolean(_) => 1,
-            ValueType::Struct(s) => s.len(),
-            ValueType::PointerG(_) => panic!("Pointers not implemented"),
-            ValueType::PointerL(_) => panic!("Pointers not implemented"),
+            //ValueType::Struct(s) => s.len(),
+            //ValueType::PointerG(_) => panic!("Pointers not implemented"),
+            //ValueType::PointerL(_) => panic!("Pointers not implemented"),
         };
         let len = len as f64;
         Ok(ValueType::Number(len))
@@ -179,27 +179,27 @@ pub fn sort<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<
     Err("Incorrect parameters passed to sort(array)")
 }
 
-pub fn push_mut<'a>(
-    array: &mut ValueType<'a>,
-    params: Vec<ValueType<'a>>,
-) -> Result<ValueType<'a>, &'a str> {
-    if params.len() < 1 {
-        return Err("Incorrect parameters passed to push(array, value)");
-    }
-    let value = params.iter().next();
-    if let Some(val) = value {
-        //let array = &mut params[0];
-        //let v = val.clone();
-        if let ValueType::Array(ref mut vec) = array {
-            vec.push(val.clone());
-            //let mut result = vec.clone();
-            //result.push(value);
-            return Ok(ValueType::Boolean(true));
-        }
-    }
+// pub fn push_mut<'a>(
+//     array: &mut ValueType<'a>,
+//     params: Vec<ValueType<'a>>,
+// ) -> Result<ValueType<'a>, &'a str> {
+//     if params.len() < 1 {
+//         return Err("Incorrect parameters passed to push(array, value)");
+//     }
+//     let value = params.iter().next();
+//     if let Some(val) = value {
+//         //let array = &mut params[0];
+//         //let v = val.clone();
+//         if let ValueType::Array(ref mut vec) = array {
+//             vec.push(val.clone());
+//             //let mut result = vec.clone();
+//             //result.push(value);
+//             return Ok(ValueType::Boolean(true));
+//         }
+//     }
 
-    Err("Incorrect parameters passed to  push(array, value)")
-}
+//     Err("Incorrect parameters passed to  push(array, value)")
+// }
 
 pub fn push<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() < 2 {

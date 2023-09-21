@@ -1,10 +1,6 @@
-use std::process::id;
-
+use crate::scanner::{precedence, Token, TokenType};
 use crate::Vm;
 use colored::Colorize;
-
-//mod scanner;
-use crate::scanner::{precedence, Token, TokenType};
 
 #[derive(Debug)]
 pub enum OpCode {
@@ -28,30 +24,24 @@ pub enum OpCode {
     Mod,
     Pow,
     SetGlobal(u32),
-    GetGlobal(u32, bool),
+    GetGlobal(u32),
     Call(usize, u32),
     CallSystem(String, u32, u32),
     CallNative(usize, u32),
-    CallNativeMut(usize, u32),
-    CallMut(usize, u32),
-    //CallNativeGr(usize, u32),
     Pop,
     Pop2,
     SetLocal(usize),
     DefineLocal(usize),
-    GetLocal(usize, bool),
+    GetLocal(usize),
     JumpIfFalse(usize),
     Jump(i32),
     Subscript,
-    SubscriptSet,
-    AddData(String),
-    GetProp(String),
-    SetProp(String),
-    NewStruct,
+    SubscriptSet(VarType),
     Return,
 }
 
-enum VarType {
+#[derive(Debug)]
+pub enum VarType {
     Local(usize),
     Global(usize),
 }
@@ -63,12 +53,6 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::Add => format!("{:05} ADD", addr),
             OpCode::Call(ptr, argc) => format!("{:05} CALL {} {}", addr, ptr, argc),
             OpCode::CallNative(index, argc) => format!("{:05} CALN {} {}", addr, index, argc),
-            OpCode::CallNativeMut(index, argc) => {
-                format!("{:05} CALG {} {}", addr, index, argc)
-            }
-            OpCode::CallMut(index, argc) => {
-                format!("{:05} CALM {} {}", addr, index, argc)
-            }
             OpCode::And => format!("{:05} AND", addr),
             OpCode::CallSystem(name, argc, _) => format!("{} SYS  {} {}", addr, name, argc),
             OpCode::ConstantNum(num) => format!("{:05} NUM  {}", addr, num),
@@ -76,8 +60,8 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::DefineLocal(num) => format!("{:05} DEF  {}", addr, num),
             OpCode::Divide => format!("{:05} DIV", addr),
             OpCode::Equal => format!("{:05} EQ", addr),
-            OpCode::GetGlobal(name, _) => format!("{:05} GLOB {}", addr, name),
-            OpCode::GetLocal(index, _) => format!("{:05} LOC  {}", addr, index),
+            OpCode::GetGlobal(name) => format!("{:05} GLOB {}", addr, name),
+            OpCode::GetLocal(index) => format!("{:05} LOC  {}", addr, index),
             OpCode::GreaterThan => format!("{:05} GT", addr),
             OpCode::GreaterThanEq => format!("{:05} GTEQ", addr),
             OpCode::Jump(ptr) => format!("{:05} JUMP {}", addr, ptr),
@@ -97,13 +81,9 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::SetGlobal(name) => format!("{:05} SETG {}", addr, name),
             OpCode::SetLocal(index) => format!("{:05} SET  {}", addr, index),
             OpCode::Subscript => format!("{:05} SBPT", addr),
-            OpCode::SubscriptSet => format!("{:05} SSET", addr),
+            OpCode::SubscriptSet(v) => format!("{:05} SSET {:?}", addr, v),
             OpCode::Subtract => format!("{:05} SUB", addr),
             OpCode::ConstantBool(val) => format!("{:05} BOOL {}", addr, val),
-            OpCode::AddData(name) => format!("{:05} ADDD {}", addr, name),
-            OpCode::GetProp(name) => format!("{:05} GETP {}", addr, name),
-            OpCode::SetProp(name) => format!("{:05} SETP {}", addr, name),
-            OpCode::NewStruct => format!("{:05} NEWS", addr),
         };
         addr += 1;
         println!("{}", x);
@@ -139,13 +119,6 @@ fn is_native(name: &str) -> Result<usize, usize> {
             return Ok(i);
         }
         i += 1;
-    }
-    Err(1)
-}
-
-fn is_native_mut(name: &str) -> Result<usize, usize> {
-    if let Some(i) = Vm::MUT_NATIVES.into_iter().position(|x| x.1 == name) {
-        return Ok(i);
     }
     Err(1)
 }
@@ -226,6 +199,8 @@ impl Compiler<'_> {
             token
         };
 
+        let (vartype, added) = self.check_variable(variable.lexeme.clone());
+
         //dbg!(&variable);
         // get the index of the array
         self.expression();
@@ -238,24 +213,17 @@ impl Compiler<'_> {
                     );
                     return false;
                 }
+
+                if added {
+                    self.compile_error("variable not found", variable);
+                    return false;
+                }
+
                 // subscript set
                 self.advance(); // over ]
                 self.advance(); // over =
                 self.expression();
-                self.add_instr(OpCode::SubscriptSet, token.line_number);
-                // // copy result back into the variable
-                // let (index, _) = self.add_variable(variable.lexeme.clone());
-                // match index {
-                //     Some(index) => {
-                //         self.add_instr(OpCode::SetLocal(index), token.line_number);
-                //     }
-                //     None => {
-                //         self.add_instr(
-                //             OpCode::SetGlobal(variable.lexeme.clone()),
-                //             token.line_number,
-                //         );
-                //     }
-                // }
+                self.add_instr(OpCode::SubscriptSet(vartype), token.line_number);
             } else {
                 self.add_instr(OpCode::Subscript, token.line_number);
                 self.advance();
@@ -265,110 +233,6 @@ impl Compiler<'_> {
             return false;
         }
         true
-    }
-
-    fn dot(&mut self, token: &Token) -> bool {
-        if self.token_pointer >= self.tokens.len() {
-            self.compile_error("Unexpected end of file after '.'", token);
-            return false;
-        }
-        // // get the name of the variable we are mutating
-        // let name: String = if let TokenType::Identifier(t) = &self.tokens[self.token_pointer - 2] {
-        //     t.lexeme.clone()
-        // } else {
-        //     // no variable - handle in future
-        //     //String::new()
-        //     self.compile_error("Variable expected", token);
-        //     return false;
-        // };
-
-        // let (var_lookup, added) = self.add_variable(name.clone()); //TODO: create lookup function
-        // if added {
-        //     let msg = format!("Variable {} not found", name);
-        //     self.compile_error(&msg, token);
-        //     return false;
-        // }
-
-        self.advance();
-        // get name of function
-        let func_name = if let TokenType::Identifier(t) = &self.tokens[self.token_pointer - 1] {
-            t.lexeme.clone()
-        } else {
-            self.compile_error("Syntax Error - Invalid call target", token);
-            return false;
-        };
-
-        // check for left paran
-        match &self.tokens[self.token_pointer] {
-            TokenType::LeftParan(_) => {
-                self.advance();
-                self.method_call(token, func_name)
-            }
-            TokenType::Equals(_) => {
-                self.advance();
-                self.expression();
-                self.add_instr(OpCode::SetProp(func_name), token.line_number);
-                true
-            }
-            _ => {
-                self.add_instr(OpCode::GetProp(func_name), token.line_number);
-                true
-            }
-        }
-    }
-
-    fn method_call(
-        &mut self,
-        token: &Token,
-        func_name: String,
-        // var_lookup: VarType,
-        // name: String,
-    ) -> bool {
-        let mut arguments = 0;
-        loop {
-            match &self.tokens[self.token_pointer] {
-                TokenType::RightParan(_) => {
-                    self.advance();
-
-                    //check if it's native
-                    if let Ok(index) = is_native_mut(func_name.as_str()) {
-                        self.add_instr(OpCode::CallNativeMut(index, arguments), token.line_number);
-                    } else {
-                        // get index of fn
-                        if let Some(index) = self.functions.iter().position(|x| x.0 == func_name) {
-                            let f = &self.functions[index];
-                            if f.1 != (arguments + 1) as u8 {
-                                self.compile_error(
-                                    "Wrong number of arguments pass to function",
-                                    token,
-                                );
-                                return false;
-                            }
-                            self.add_instr(OpCode::CallMut(f.2, arguments), token.line_number);
-                        } else {
-                            let msg = format!("Function {} not found", func_name);
-                            self.compile_error(&msg, token);
-                        }
-                    }
-
-                    return true;
-                }
-                TokenType::Comma(_) => {
-                    if !self.advance() {
-                        self.compile_error("Expected )", token);
-                        return false;
-                    }
-                }
-                TokenType::Eof => {
-                    self.compile_error("Expected )", token);
-                    return false;
-                }
-                _ => {
-                    self.expression();
-                    arguments += 1;
-                }
-            }
-        }
     }
 
     fn call(&mut self, token: &Token) -> bool {
@@ -406,11 +270,17 @@ impl Compiler<'_> {
                             }
                             self.add_instr(OpCode::Call(f.2, arguments), token.line_number);
                         } else {
-                            // can't find anything so try a system call
-                            self.add_instr(
-                                OpCode::CallSystem(name, arguments, token.line_number),
-                                token.line_number,
-                            );
+                            if name.starts_with('@') {
+                                // '@' means a function call
+                                self.add_instr(
+                                    OpCode::CallSystem(name, arguments, token.line_number),
+                                    token.line_number,
+                                );
+                            } else {
+                                let message = format!("function {} not found", name);
+                                self.compile_error(&message, token);
+                                return false;
+                            }
                         }
                     }
 
@@ -462,6 +332,28 @@ impl Compiler<'_> {
             added = true;
         }
         (index, added)
+    }
+
+    fn check_variable(&mut self, name: String) -> (VarType, bool) {
+        let index: VarType;
+        let mut not_found = false;
+
+        // 0  1  2  3  4  5
+        // a0 b0 c1 x1 e1 f1
+        // x = 2 len = 6
+        if let Some(i) = self.variables.iter().rev().position(|x| x.name == name) {
+            let i = self.variables.len() - 1 - i;
+            if self.variables[i].depth > 0 {
+                let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
+                index = VarType::Local(i - start);
+            } else {
+                index = VarType::Global(i); // global, so we don't use index.
+            }
+        } else {
+            not_found = true;
+            index = VarType::Global(0);
+        }
+        (index, not_found)
     }
 
     fn add_fn_param(&mut self, name: String) -> bool {
@@ -516,18 +408,6 @@ impl Compiler<'_> {
             false
         };
 
-        //Check to see if we are doing a varible.[something], then we use a pointer (maybe? - code may get blown away!)
-        // let matched_dot = if let TokenType::Dot(_) = self.tokens[self.token_pointer] {
-        //     true
-        // } else {
-        //     false
-        // };
-
-        let matched_dot = match self.tokens[self.token_pointer] {
-            TokenType::Dot(_) | TokenType::LeftBracket(_) => true,
-            _ => false,
-        };
-
         if can_assign && matched_equal {
             // Setting a variable
             self.expression();
@@ -554,14 +434,11 @@ impl Compiler<'_> {
             {
                 let index = self.variables.len() - 1 - index;
                 if self.variables[index].depth == 0 {
-                    self.add_instr(
-                        OpCode::GetGlobal(index as u32, matched_dot),
-                        token.line_number,
-                    );
+                    self.add_instr(OpCode::GetGlobal(index as u32), token.line_number);
                 } else {
                     let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
                     let index = index - start;
-                    self.add_instr(OpCode::GetLocal(index, matched_dot), token.line_number);
+                    self.add_instr(OpCode::GetLocal(index), token.line_number);
                 }
             } else {
                 // compile error - can't find variable
@@ -647,7 +524,7 @@ impl Compiler<'_> {
                 true
             }
             TokenType::LeftParan(t) => self.call(t),
-            TokenType::Dot(t) => self.dot(t),
+            //TokenType::Dot(t) => self.dot(t),
             TokenType::LeftBracket(t) => self.subscript(t),
             _ => false,
         }
@@ -671,8 +548,7 @@ impl Compiler<'_> {
             | TokenType::Hat(t)
             | TokenType::Mod(t)
             | TokenType::LeftBracket(t) => t.precedence,
-            TokenType::Dot(t) => t.precedence,
-
+            //TokenType::Dot(t) => t.precedence,
             _ => precedence::NONE,
         }
     }
@@ -724,7 +600,7 @@ impl Compiler<'_> {
             }
             TokenType::LeftParan(t) => self.grouping(t),
             TokenType::Identifier(t) => self.variable(t, can_assign),
-            TokenType::Data(t) => self.data_statement(t),
+            //TokenType::Data(t) => self.data_statement(t),
             _ => {
                 let result = token.get_token();
                 if let Some(t) = result {
@@ -894,7 +770,7 @@ impl Compiler<'_> {
                 step = -step;
             }
 
-            self.add_instr(OpCode::GetLocal(var_index, false), token.line_number);
+            self.add_instr(OpCode::GetLocal(var_index), token.line_number);
             if step > 0.0 {
                 self.add_instr(OpCode::GreaterThanEq, token.line_number);
             } else {
@@ -905,7 +781,7 @@ impl Compiler<'_> {
             self.for_block();
 
             // inc the variable
-            self.add_instr(OpCode::GetLocal(var_index, false), token.line_number);
+            self.add_instr(OpCode::GetLocal(var_index), token.line_number);
             self.add_instr(OpCode::ConstantNum(step), token.line_number);
             self.add_instr(OpCode::Add, token.line_number);
             self.add_instr(OpCode::SetLocal(var_index), token.line_number);
@@ -936,76 +812,6 @@ impl Compiler<'_> {
             } else {
                 return;
             }
-        }
-    }
-
-    fn unadvance(&mut self) {
-        loop {
-            self.token_pointer -= 1;
-            if let TokenType::Eol(_) = &self.tokens[self.token_pointer] {
-                // do nothing
-            } else {
-                return;
-            }
-        }
-    }
-
-    fn data_statement(&mut self, token: &Token) {
-        self.advance();
-        dbg!(&self.tokens[self.token_pointer]);
-        self.skip_eol();
-        self.add_instr(OpCode::NewStruct, token.line_number);
-        loop {
-            let identifier = if let TokenType::Identifier(t) = &self.tokens[self.token_pointer] {
-                t
-            } else {
-                return;
-            };
-            self.advance();
-            self.skip_eol();
-            match &self.tokens[self.token_pointer] {
-                TokenType::Equals(t) => {
-                    self.advance();
-                    self.expression();
-                }
-                TokenType::Comma(t) | TokenType::End(t) => {
-                    self.unadvance();
-                    self.expression();
-                }
-                _ => {
-                    dbg!(&self.tokens[self.token_pointer]);
-                    self.compile_error("some compile error one...", token);
-                    return;
-                }
-            }
-            self.skip_eol();
-            match &self.tokens[self.token_pointer] {
-                TokenType::Comma(_) => {
-                    println!("add field {identifier:?} and continue");
-                    self.add_instr(
-                        OpCode::AddData(identifier.lexeme.clone()),
-                        identifier.line_number,
-                    );
-                    self.advance();
-                }
-                TokenType::End(_) => {
-                    println!("add the last field {identifier:?}");
-                    self.add_instr(
-                        OpCode::AddData(identifier.lexeme.clone()),
-                        identifier.line_number,
-                    );
-                    self.skip_eol();
-                    self.advance();
-
-                    return;
-                }
-                _ => {
-                    dbg!(&self.tokens[self.token_pointer]);
-                    self.compile_error("some compile error two...", token);
-                    return;
-                }
-            }
-            self.skip_eol();
         }
     }
 
@@ -1117,11 +923,6 @@ impl Compiler<'_> {
         self.depth -= 1;
 
         let to_jump: i32 = (self.instructions.len() - fn_start).try_into().unwrap();
-        //self.add_instr(OpCode::DefFn(name.clone(), fn_start));
-        // if !self.add_fn(name, arity, fn_start) {
-        //     self.compile_error("Attempt to define the same function twice", fn_token);
-        //     return;
-        // }
 
         // patch jump so we jump over the function if not calling it
 
