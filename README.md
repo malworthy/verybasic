@@ -208,10 +208,6 @@ String interpolation is just syntatic sugar. The above string in converted to th
 
 ## Built-in functions
 
-### _append(filename, text)_
-
-appends text to a file. If the file doesn't exist it will be created.
-
 ### _chr(ascii_value)_
 
 Returns a one character string using ascii encoding. Invalid ascii value will return an empty string.
@@ -242,10 +238,6 @@ Prints a string to the console.
 
 returns a random number between 0 and 1
 
-### _readlines(filename)_
-
-returns an array of all lines in a text file
-
 ### _seconds()_
 
 returns the number of seconds since the unix epoch
@@ -273,6 +265,16 @@ returns the square root of _num_
 ### _val(string)_
 
 Converts a string to a number. Will return zero if string cannot be converted to a number, or if the data type is not a string.
+
+## File IO functions
+
+### _append(filename, text)_
+
+appends text to a file. If the file doesn't exist it will be created.
+
+### _readlines(filename)_
+
+returns an array of all lines in a text file
 
 ### _write(filename, text)_
 
@@ -361,8 +363,10 @@ Other colours can be specified using Hex Codes. A hex code starts with '#' and m
 
 ## System calls
 
-Any function call not recognized as a built in or user defined function will be a system call.
+Any function call prefixed with a '@' will be a system call.
 
-e.g. ls("-l) will be the bash command "ls -l".
+e.g. `@ls("-l)` will be the bash command "ls -l".
 
-To override any name clashes and force a system call, prefix function with '@'. e.g. @ls("-l")
+on windows, to run the 'dir' command, use `@cmd("/c","dir")`
+
+`@notepad()` will open notepad

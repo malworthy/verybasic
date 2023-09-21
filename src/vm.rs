@@ -18,9 +18,6 @@ pub enum ValueType<'a> {
     Boolean(bool),
     String(String),
     Array(Vec<ValueType<'a>>),
-    //Struct(HashMap<&'a str, ValueType<'a>>),
-    PointerG(u32),
-    PointerL(usize),
 }
 
 impl ValueType<'_> {
@@ -31,9 +28,6 @@ impl ValueType<'_> {
             ValueType::Str(str) => str.to_string(),
             ValueType::String(str) => str.to_string(),
             ValueType::Array(a) => format!("{:?}", a),
-            //ValueType::Struct(s) => format!("{:?}", s),
-            ValueType::PointerG(_) => panic!("Pointers not implemented"),
-            ValueType::PointerL(_) => panic!("Pointers not implemented"),
         }
     }
 }
@@ -42,9 +36,6 @@ impl ValueType<'_> {
 struct Frame {
     ip: usize,
     frame_pointer: usize,
-    //mut_call: bool,
-    // local: usize,
-    // global: &'a str,
 }
 
 const MAX_STACK: usize = 128;
@@ -89,45 +80,10 @@ fn string_compare<'a>(op: &OpCode, a: &str, b: &str) -> ValueType<'a> {
 
 const EMPTY_ELEMENT: ValueType = ValueType::Boolean(false);
 
-macro_rules! pop2 {
-    ($s:ident, $v:ident) => {
-        $s.stack_pointer -= 1;
-        let $v = &$s.stack[$s.stack_pointer];
-    };
-}
-
 macro_rules! pop {
     ($s:ident, $v:ident) => {
         $s.stack_pointer -= 1;
         let $v = &$s.stack[$s.stack_pointer];
-        // let $v = match &$s.stack[$s.stack_pointer] {
-        //     ValueType::PointerG(p) => $s.globals.get(p).unwrap(),
-        //     ValueType::PointerL(p) => &$s.stack[*p],
-        //     _ => &$s.stack[$s.stack_pointer],
-        // };
-        // Need to handle more than 1 level of pointers!
-        // let $v = match $v {
-        //     ValueType::PointerG(p) => $s.globals.get(p).unwrap(),
-        //     ValueType::PointerL(p) => &$s.stack[*p],
-        //     _ => $v,
-        // };
-    };
-}
-
-macro_rules! peek {
-    ($s:ident, $v:ident, $index:ident) => {
-        let $v = &mut $s.stack[$index];
-        // let $v = match &$s.stack[$index] {
-        //     ValueType::PointerG(p) => $s.globals.get_mut(p).unwrap(),
-        //     ValueType::PointerL(p) => &mut $s.stack[*p],
-        //     _ => &mut $s.stack[$index],
-        // };
-
-        // let mut $v = match $v {
-        //     ValueType::PointerG(p) => $s.globals.get_mut(p).unwrap(),
-        //     ValueType::PointerL(p) => &mut $s.stack[*p],
-        //     _ => $v,
-        // };
     };
 }
 
@@ -161,7 +117,6 @@ enum DebugStep {
 
 pub struct Vm<'a> {
     stack: [ValueType<'a>; MAX_STACK],
-    //value_pointers: [ValuePointer; MAX_STACK],
     stack_pointer: usize,
     globals: HashMap<u32, ValueType<'a>>,
     pub return_value: Option<ValueType<'a>>,
@@ -180,9 +135,7 @@ pub struct Vm<'a> {
 impl<'a> Vm<'a> {
     pub fn new(line_numbers: &'a mut Vec<u32>) -> Self {
         Vm {
-            //stack: Vec::new(),
             stack: [EMPTY_ELEMENT; MAX_STACK],
-            //value_pointers: [NO_POINTER; MAX_STACK],
             globals: HashMap::new(),
             return_value: Option::None,
             gr: graphics::Graphics::new(),
@@ -220,11 +173,6 @@ impl<'a> Vm<'a> {
             break_frame: 0,
         }
     }
-
-    // pub const MUT_NATIVES: [(
-    //     fn(array: &mut ValueType<'a>, params: Vec<ValueType<'a>>) -> Result<ValueType<'a>, &'a str>,
-    //     &str,
-    // ); 1] = [(functions::push_mut, "push")];
 
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
@@ -279,10 +227,8 @@ impl<'a> Vm<'a> {
         if self.stack_pointer >= MAX_STACK {
             self.runtime_error("Stack Overflow");
             return;
-            //panic!("Stack overflow. TODO: Remove this panic and handle the error gracefully!")
         }
         self.stack[self.stack_pointer] = value;
-        //self.value_pointers[self.stack_pointer] = ValuePointer::None;
         self.stack_pointer += 1;
     }
 
@@ -334,12 +280,6 @@ impl<'a> Vm<'a> {
                 self.runtime_error("Array not valid for comparison operation");
                 return false;
             }
-            // ValueType::Struct(_) => {
-            //     self.runtime_error("Data structure not valid for comparison operation");
-            //     return false;
-            // }
-            ValueType::PointerG(_) => panic!("Pointers not implemented"),
-            ValueType::PointerL(_) => panic!("Pointers not implemented"),
         };
 
         self.push(result);
@@ -430,12 +370,6 @@ impl<'a> Vm<'a> {
                 self.runtime_error("'not' invalid for an array");
                 return false;
             }
-            // ValueType::Struct(_) => {
-            //     self.runtime_error("'not' invalid for an data structure");
-            //     return false;
-            // }
-            ValueType::PointerG(_) => panic!("Pointers not implemented"),
-            ValueType::PointerL(_) => panic!("Pointers not implemented"),
         };
 
         self.push(result);
@@ -488,12 +422,6 @@ impl<'a> Vm<'a> {
                 self.runtime_error("Cannot add an array");
                 return false;
             }
-            // ValueType::Struct(_) => {
-            //     self.runtime_error("Cannot add a data structure");
-            //     return false;
-            // }
-            ValueType::PointerG(_) => panic!("Pointers not implemented"),
-            ValueType::PointerL(_) => panic!("Pointers not implemented"),
         };
 
         self.push(result);
@@ -584,9 +512,6 @@ impl<'a> Vm<'a> {
         let main_frame = Frame {
             ip: 0,
             frame_pointer: 0,
-            //mut_call: false,
-            // local: 0,
-            // global: "",
         };
         let mut frame = main_frame;
         loop {
@@ -679,51 +604,18 @@ impl<'a> Vm<'a> {
                     let v = &self.stack[self.stack_pointer - 1];
                     //pop!(self, v);
                     self.globals.insert(*name, v.clone());
-                    //self.stack_pointer += 1;
                 }
-                OpCode::GetGlobal(name, use_pointer) => {
-                    //let value = self.globals.get_mut(name).unwrap();
-                    if *use_pointer {
-                        self.push(ValueType::PointerG(*name));
+                OpCode::GetGlobal(name) => {
+                    if let Some(value) = self.globals.get(name) {
+                        //dbg!(&value);
+                        self.push(value.to_owned());
                     } else {
-                        if let Some(value) = self.globals.get(name) {
-                            //dbg!(&value);
-                            self.push(value.to_owned());
-                        } else {
-                            let message = format!("Global variable {name} does not exist.");
-                            self.runtime_error(&message);
-                            return false;
-                        }
+                        let message = format!("Global variable {name} does not exist.");
+                        self.runtime_error(&message);
+                        return false;
                     }
-                    //dbg!(&self.stack[0..self.stack_pointer]);
                 }
-                // OpCode::CallNativeMut(index, argc) => {
-                //     let mut args: Vec<ValueType> = Vec::new();
-                //     //dbg!(&self.stack[0..self.stack_pointer]);
-                //     let func = Vm::MUT_NATIVES[*index].0;
-                //     for _i in 0..*argc {
-                //         pop!(self, v);
-                //         args.insert(0, v.clone());
-                //     }
-                //     //pop_pointer!(self, p);
-                //     pop2!(self, p);
 
-                //     let result = match p {
-                //         ValueType::PointerL(index) => func(&mut self.stack[*index], args),
-                //         ValueType::PointerG(index) => {
-                //             func(self.globals.get_mut(index).unwrap(), args)
-                //         }
-                //         _ => func(&mut self.stack[self.stack_pointer - 1], args),
-                //     };
-
-                //     match result {
-                //         Ok(value) => self.push(value),
-                //         Err(message) => {
-                //             self.runtime_error(&message);
-                //             return false;
-                //         }
-                //     }
-                // }
                 OpCode::CallNative(index, argc) => {
                     let mut args: Vec<ValueType> = Vec::new();
 
@@ -766,21 +658,8 @@ impl<'a> Vm<'a> {
                     frame = Frame {
                         ip: pointer - 1,
                         frame_pointer: self.stack_pointer - argc,
-                        //mut_call: false,
-                        // local: 0,
-                        // global: "",
                     };
                 }
-                // OpCode::CallMut(pointer, argc) => {
-                //     //dbg!(argc);
-                //     call_frames.push(frame); // save current frame
-                //     let argc = *argc as usize;
-                //     frame = Frame {
-                //         ip: pointer - 1,
-                //         frame_pointer: self.stack_pointer - argc - 1,
-                //         //mut_call: true,
-                //     };
-                // }
                 OpCode::Pop => {
                     pop!(self, v);
                     self.return_value = Some(v.clone());
@@ -788,25 +667,12 @@ impl<'a> Vm<'a> {
                 OpCode::Pop2 => {
                     pop!(self, _v);
                 }
-                OpCode::GetLocal(i, use_pointer) => {
-                    if *use_pointer {
-                        self.push(ValueType::PointerL(*i + frame.frame_pointer))
-                    } else {
-                        self.push(self.stack[i + frame.frame_pointer].clone());
-                    }
+                OpCode::GetLocal(i) => {
+                    self.push(self.stack[i + frame.frame_pointer].clone());
                 }
                 OpCode::SetLocal(i) => {
                     let value = self.stack[self.stack_pointer - 1].clone();
-                    match self.stack[i + frame.frame_pointer] {
-                        ValueType::PointerG(p) => {
-                            self.globals.insert(p, value);
-                        }
-                        ValueType::PointerL(p) => {
-                            self.stack[p] = value;
-                        }
-                        _ => self.stack[i + frame.frame_pointer] = value,
-                    };
-                    //self.stack[i + frame.frame_pointer] = value;
+                    self.stack[i + frame.frame_pointer] = value;
                 }
                 OpCode::DefineLocal(i) => {
                     //dbg!(i);
@@ -844,20 +710,6 @@ impl<'a> Vm<'a> {
                     if let Some(value) = call_frames.pop() {
                         // get rid of any local variables on the stack
                         self.stack_pointer = frame.frame_pointer;
-                        //dbg!(&self.stack[self.stack_pointer]);
-                        // if frame.mut_call {
-                        //     match &self.stack[self.stack_pointer] {
-                        //         ValueType::PointerG(g) => {
-                        //             let val = &self.stack[self.stack_pointer];
-                        //             self.globals.insert(*g, val.clone());
-                        //         }
-                        //         ValueType::PointerL(index) => {
-                        //             let val = self.stack[self.stack_pointer].clone();
-                        //             self.stack[index + value.frame_pointer] = val;
-                        //         }
-                        //         _ => {}
-                        //     }
-                        // }
 
                         // set the call frame
                         frame = value;
@@ -873,48 +725,7 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
-                // OpCode::NewStruct => {
-                //     let value = ValueType::Struct(HashMap::new());
-                //     self.push(value);
-                // }
-                // OpCode::GetProp(prop) => {
-                //     pop!(self, value);
 
-                //     if let ValueType::Struct(hash_map) = value {
-                //         let result = hash_map.get(prop.as_str());
-                //         match result {
-                //             Some(v) => self.push(v.clone()),
-                //             None => {
-                //                 let message = format!("Property {} not found", prop);
-                //                 self.runtime_error(&message);
-                //                 return false;
-                //             }
-                //         }
-                //     } else {
-                //         dbg!(value);
-                //         self.runtime_error("data type expected")
-                //     }
-                // }
-                // OpCode::AddData(key) => {
-                //     pop!(self, value);
-                //     let v = match value {
-                //         ValueType::Str(x) => ValueType::Str(x),
-                //         ValueType::Array(x) => ValueType::Array(x.to_vec()),
-                //         ValueType::Boolean(x) => ValueType::Boolean(*x),
-                //         ValueType::Number(x) => ValueType::Number(*x),
-                //         ValueType::String(x) => ValueType::String(x.to_string()),
-                //         //ValueType::Struct(x) => ValueType::Struct(x.clone()),
-                //         ValueType::PointerG(_) => panic!("Pointers not implemented"),
-                //         ValueType::PointerL(_) => panic!("Pointers not implemented"),
-                //     };
-
-                //     if let ValueType::Struct(ref mut hash_map) = self.stack[self.stack_pointer - 1]
-                //     {
-                //         hash_map.insert(key, v);
-                //     } else {
-                //         panic!("Expect a HashMap on top of the stack -  programmer did the wrong thing in the compiler code");
-                //     }
-                // }
                 OpCode::Subscript => {
                     //dbg!(&self.stack[0..self.stack_pointer]);
                     pop!(self, index);
@@ -940,51 +751,6 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
-                // OpCode::SetProp(name) => {
-                //     //dbg!(&self.stack[0..self.stack_pointer]);
-                //     //dbg!(&self.value_pointers[0..self.stack_pointer]);
-
-                //     pop!(self, value);
-                //     //dbg!(value);
-                //     let value = match value {
-                //         ValueType::Str(x) => ValueType::Str(x),
-                //         ValueType::Array(x) => ValueType::Array(x.to_vec()),
-                //         ValueType::Boolean(x) => ValueType::Boolean(*x),
-                //         ValueType::Number(x) => ValueType::Number(*x),
-                //         ValueType::String(x) => ValueType::String(x.to_string()),
-                //         ValueType::Struct(x) => ValueType::Struct(x.clone()),
-                //         ValueType::PointerG(_) => panic!("Pointers not implemented"),
-                //         ValueType::PointerL(_) => panic!("Pointers not implemented"),
-                //     };
-
-                //     pop2!(self, data_pointer);
-                //     //dbg!(data_pointer);
-                //     match data_pointer {
-                //         ValueType::PointerL(i) => {
-                //             if let ValueType::Struct(ref mut a) = self.stack[*i] {
-                //                 a.insert(&name, value.clone());
-                //                 self.push(value);
-                //             } else {
-                //                 self.runtime_error("Subscript only works on arrays");
-                //                 return false;
-                //             }
-                //         }
-                //         ValueType::PointerG(s) => {
-                //             let array = self.globals.get_mut(s).unwrap();
-                //             if let ValueType::Struct(ref mut a) = array {
-                //                 a.insert(&name, value.clone());
-                //                 self.push(value);
-                //             } else {
-                //                 self.runtime_error("Subscript only works on arrays");
-                //                 return false;
-                //             }
-                //         }
-                //         _ => {
-                //             self.runtime_error("Invalid use of subscript");
-                //             return false;
-                //         }
-                //     }
-                // }
                 OpCode::SubscriptSet(vartype) => {
                     let mut stack = self.stack.iter();
                     let index = stack.nth(self.stack_pointer - 2).unwrap();
@@ -1005,16 +771,10 @@ impl<'a> Vm<'a> {
                         ValueType::Boolean(x) => ValueType::Boolean(*x),
                         ValueType::Number(x) => ValueType::Number(*x),
                         ValueType::String(x) => ValueType::String(x.to_string()),
-                        //ValueType::Struct(x) => ValueType::Struct(x.clone()),
-                        ValueType::PointerG(_) => panic!("Pointers not implemented"),
-                        ValueType::PointerL(_) => panic!("Pointers not implemented"),
                     };
-                    //pop_pointer!(self, array_pointer);
-                    //pop2!(self, array_pointer);
                     match vartype {
                         VarType::Local(i) => {
                             let i = *i;
-                            //peek!(self, array_value, i);
                             let array_value = &mut self.stack[i + frame.frame_pointer];
                             //dbg!(&array_value);
                             if let ValueType::Array(ref mut a) = array_value {
@@ -1037,10 +797,6 @@ impl<'a> Vm<'a> {
                                 self.runtime_error("Subscript set global only works on arrays");
                                 return false;
                             }
-                        }
-                        _ => {
-                            self.runtime_error("Invalid use of subscript");
-                            return false;
                         }
                     }
                 }
