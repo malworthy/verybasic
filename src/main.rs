@@ -146,6 +146,34 @@ mod tests {
     }
 
     #[test]
+    fn array_push() {
+        let code = "a = array()
+                    a.push(123)
+                    a.push(456)
+                    a";
+        let result = interpret_test(code);
+        assert_eq!(result, "Array([Number(123.0), Number(456.0)])");
+    }
+
+    #[test]
+    fn array_push2() {
+        let code = "a = array()
+                    a.push(123)
+                    a.push(456)
+                    ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Boolean(true)");
+    }
+
+    #[test]
+    fn array_slice() {
+        let code = "array(1,2,3,4,5,6).slice(1,3)
+                    ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Array([Number(2.0), Number(3.0)])");
+    }
+
+    #[test]
     fn grouping2() {
         let code = "rate=24  
                     (rate/12)";

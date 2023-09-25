@@ -47,7 +47,7 @@ pub enum TokenType {
     LeftBracket(Token),
     RightBracket(Token),
     Comma(Token),
-    //Dot(Token),
+    Dot(Token),
     Identifier(Token),
     String(Token),
     Number(Token),
@@ -93,7 +93,7 @@ impl TokenType {
             | TokenType::LeftParan(t)
             | TokenType::RightParan(t)
             | TokenType::Comma(t)
-            //| TokenType::Dot(t)
+            | TokenType::Dot(t)
             | TokenType::Identifier(t)
             | TokenType::String(t)
             | TokenType::LeftBracket(t)
@@ -623,11 +623,11 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                     line_number,
                     precedence: precedence::NONE,
                 }),
-                // "." => TokenType::Dot(Token {
-                //     lexeme: single_char.to_string(),
-                //     line_number,
-                //     precedence: precedence::CALL,
-                // }),
+                "." => TokenType::Dot(Token {
+                    lexeme: single_char.to_string(),
+                    line_number,
+                    precedence: precedence::CALL,
+                }),
                 _ => TokenType::None,
             },
             1,

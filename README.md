@@ -24,14 +24,16 @@ cargo build
 ### if/then/else
 
 ```
-if <expression> then <statement> [else <statement>] end
+if <expression> then <statement> [else <statement>][elseif <expression> then <statement>] end
 while <expression> <statement> end
 
 ' EXAMPLE:
 if x == 1 then
     print("x is one")
+elseif x == 2 then
+    print("x is two")
 else
-    print("x is something other than one")
+    print("x is something else")
 end
 
 ```
@@ -121,6 +123,18 @@ function foo(x)
 end
 
 ```
+
+## Methods
+
+A method is called using the "dot" syntax.
+
+Example:
+
+```
+array.push(123)
+```
+
+Method are really just functions, but can mutate the variable you are calling the method on.
 
 ## Data types
 
@@ -292,7 +306,17 @@ sorts an array
 
 ### _push(array, val)_
 
+returns a new array with _val_ added to the end of an array
+
+## Array methods
+
+### _push(val)_
+
 adds a value to the end of an array
+
+### _slice(start, end)_
+
+return a new sliced array. This does not mutate the array.
 
 ## String functions
 

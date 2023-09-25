@@ -179,27 +179,62 @@ pub fn sort<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<
     Err("Incorrect parameters passed to sort(array)")
 }
 
-// pub fn push_mut<'a>(
-//     array: &mut ValueType<'a>,
-//     params: Vec<ValueType<'a>>,
-// ) -> Result<ValueType<'a>, &'a str> {
-//     if params.len() < 1 {
-//         return Err("Incorrect parameters passed to push(array, value)");
-//     }
-//     let value = params.iter().next();
-//     if let Some(val) = value {
-//         //let array = &mut params[0];
-//         //let v = val.clone();
-//         if let ValueType::Array(ref mut vec) = array {
-//             vec.push(val.clone());
-//             //let mut result = vec.clone();
-//             //result.push(value);
-//             return Ok(ValueType::Boolean(true));
-//         }
-//     }
+pub fn push_mut<'a>(
+    array: &mut ValueType<'a>,
+    params: Vec<ValueType<'a>>,
+) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 1 {
+        return Err("Incorrect parameters passed to push(array, value)");
+    }
+    let value = params.iter().next();
+    if let Some(val) = value {
+        //let array = &mut params[0];
+        //let v = val.clone();
+        if let ValueType::Array(ref mut vec) = array {
+            vec.push(val.clone());
+            //let mut result = vec.clone();
+            //result.push(value);
+            return Ok(ValueType::Boolean(true));
+            //return Ok(ValueType::Array(vec.clone()));
+            //return Ok(val.to_owned());
+        }
+    }
 
-//     Err("Incorrect parameters passed to  push(array, value)")
-// }
+    Err("Incorrect parameters passed to  push(array, value)")
+}
+
+pub fn slice<'a>(
+    array: &mut ValueType<'a>,
+    params: Vec<ValueType<'a>>,
+) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 2 {
+        return Err("Incorrect number of parameters passed to slice(start, finish)");
+    }
+    let start = params.iter().nth(0).unwrap();
+    let finish = params.iter().nth(1).unwrap();
+    let start = if let ValueType::Number(n) = start {
+        n
+    } else {
+        return Err("Incorrect parameters passed to  slice(start, finish)");
+    };
+    let finish = if let ValueType::Number(n) = finish {
+        n
+    } else {
+        return Err("Incorrect parameters passed to slice(start, finish)");
+    };
+    if *start < 0.0 || *finish < 0.0 {
+        return Err("Incorrect parameters passed to slice(start, finish). Start and finish must be greater than zero.");
+    }
+    dbg!(&array);
+    if let ValueType::Array(ref mut vec) = array {
+        dbg!(&vec);
+        let sliced = &vec[*start as usize..*finish as usize];
+        dbg!(sliced);
+        return Ok(ValueType::Array(sliced.to_owned()));
+    } else {
+        return Err("Incorrect parameters passed to slice(start, finish)");
+    };
+}
 
 pub fn push<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() < 2 {

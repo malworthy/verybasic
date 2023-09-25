@@ -87,6 +87,13 @@ macro_rules! pop {
     };
 }
 
+macro_rules! pop_mut {
+    ($s:ident, $v:ident) => {
+        $s.stack_pointer -= 1;
+        let $v = &mut $s.stack[$s.stack_pointer];
+    };
+}
+
 pub struct DebugSettings {
     pub break_points: Vec<u32>,
     pub code_window: u32,
@@ -173,6 +180,11 @@ impl<'a> Vm<'a> {
             break_frame: 0,
         }
     }
+
+    pub const MUT_NATIVES: [(
+        fn(array: &mut ValueType<'a>, params: Vec<ValueType<'a>>) -> Result<ValueType<'a>, &'a str>,
+        &str,
+    ); 2] = [(functions::push_mut, "push"), (functions::slice, "slice")];
 
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
@@ -635,6 +647,33 @@ impl<'a> Vm<'a> {
                         }
                     }
                 }
+                OpCode::CallNativeMut(index, argc, variable) => {
+                    let mut args: Vec<ValueType> = Vec::new();
+                    //dbg!(&self.stack[0..self.stack_pointer]);
+                    let func = Vm::MUT_NATIVES[*index].0;
+                    for _i in 0..*argc {
+                        pop!(self, v);
+                        args.insert(0, v.clone());
+                    }
+                    //pop_pointer!(self, p);
+                    pop_mut!(self, p);
+
+                    let result = match variable {
+                        VarType::Local(index) => func(&mut self.stack[*index], args),
+                        VarType::Global(index) => {
+                            func(self.globals.get_mut(&(*index as u32)).unwrap(), args)
+                        }
+                        _ => func(/*&mut self.stack[self.stack_pointer - 1]*/ p, args),
+                    };
+
+                    match result {
+                        Ok(value) => self.push(value),
+                        Err(message) => {
+                            self.runtime_error(&message);
+                            return false;
+                        }
+                    }
+                }
                 OpCode::CallSystem(name, argc, _) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     for _i in 0..*argc {
@@ -797,6 +836,10 @@ impl<'a> Vm<'a> {
                                 self.runtime_error("Subscript set global only works on arrays");
                                 return false;
                             }
+                        }
+                        VarType::None => {
+                            self.runtime_error("No variable specified for Subscript set ");
+                            return false;
                         }
                     }
                 }
