@@ -2,6 +2,30 @@
 
 A very stripped back BASIC like language. It contains only what you need to create a turing complete program. No synactic sugar, nothing unnessary. You should be able to learn it in less than 5 minutes.
 
+All variables are stored on the stack. There is no heap or garbage collection. Memory is freed when variables go out of scope. All variables are passed by val to functions, and assignment means the variable will be copied. Very Basic doesn't ever use references.
+
+Example:
+
+```
+a = array(1,2,3)
+
+' b is copy of 'a'
+b = a
+
+b[0] = 5
+
+print a[0]  ' prints 1
+print b[0]  ' prints 5
+```
+
+Other things to note:
+
+- Very Basic is not object orientated, there are no classes, inheritance or interfaces
+- Very Basic does not have closures.  You cannot declare a function within a function.
+- Functions are not first class citizens and you cannot pass function pointers.
+- Very Basic is not designed for speed or memory efficiency
+- Very Basic is a dynamically typed language, like Python or Javascript
+
 ## Compiling
 
 On linux you may need to install the following dependencies
@@ -138,13 +162,13 @@ Method are really just functions, but can mutate the variable you are calling th
 
 ## Data types
 
-There are 4 datatypes. String, Number, Boolean and Array. There are no 'true' and 'false' keywords.
+There are 4 datatypes. String, Number, Boolean and Array.
 Arrays can hold any datatype
 
 ```
 x = "hello"  ' string
 x = 123  ' number floating point
-x = (1 == 2) ' boolean, if this case 'false'
+x = true ' boolean
 x = array(1,1,1) ' create an array of 3 elements with the number 1
 ```
 
@@ -163,7 +187,7 @@ print(x[1]) ' prints 6
 
 x[0] = 10 ' change first element from 4 to 10
 
-x = push(x,15) ' adds an element to the end of the array
+x.push(15) ' adds an element to the end of the array
 ```
 
 ## Operators
@@ -320,9 +344,16 @@ return a new sliced array. This does not mutate the array.
 
 ## String functions
 
-### _instr()_
+### _instr(string1, string2, [start],[compare])_
 
-### _lcase()_
+returns the index of string2 found in string1, using a 1 based index. If not found, then it returns zero.
+
+- start = start position to search
+- compare = if this value is 1, then it does a case insenstive comparison
+
+### _lcase(string)_
+
+returns the lower case value of a string
 
 ### _left(string, length)_
 
@@ -333,9 +364,17 @@ Returns a substring containing a specified number of characters from the beginni
 returns part of a string using a 1 based index.
 e.g mid("hello",3) returns "llo", mid("hello",3, 2) return "lo"
 
-### _right()_
+### _right(length)_
 
-### _ucase()_
+returns the right most characters of a string
+
+### _split(string, delimiter, [remove_empty = false])_
+
+splits a string based on a delimiter and returns an array of its part. If remove_empty is true then any empty elements are removed from the array.
+
+### _ucase(string)_
+
+returns the lower case value of a string
 
 ## Date and Time functions
 

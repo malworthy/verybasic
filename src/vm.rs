@@ -189,7 +189,7 @@ impl<'a> Vm<'a> {
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
         &str,
-    ); 33] = [
+    ); 34] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (functions::array, "array"),
@@ -211,6 +211,7 @@ impl<'a> Vm<'a> {
         (string_functions::ucase, "ucase"),
         (string_functions::lcase, "lcase"),
         (string_functions::instr, "instr"),
+        (string_functions::split, "split"),
         (functions::command, "command"),
         (functions::now, "now"),
         (functions::window, "window"),

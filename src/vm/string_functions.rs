@@ -1,5 +1,4 @@
 use crate::vm::ValueType;
-//use runtime_fmt::rt_format;
 use num_runtime_fmt::NumFmt;
 
 use super::Vm;
@@ -211,6 +210,47 @@ pub fn instr<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType
     } else {
         Ok(ValueType::Number(0.0))
     }
+}
+
+pub fn split<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    let mut params_iter = params.iter();
+    let string = params_iter.next();
+    let delimiter = params_iter.next();
+    let remove_empty = params_iter.next();
+    //let compare = params_iter.next();
+
+    if let None = string {
+        return Err("Incorrect number of parameters passed to function split(string, delimiter, [remove_empty])");
+    };
+
+    if let None = delimiter {
+        return Err("Incorrect number of parameters passed to function split(string, delimiter, [remove_empty])");
+    };
+
+    let remove_empty = if let Some(v) = remove_empty {
+        if let ValueType::Boolean(v) = v {
+            *v
+        } else {
+            return Err("Expect boolean for parameter 'remove_empty' of function split(string, delimiter, [remove_empty])");
+        }
+    } else {
+        false
+    };
+
+    let string = string.unwrap().to_string();
+    let delimiter = delimiter.unwrap().to_string();
+
+    let parts = string.split(&delimiter);
+    let result: Vec<ValueType> = if remove_empty {
+        parts
+            .filter(|x| !x.is_empty())
+            .map(|x| ValueType::String(x.to_string()))
+            .collect()
+    } else {
+        parts.map(|x| ValueType::String(x.to_string())).collect()
+    };
+
+    Ok(ValueType::Array(result))
 }
 
 #[cfg(test)]
