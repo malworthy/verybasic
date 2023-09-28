@@ -62,28 +62,6 @@ end
 
 ```
 
-Using 'else if' like below will not work and results in a compile error. Very basic is too basic to understand this.
-
-```
-if x == 1 then
-    print("hello")
-else if x ==2 then
-    print("won't work)
-end
-```
-
-instead re-write as
-
-```
-if x == 1 then
-    print("hello")
-else
-    if x ==2 then
-        print("won't work)
-    end
-end
-```
-
 Note: The expression evaluated for if and while must return a boolean. For example `if 1 then print("hello") end` won't work.
 
 ### while
@@ -383,6 +361,18 @@ Dates are stored as strings in ISO8601 format. There is no native datetime forma
 ### _now()_
 
 returns the current date using the local timezone
+
+### _dateadd(date, interval, number)_
+
+valid intervals are:
+
+- s = second
+- n = minute
+- h = hour
+- d = day
+- w = week
+- m = month
+- y = year
 
 ## Graphic functions
 

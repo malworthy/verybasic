@@ -1,5 +1,5 @@
 use crate::vm::ValueType;
-use chrono::{DateTime, Local};
+use chrono::{Date, DateTime, Days, Duration, Local, Months};
 use glob::glob;
 use hex;
 use rand;
@@ -105,6 +105,53 @@ pub fn now<'a>(_params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<
     let now = now.to_rfc3339();
 
     Ok(ValueType::String(now))
+}
+
+pub fn date_add<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 3 {
+        return Err("Incorrect number of parameters");
+    }
+    let date_string = params[0].to_string();
+    let date = DateTime::parse_from_rfc3339(&date_string);
+
+    let interval = params[1].to_string();
+
+    let num = match params[2] {
+        ValueType::Number(n) => n as i64,
+        _ => return Err("parameter 3 must be a number"),
+    };
+
+    if num == 0 {
+        return Err("Invalid interval.  Cannot be zero.");
+    }
+
+    let num = match interval.as_str() {
+        "w" => num * 7,
+        "y" => num * 12,
+        _ => num,
+    };
+
+    let result = match date {
+        Ok(d) => match interval.as_str() {
+            "d" | "w" => d.checked_add_signed(Duration::days(num)),
+            "m" | "y" => {
+                if num > 0 {
+                    d.checked_add_months(Months::new(num as u32))
+                } else {
+                    d.checked_sub_months(Months::new(-num as u32))
+                }
+            }
+            "h" => d.checked_add_signed(Duration::hours(num)),
+            "n" => d.checked_add_signed(Duration::minutes(num)),
+            "s" => d.checked_add_signed(Duration::seconds(num)),
+            _ => return Err("Invalid interval"),
+        },
+        Err(_) => return Err("Invalid date"),
+    };
+
+    let result = result.unwrap().to_rfc3339();
+
+    Ok(ValueType::String(result))
 }
 
 pub fn len<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
