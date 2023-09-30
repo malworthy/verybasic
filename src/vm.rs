@@ -646,25 +646,6 @@ impl<'a> Vm<'a> {
                     }
                 }
 
-                // OpCode::CallNative(index, argc) => {
-                //     let mut args: Vec<ValueType> = Vec::new();
-
-                //     let func = Vm::NATIVES[*index].0;
-                //     // call a native/built-in function
-                //     for _i in 0..*argc {
-                //         pop!(self, v);
-                //         args.insert(0, v.clone());
-                //     }
-                //     let result = func(args, self);
-
-                //     match result {
-                //         Ok(value) => self.push(value),
-                //         Err(message) => {
-                //             self.runtime_error(&message);
-                //             return false;
-                //         }
-                //     }
-                // }
                 OpCode::CallNativeMut(index, argc, variable) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     //dbg!(&self.stack[0..self.stack_pointer]);
