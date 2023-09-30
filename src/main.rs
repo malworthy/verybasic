@@ -182,6 +182,20 @@ mod tests {
     }
 
     #[test]
+    fn system_call() {
+        let code = "@dummy_system_call_will_fail()";
+        let result = interpret_test(code);
+        assert_eq!(result, "Runtime Error");
+    }
+
+    #[test]
+    fn system_call_invalid() {
+        let code = "@crash";
+        let result = interpret_test(code);
+        assert_eq!(result, "Compile Error");
+    }
+
+    #[test]
     fn non_existing_function() {
         let code = "doesnt_exist()";
         let result = interpret_test(code);
@@ -602,7 +616,7 @@ mod tests {
 
         test(1)
         ";
-        assert_eq!(interpret_test(code), "Compile Error");
+        assert_eq!(interpret_test(code), "Runtime Error");
     }
 
     #[test]
@@ -662,13 +676,43 @@ mod tests {
     }
 
     #[test]
+    fn func_first_class_citz() {
+        assert_eq!(
+            interpret_test(
+                "function foo(x) x = x * 2 end function bar(f, n) f(n) end bar(foo, 10)"
+            ),
+            "Number(20.0)"
+        );
+    }
+
+    #[test]
+    fn func_first_class_citz2() {
+        assert_eq!(
+            interpret_test(
+                "function foo(x)
+                    a = 1
+                    b = 2 
+                    x = x * 2  
+                end 
+                
+                x = foo
+                y = x
+                y(10)"
+            ),
+            "Number(20.0)"
+        );
+    }
+
+    #[test]
     fn len() {
+        assert_eq!(interpret_test("len(array(1,1,1,1,2))"), "Number(5.0)");
+
         assert_eq!(interpret_test("len(\"hello\")"), "Number(5.0)");
         assert_eq!(
             interpret_test("len(\"hello\" + \" world\")"),
             "Number(11.0)"
         );
-        assert_eq!(interpret_test("len(array(1,1,1,1,2))"), "Number(5.0)");
+
         assert_eq!(interpret_test("len(555.45)"), "Number(8.0)");
         assert_eq!(interpret_test("len(true)"), "Number(1.0)");
     }

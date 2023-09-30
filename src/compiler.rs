@@ -25,10 +25,13 @@ pub enum OpCode {
     Pow,
     SetGlobal(u32),
     GetGlobal(u32),
-    Call(usize, u32),
+    Call(u32),
+    Native(usize),
+    Func(usize, u8), //pointer, arity
+    FuncPlaceholder(String, u32),
     CallNativeMut(usize, u32, VarType),
     CallSystem(String, u32, u32),
-    CallNative(usize, u32),
+    //CallNative(usize, u32),
     Pop,
     Pop2,
     SetLocal(usize),
@@ -53,8 +56,8 @@ pub fn print_instr(instructions: Vec<OpCode>) {
     for i in instructions {
         let x = match i {
             OpCode::Add => format!("{:05} ADD", addr),
-            OpCode::Call(ptr, argc) => format!("{:05} CALL {} {}", addr, ptr, argc),
-            OpCode::CallNative(index, argc) => format!("{:05} CALN {} {}", addr, index, argc),
+            OpCode::Call(argc) => format!("{:05} CALL {}", addr, argc),
+            //OpCode::CallNative(index, argc) => format!("{:05} CALN {} {}", addr, index, argc),
             OpCode::CallNativeMut(index, argc, _) => format!("{:05} CALM {} {}", addr, index, argc),
             OpCode::And => format!("{:05} AND", addr),
             OpCode::CallSystem(name, argc, _) => format!("{} SYS  {} {}", addr, name, argc),
@@ -87,6 +90,9 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::SubscriptSet(v) => format!("{:05} SSET {:?}", addr, v),
             OpCode::Subtract => format!("{:05} SUB", addr),
             OpCode::ConstantBool(val) => format!("{:05} BOOL {}", addr, val),
+            OpCode::Func(ptr, arity) => format!("{:05} FUNC {} {}", addr, ptr, arity),
+            OpCode::Native(index) => format!("{:05} NAT  {}", addr, index),
+            OpCode::FuncPlaceholder(_, _) => panic!("ERROR FuncPlaceholder left in"),
         };
         addr += 1;
         println!("{}", x);
@@ -252,41 +258,50 @@ impl Compiler<'_> {
         }
         // get the name of the function
         let name: String;
-        if let TokenType::Identifier(t) = &self.tokens[self.token_pointer - 2] {
+        let system_call = if let TokenType::Identifier(t) = &self.tokens[self.token_pointer - 2] {
             name = t.lexeme.clone();
+            t.lexeme.starts_with("@")
         } else {
             self.compile_error("Expect funtion name before '('", token);
             return false;
-        }
+        };
 
         let mut arguments = 0;
         loop {
             match &self.tokens[self.token_pointer] {
                 TokenType::RightParan(_) => {
                     self.advance();
-                    // check if it's native
-                    if let Ok(index) = is_native(name.as_str()) {
-                        self.add_instr(OpCode::CallNative(index, arguments), token.line_number);
+                    if system_call {
+                        self.add_instr(
+                            OpCode::CallSystem(name, arguments, token.line_number),
+                            token.line_number,
+                        );
                     } else {
-                        // get index of fn
-                        if let Some(index) = self.functions.iter().position(|x| x.0 == name) {
-                            let f = &self.functions[index];
-                            if f.1 != arguments as u8 {
-                                self.compile_error(
-                                    "Wrong number of arguments pass to function",
-                                    token,
-                                );
-                                return false;
-                            }
-                            self.add_instr(OpCode::Call(f.2, arguments), token.line_number);
-                        } else {
-                            // '@' means a function call
-                            self.add_instr(
-                                OpCode::CallSystem(name, arguments, token.line_number),
-                                token.line_number,
-                            );
-                        }
+                        self.add_instr(OpCode::Call(arguments), token.line_number);
                     }
+                    // // check if it's native
+                    // if let Ok(index) = is_native(name.as_str()) {
+                    //     self.add_instr(OpCode::CallNative(index, arguments), token.line_number);
+                    // } else {
+                    //     // get index of fn
+                    //     if let Some(index) = self.functions.iter().position(|x| x.0 == name) {
+                    //         let f = &self.functions[index];
+                    //         if f.1 != arguments as u8 {
+                    //             self.compile_error(
+                    //                 "Wrong number of arguments pass to function",
+                    //                 token,
+                    //             );
+                    //             return false;
+                    //         }
+                    //         self.add_instr(OpCode::Call(f.2, arguments), token.line_number);
+                    //     } else {
+                    //         // '@' means a function call
+                    //         self.add_instr(
+                    //             OpCode::CallSystem(name, arguments, token.line_number),
+                    //             token.line_number,
+                    //         );
+                    //     }
+                    // }
 
                     return true;
                 }
@@ -400,10 +415,16 @@ impl Compiler<'_> {
     }
 
     fn variable(&mut self, token: &Token, can_assign: bool) {
-        //check to see if this is a function call
-        if let TokenType::LeftParan(_) = self.tokens[self.token_pointer] {
+        // This means system call.
+        if token.lexeme.starts_with("@") {
+            //check to see if this is a function call
+            if let TokenType::LeftParan(_) = self.tokens[self.token_pointer] {
+                return;
+            };
+            // not a function call - compile error
+            self.compile_error("Expect '(' after system call", token);
             return;
-        };
+        }
 
         //check to see if we are setting a variable
         let matched_equal = if let TokenType::Equals(_) = self.tokens[self.token_pointer] {
@@ -449,9 +470,21 @@ impl Compiler<'_> {
                     self.add_instr(OpCode::GetLocal(index), token.line_number);
                 }
             } else {
+                if let Ok(index) = is_native(token.lexeme.as_str()) {
+                    self.add_instr(OpCode::Native(index), token.line_number);
+                } else if let Some(index) = self.functions.iter().position(|x| x.0 == token.lexeme)
+                {
+                    let f = &self.functions[index];
+                    self.add_instr(OpCode::Func(f.2, f.1), token.line_number);
+                } else {
+                    self.add_instr(
+                        OpCode::FuncPlaceholder(token.lexeme.clone(), token.line_number),
+                        token.line_number,
+                    );
+                }
                 // compile error - can't find variable
-                let message = format!("Variable {} not found", token.lexeme);
-                self.compile_error(&message, token);
+                //let message = format!("Variable {} not found", token.lexeme);
+                //self.compile_error(&message, token);
             }
         }
     }
@@ -1101,23 +1134,28 @@ impl Compiler<'_> {
         let mut index: usize = 0;
         while index < self.instructions.len() {
             let inst = self.instructions.get(index).unwrap();
-            if let OpCode::CallSystem(name, arguments, line_number) = inst {
+            //OpCode::FuncPlaceholder
+            if let OpCode::FuncPlaceholder(name, line_number) = inst {
                 if let Some(fi) = self.functions.iter().position(|x| x.0 == *name) {
                     let f = &self.functions[fi];
-                    if f.1 != *arguments as u8 {
-                        self.compile_error_line(
-                            "Wrong number of arguments pass to function",
-                            *line_number,
-                        );
-                        return;
-                    }
+                    // if f.1 != *arguments as u8 {
+                    //     self.compile_error_line(
+                    //         "Wrong number of arguments pass to function",
+                    //         *line_number,
+                    //     );
+                    //     return;
+                    // }
 
-                    self.instructions[index] = OpCode::Call(f.2, *arguments);
+                    self.instructions[index] = OpCode::Func(f.2, f.1);
                 } else {
-                    if !name.starts_with('@') {
-                        let message = format!("function {} not found", name);
-                        self.compile_error_line(&message, *line_number);
-                    }
+                    let message = format!("function {} not found", name);
+                    self.compile_error_line(&message, *line_number);
+
+                    // if !name.starts_with('@') {
+                    //     let message = format!("function {} not found", name);
+                    //     self.compile_error_line(&message, *line_number);
+                    // }
+                    // self.instructions[index] = OpCode::Nop
                 }
             }
             index += 1;
