@@ -1,7 +1,7 @@
 ' mandlebot
 width = 900
 height = 700
-max_iteration = 50
+max_iteration = 200
 
  function setgraphics(x)
      initgraphics(width, height)
@@ -59,6 +59,8 @@ mandlebot()
 print("finished")
 print(seconds() - s) '3.9 secs 25/06/2023
 window()
+
+' 10.5 seconds (200 iterations) 30/9/23
 
 
 

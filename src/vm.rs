@@ -18,6 +18,8 @@ pub enum ValueType<'a> {
     Boolean(bool),
     String(String),
     Array(Vec<ValueType<'a>>),
+    Func(usize, u8),
+    Native(usize),
 }
 
 impl ValueType<'_> {
@@ -28,6 +30,7 @@ impl ValueType<'_> {
             ValueType::Str(str) => str.to_string(),
             ValueType::String(str) => str.to_string(),
             ValueType::Array(a) => format!("{:?}", a),
+            _ => String::from("function"),
         }
     }
 }
@@ -294,6 +297,10 @@ impl<'a> Vm<'a> {
                 self.runtime_error("Array not valid for comparison operation");
                 return false;
             }
+            _ => {
+                self.runtime_error("Type not valid for comparison operation");
+                return false;
+            }
         };
 
         self.push(result);
@@ -384,6 +391,10 @@ impl<'a> Vm<'a> {
                 self.runtime_error("'not' invalid for an array");
                 return false;
             }
+            _ => {
+                self.runtime_error("'not' invalid opertation for this type");
+                return false;
+            }
         };
 
         self.push(result);
@@ -434,6 +445,10 @@ impl<'a> Vm<'a> {
             }
             ValueType::Array(_) => {
                 self.runtime_error("Cannot add an array");
+                return false;
+            }
+            _ => {
+                self.runtime_error("Cannot add this type");
                 return false;
             }
         };
@@ -528,6 +543,7 @@ impl<'a> Vm<'a> {
             frame_pointer: 0,
         };
         let mut frame = main_frame;
+        //let mut function_to_call = ValueType::Boolean(false);
         loop {
             if let Some(_) = self.debug_settings {
                 self.debug(frame.ip, &frame, call_frames.len());
@@ -630,25 +646,6 @@ impl<'a> Vm<'a> {
                     }
                 }
 
-                OpCode::CallNative(index, argc) => {
-                    let mut args: Vec<ValueType> = Vec::new();
-
-                    let func = Vm::NATIVES[*index].0;
-                    // call a native/built-in function
-                    for _i in 0..*argc {
-                        pop!(self, v);
-                        args.insert(0, v.clone());
-                    }
-                    let result = func(args, self);
-
-                    match result {
-                        Ok(value) => self.push(value),
-                        Err(message) => {
-                            self.runtime_error(&message);
-                            return false;
-                        }
-                    }
-                }
                 OpCode::CallNativeMut(index, argc, variable) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     //dbg!(&self.stack[0..self.stack_pointer]);
@@ -693,13 +690,58 @@ impl<'a> Vm<'a> {
                         }
                     }
                 }
-                OpCode::Call(pointer, argc) => {
-                    call_frames.push(frame); // save current frame
+                OpCode::Func(ptr, arity) => {
+                    //function_to_call = ValueType::Func(*ptr, *arity);
+                    self.push(ValueType::Func(*ptr, *arity));
+                }
+                OpCode::Native(index) => {
+                    //function_to_call = ValueType::Native(*index);
+                    self.push(ValueType::Native(*index));
+                }
+                OpCode::Call(argc) => {
+                    //dbg!(&self.stack[0..self.stack_pointer]);
+                    //dbg!(frame.frame_pointer);
                     let argc = *argc as usize;
-                    frame = Frame {
-                        ip: pointer - 1,
-                        frame_pointer: self.stack_pointer - argc,
-                    };
+                    let func = &self.stack[self.stack_pointer - argc - 1];
+                    //dbg!(&function_to_call);
+                    match func {
+                        ValueType::Func(pointer, arity) => {
+                            if *arity as usize != argc {
+                                self.runtime_error("Incorrect number of parameters");
+                                return false;
+                            }
+                            call_frames.push(frame); // save current frame
+
+                            frame = Frame {
+                                ip: pointer - 1,
+                                frame_pointer: self.stack_pointer - argc,
+                            };
+                        }
+                        ValueType::Native(index) => {
+                            let mut args: Vec<ValueType> = Vec::new();
+
+                            let func = Vm::NATIVES[*index].0;
+                            // call a native/built-in function
+                            for _i in 0..argc {
+                                pop!(self, v);
+                                args.insert(0, v.clone());
+                            }
+                            pop!(self, _dummy); // pop the function index
+                            let result = func(args, self);
+
+                            match result {
+                                Ok(value) => self.push(value),
+                                Err(message) => {
+                                    self.runtime_error(&message);
+                                    return false;
+                                }
+                            }
+                        }
+                        _ => {
+                            self.runtime_error("Uncallable target");
+                            return false;
+                        }
+                    }
                 }
                 OpCode::Pop => {
                     pop!(self, v);
@@ -745,12 +787,13 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::Return => {
                     //dbg!(&self.stack[0..self.stack_pointer]);
+                    //dbg!(&self.stack[frame.frame_pointer..self.stack_pointer]);
                     //dbg!(&self.value_pointers[0..self.stack_pointer]);
                     // pop the frame
                     // if no frames left, then break
                     if let Some(value) = call_frames.pop() {
                         // get rid of any local variables on the stack
-                        self.stack_pointer = frame.frame_pointer;
+                        self.stack_pointer = frame.frame_pointer - 1; //-1 for the func() valuetype
 
                         // set the call frame
                         frame = value;
@@ -792,6 +835,9 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
+                OpCode::FuncPlaceholder(_, _) => {
+                    panic!("FuncPlaceholder not replaced!");
+                }
                 OpCode::SubscriptSet(vartype) => {
                     let mut stack = self.stack.iter();
                     let index = stack.nth(self.stack_pointer - 2).unwrap();
@@ -812,6 +858,8 @@ impl<'a> Vm<'a> {
                         ValueType::Boolean(x) => ValueType::Boolean(*x),
                         ValueType::Number(x) => ValueType::Number(*x),
                         ValueType::String(x) => ValueType::String(x.to_string()),
+                        ValueType::Func(a, b) => ValueType::Func(*a, *b),
+                        ValueType::Native(a) => ValueType::Native(*a),
                     };
                     match vartype {
                         VarType::Local(i) => {
