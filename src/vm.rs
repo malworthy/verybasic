@@ -187,7 +187,11 @@ impl<'a> Vm<'a> {
     pub const MUT_NATIVES: [(
         fn(array: &mut ValueType<'a>, params: Vec<ValueType<'a>>) -> Result<ValueType<'a>, &'a str>,
         &str,
-    ); 2] = [(functions::push_mut, "push"), (functions::slice, "slice")];
+    ); 3] = [
+        (functions::push_mut, "push"),
+        (functions::slice, "slice"),
+        (functions::filter, "filter"),
+    ];
 
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,

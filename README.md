@@ -320,6 +320,15 @@ adds a value to the end of an array
 
 return a new sliced array. This does not mutate the array.
 
+### _filter(operator, value, [[operator], [value]...])_
+
+Example:
+
+```
+array.filter(">", 7) ' all elements greater than 7
+array.filter("<", 5, ">", 10) ' all elements less than 5 or greater than 10
+```
+
 ## String functions
 
 ### _instr(string1, string2, [start],[compare])_

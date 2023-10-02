@@ -1,5 +1,5 @@
 use crate::vm::ValueType;
-use chrono::{Date, DateTime, Days, Duration, Local, Months};
+use chrono::{DateTime, Duration, Local, Months};
 use glob::glob;
 use hex;
 use rand;
@@ -283,6 +283,96 @@ pub fn slice<'a>(
     } else {
         return Err("Incorrect parameters passed to slice(start, finish)");
     };
+}
+
+fn string_compare<'a>(op: &str, a: &str, b: &str) -> bool {
+    match op {
+        ">" => a > b,
+        ">=" => a >= b,
+        "<" => a < b,
+        "<=" => a <= b,
+        "=" | "==" => a == b,
+        "<>" | "!=" => a != b,
+        _ => false,
+    }
+}
+
+fn filter_comparison(op: &str, a: &ValueType, b: &ValueType) -> bool {
+    match a {
+        ValueType::Number(a) => {
+            if let ValueType::Number(ref b) = b {
+                match op {
+                    ">" => a > b,
+                    ">=" => a >= b,
+                    "<" => a < b,
+                    "<=" => a <= b,
+                    "=" | "==" => a == b,
+                    "<>" | "!=" => a != b,
+                    _ => false,
+                }
+            } else {
+                false
+            }
+        }
+        ValueType::Str(a) => match b {
+            ValueType::Str(b) => string_compare(&op, a, b), // ValueType::Boolean(a == b),
+            ValueType::String(b) => string_compare(&op, a, b.as_str()), //ValueType::Boolean(a == b),
+            _ => false,
+        },
+        ValueType::String(a) => match b {
+            ValueType::Str(b) => string_compare(&op, a.as_str(), b), //ValueType::Boolean(a == b),
+            ValueType::String(b) => string_compare(&op, a.as_str(), b.as_str()), //ValueType::Boolean(a == b),
+            _ => false,
+        },
+        ValueType::Boolean(a) => match b {
+            ValueType::Boolean(b) => a == b,
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+pub fn filter_multi_comp(params: &Vec<ValueType>, x: &ValueType) -> bool {
+    let mut iter = params.iter();
+    let mut result = false;
+    loop {
+        if let Some(operator) = iter.next() {
+            let operator = operator.to_string();
+
+            if let Some(value) = iter.next() {
+                result = result || filter_comparison(&operator, x, &value);
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    result
+}
+
+pub fn filter<'a>(
+    array: &mut ValueType<'a>,
+    params: Vec<ValueType<'a>>,
+) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 2 {
+        return Err("Incorrect number of parameters passed to filter()");
+    }
+    //let mut iter = params.iter();
+    //let operator = iter.next().unwrap().to_string();
+    //let value = iter.next().unwrap();
+    let filtered = if let ValueType::Array(vec) = array {
+        vec.into_iter().filter(|x| filter_multi_comp(&params, x))
+    } else {
+        return Err("Incorrect parameters passed to filter()");
+    };
+    let mut result: Vec<ValueType> = Vec::new();
+
+    for item in filtered {
+        result.push(item.clone());
+    }
+
+    Ok(ValueType::Array(result))
 }
 
 pub fn push<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
