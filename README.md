@@ -254,6 +254,10 @@ Prints a string to the console.
 
 returns a random number between 0 and 1
 
+### _round(num, precision)_
+
+round a number to [precision] decimal places
+
 ### _seconds()_
 
 returns the number of seconds since the unix epoch

@@ -196,7 +196,7 @@ impl<'a> Vm<'a> {
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
         &str,
-    ); 35] = [
+    ); 36] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (functions::array, "array"),
@@ -232,6 +232,7 @@ impl<'a> Vm<'a> {
         (functions::push, "push"),
         (functions::sqrt, "sqrt"),
         (functions::date_add, "dateadd"),
+        (functions::round, "round"),
     ];
 
     pub fn debug_stack(&mut self) {

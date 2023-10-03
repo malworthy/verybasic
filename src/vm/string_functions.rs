@@ -2,6 +2,7 @@ use crate::vm::ValueType;
 use num_runtime_fmt::NumFmt;
 
 use super::Vm;
+use crate::common::round;
 
 // String functions
 pub fn mid<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
@@ -86,12 +87,6 @@ pub fn right<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType
     }
     let start = string.len() - length;
     Ok(ValueType::String(String::from(&string[start..])))
-}
-
-// really rust - no library function to do this???
-fn round(number: f64, decimal_places: u32) -> f64 {
-    let y = 10i32.pow(decimal_places) as f64;
-    (number * y).round() / y
 }
 
 pub fn vb_format_num(format: String, number: f64) -> (String, f64) {
@@ -251,16 +246,4 @@ pub fn split<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType
     };
 
     Ok(ValueType::Array(result))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::round;
-
-    #[test]
-    fn test_round() {
-        assert_eq!(round(123.45999, 2), 123.46);
-        assert_eq!(round(123.454, 2), 123.45);
-        assert_eq!(round(123.455, 2), 123.46);
-    }
 }

@@ -1,3 +1,4 @@
+use crate::common;
 use crate::vm::ValueType;
 use chrono::{DateTime, Duration, Local, Months};
 use glob::glob;
@@ -226,6 +227,27 @@ pub fn sort<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<
         }
     }
     Err("Incorrect parameters passed to sort(array)")
+}
+
+pub fn round<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 2 {
+        return Err("Incorrect parameters passed to round(num, precision)");
+    }
+    let num = if let ValueType::Number(num) = params[0] {
+        num
+    } else {
+        return Err("Incorrect parameters passed to round(num, precision) - num must be a number");
+    };
+
+    let prec = if let ValueType::Number(prec) = params[1] {
+        prec as u32
+    } else {
+        return Err(
+            "Incorrect parameters passed to round(num, precision) - precision must be a number",
+        );
+    };
+    let rounded = common::round(num, prec);
+    Ok(ValueType::Number(rounded))
 }
 
 pub fn push_mut<'a>(

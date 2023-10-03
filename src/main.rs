@@ -1,7 +1,7 @@
+mod common;
 mod compiler;
 mod scanner;
 mod vm;
-
 use colored::Colorize;
 use std::{fs, io, path::PathBuf, process};
 use vm::DebugSettings;
