@@ -1,6 +1,8 @@
+mod array_functions;
 mod functions;
 mod graphics;
 mod string_functions;
+
 use std::{
     collections::HashMap,
     io::{self, Write},
@@ -188,18 +190,18 @@ impl<'a> Vm<'a> {
         fn(array: &mut ValueType<'a>, params: Vec<ValueType<'a>>) -> Result<ValueType<'a>, &'a str>,
         &str,
     ); 3] = [
-        (functions::push_mut, "push"),
-        (functions::slice, "slice"),
-        (functions::filter, "filter"),
+        (array_functions::push_mut, "push"),
+        (array_functions::slice, "slice"),
+        (array_functions::filter, "filter"),
     ];
 
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
         &str,
-    ); 36] = [
+    ); 37] = [
         (functions::print, "print"),
         (functions::input, "input"),
-        (functions::array, "array"),
+        (array_functions::array, "array"),
         (functions::len, "len"),
         (functions::seconds, "seconds"),
         (functions::dir, "dir"),
@@ -229,7 +231,8 @@ impl<'a> Vm<'a> {
         (functions::setting_get, "setting_get"),
         (functions::stack, "stack"),
         (functions::sort, "sort"),
-        (functions::push, "push"),
+        (array_functions::push, "push"),
+        (array_functions::dim, "dim"),
         (functions::sqrt, "sqrt"),
         (functions::date_add, "dateadd"),
         (functions::round, "round"),
@@ -650,7 +653,25 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
+                OpCode::CallNative(index, argc) => {
+                    let mut args: Vec<ValueType> = Vec::new();
 
+                    let func = Vm::NATIVES[*index].0;
+                    // call a native/built-in function
+                    for _i in 0..*argc {
+                        pop!(self, v);
+                        args.insert(0, v.clone());
+                    }
+                    let result = func(args, self);
+
+                    match result {
+                        Ok(value) => self.push(value),
+                        Err(message) => {
+                            self.runtime_error(&message);
+                            return false;
+                        }
+                    }
+                }
                 OpCode::CallNativeMut(index, argc, variable) => {
                     let mut args: Vec<ValueType> = Vec::new();
                     //dbg!(&self.stack[0..self.stack_pointer]);

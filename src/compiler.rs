@@ -31,7 +31,7 @@ pub enum OpCode {
     FuncPlaceholder(String, u32),
     CallNativeMut(usize, u32, VarType),
     CallSystem(String, u32, u32),
-    //CallNative(usize, u32),
+    CallNative(usize, u32),
     Pop,
     Pop2,
     SetLocal(usize),
@@ -57,7 +57,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
         let x = match i {
             OpCode::Add => format!("{:05} ADD", addr),
             OpCode::Call(argc) => format!("{:05} CALL {}", addr, argc),
-            //OpCode::CallNative(index, argc) => format!("{:05} CALN {} {}", addr, index, argc),
+            OpCode::CallNative(index, argc) => format!("{:05} CALN {} {}", addr, index, argc),
             OpCode::CallNativeMut(index, argc, _) => format!("{:05} CALM {} {}", addr, index, argc),
             OpCode::And => format!("{:05} AND", addr),
             OpCode::CallSystem(name, argc, _) => format!("{} SYS  {} {}", addr, name, argc),
@@ -1055,6 +1055,8 @@ impl Compiler<'_> {
                             OpCode::CallNativeMut(index, arguments, variable),
                             token.line_number,
                         );
+                    } else if let Ok(index) = is_native(func_name.as_str()) {
+                        self.add_instr(OpCode::CallNative(index, arguments + 1), token.line_number);
                     } else {
                         let msg = format!("Method {} not found", func_name);
                         self.compile_error(&msg, token);

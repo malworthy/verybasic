@@ -146,6 +146,13 @@ mod tests {
     }
 
     #[test]
+    fn method_call_native() {
+        let code = "\"hello\".len()";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(5.0)");
+    }
+
+    #[test]
     fn array_push() {
         let code = "a = array()
                     a.push(123)

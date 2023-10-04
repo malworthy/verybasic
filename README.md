@@ -306,13 +306,17 @@ creates a new file writes text to it. Will overwrite any existing file.
 
 creates a new array, optionally populating with elements
 
-### _sort(array)_
+### _dim(size, [value])_
 
-sorts an array
+creates a new array of a specified size, all elements will default to zero, or optionally to the specified value
 
 ### _push(array, val)_
 
 returns a new array with _val_ added to the end of an array
+
+### _sort(array)_
+
+returns a sorted array
 
 ## Array methods
 
