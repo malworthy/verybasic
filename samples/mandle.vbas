@@ -39,17 +39,11 @@ function mandlebotPoint(Px, Py)
 end
 
 function mandlebot()
-    x = 0
-    y = 0
-    while y < height
-        x = 0
-        while x < width
+    for y = 0 to height-1
+        for x = 0 to width-1
             mandlebotPoint(x,y)
-            x=x+1
-        end
-        y=y+1
-        'print("")
-    end
+        next
+    next
 end 
 
 print("starting program") 

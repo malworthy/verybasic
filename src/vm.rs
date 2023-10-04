@@ -41,6 +41,7 @@ impl ValueType<'_> {
 struct Frame {
     ip: usize,
     frame_pointer: usize,
+    offset: u8,
 }
 
 const MAX_STACK: usize = 128;
@@ -549,6 +550,7 @@ impl<'a> Vm<'a> {
         let main_frame = Frame {
             ip: 0,
             frame_pointer: 0,
+            offset: 0,
         };
         let mut frame = main_frame;
         //let mut function_to_call = ValueType::Boolean(false);
@@ -724,6 +726,15 @@ impl<'a> Vm<'a> {
                     //function_to_call = ValueType::Native(*index);
                     self.push(ValueType::Native(*index));
                 }
+                OpCode::Invoke(pointer, argc) => {
+                    call_frames.push(frame); // save current frame
+
+                    frame = Frame {
+                        ip: pointer - 1,
+                        frame_pointer: self.stack_pointer - *argc as usize,
+                        offset: 0,
+                    };
+                }
                 OpCode::Call(argc) => {
                     //dbg!(&self.stack[0..self.stack_pointer]);
                     //dbg!(frame.frame_pointer);
@@ -741,6 +752,7 @@ impl<'a> Vm<'a> {
                             frame = Frame {
                                 ip: pointer - 1,
                                 frame_pointer: self.stack_pointer - argc,
+                                offset: 1,
                             };
                         }
                         ValueType::Native(index) => {
@@ -819,7 +831,7 @@ impl<'a> Vm<'a> {
                     // if no frames left, then break
                     if let Some(value) = call_frames.pop() {
                         // get rid of any local variables on the stack
-                        self.stack_pointer = frame.frame_pointer - 1; //-1 for the func() valuetype
+                        self.stack_pointer = frame.frame_pointer - frame.offset as usize; //-1 for the func() valuetype
 
                         // set the call frame
                         frame = value;
@@ -861,8 +873,8 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
-                OpCode::FuncPlaceholder(_, _) => {
-                    panic!("FuncPlaceholder not replaced!");
+                OpCode::FuncPlaceholder(_, _) | OpCode::InvokePlaceholder(_, _) => {
+                    panic!("Placeholder op code not replaced!");
                 }
                 OpCode::SubscriptSet(vartype) => {
                     let mut stack = self.stack.iter();

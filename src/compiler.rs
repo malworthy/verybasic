@@ -32,6 +32,8 @@ pub enum OpCode {
     CallNativeMut(usize, u32, VarType),
     CallSystem(String, u32, u32),
     CallNative(usize, u32),
+    Invoke(usize, u32),
+    InvokePlaceholder(String, u32),
     Pop,
     Pop2,
     SetLocal(usize),
@@ -58,6 +60,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::Add => format!("{:05} ADD", addr),
             OpCode::Call(argc) => format!("{:05} CALL {}", addr, argc),
             OpCode::CallNative(index, argc) => format!("{:05} CALN {} {}", addr, index, argc),
+            OpCode::Invoke(index, argc) => format!("{:05} INVK {} {}", addr, index, argc),
             OpCode::CallNativeMut(index, argc, _) => format!("{:05} CALM {} {}", addr, index, argc),
             OpCode::And => format!("{:05} AND", addr),
             OpCode::CallSystem(name, argc, _) => format!("{} SYS  {} {}", addr, name, argc),
@@ -93,6 +96,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::Func(ptr, arity) => format!("{:05} FUNC {} {}", addr, ptr, arity),
             OpCode::Native(index) => format!("{:05} NAT  {}", addr, index),
             OpCode::FuncPlaceholder(_, _) => panic!("ERROR FuncPlaceholder left in"),
+            OpCode::InvokePlaceholder(_, _) => panic!("ERROR InvokePlaceholder left in"),
         };
         addr += 1;
         println!("{}", x);
@@ -1058,24 +1062,28 @@ impl Compiler<'_> {
                     } else if let Ok(index) = is_native(func_name.as_str()) {
                         self.add_instr(OpCode::CallNative(index, arguments + 1), token.line_number);
                     } else {
-                        let msg = format!("Method {} not found", func_name);
-                        self.compile_error(&msg, token);
+                        //let msg = format!("Method {} not found", func_name);
+                        //self.compile_error(&msg, token);
 
-                        // // get index of fn
-                        // if let Some(index) = self.functions.iter().position(|x| x.0 == func_name) {
-                        //     let f = &self.functions[index];
-                        //     if f.1 != (arguments + 1) as u8 {
-                        //         self.compile_error(
-                        //             "Wrong number of arguments pass to function",
-                        //             token,
-                        //         );
-                        //         return false;
-                        //     }
-                        //     self.add_instr(OpCode::CallMut(f.2, arguments), token.line_number);
-                        // } else {
-                        //     let msg = format!("Function {} not found", func_name);
-                        //     self.compile_error(&msg, token);
-                        // }
+                        // get index of fn
+                        if let Some(index) = self.functions.iter().position(|x| x.0 == func_name) {
+                            let f = &self.functions[index];
+                            if f.1 != (arguments + 1) as u8 {
+                                self.compile_error(
+                                    "Wrong number of arguments pass to function",
+                                    token,
+                                );
+                                return false;
+                            }
+                            self.add_instr(OpCode::Invoke(f.2, arguments + 1), token.line_number);
+                        } else {
+                            self.add_instr(
+                                OpCode::InvokePlaceholder(func_name, arguments + 1),
+                                token.line_number,
+                            );
+                            //let msg = format!("Function {} not found", func_name);
+                            //self.compile_error(&msg, token);
+                        }
                     }
 
                     return true;
@@ -1158,6 +1166,23 @@ impl Compiler<'_> {
                     //     self.compile_error_line(&message, *line_number);
                     // }
                     // self.instructions[index] = OpCode::Nop
+                }
+            } else if let OpCode::InvokePlaceholder(name, arguments) = inst {
+                if let Some(fi) = self.functions.iter().position(|x| x.0 == *name) {
+                    let f = &self.functions[fi];
+
+                    if f.1 != *arguments as u8 {
+                        self.compile_error_line(
+                            "Wrong number of arguments pass to function",
+                            self.line_numbers[index],
+                        );
+                        return;
+                    }
+
+                    self.instructions[index] = OpCode::Invoke(f.2, f.1 as u32);
+                } else {
+                    let message = format!("function {} not found", name);
+                    self.compile_error_line(&message, self.line_numbers[index]);
                 }
             }
             index += 1;

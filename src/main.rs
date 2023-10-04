@@ -153,6 +153,22 @@ mod tests {
     }
 
     #[test]
+    fn method_call_user() {
+        let code = "function add(n,x) n+x end : x = 100: x.add(10)";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(110.0)");
+    }
+
+    #[test]
+    fn method_call_user2() {
+        let code = "x = 100
+                    x.add(10)
+                    function add(n,x) n+x end ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Number(110.0)");
+    }
+
+    #[test]
     fn array_push() {
         let code = "a = array()
                     a.push(123)

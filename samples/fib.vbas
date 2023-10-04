@@ -5,7 +5,8 @@ print(seconds() - start);
 
 function fib(n) 
     if n < 2 then n exit end
-    fib(n - 2) + fib(n - 1)
+    'fib(n - 2) + fib(n - 1)
+    (n-2).fib() + (n-1).fib()
 end
 
 
