@@ -1,0 +1,67 @@
+horses = array(
+	array("one",1.0),
+	array("two",1.1),
+	array("three",0.9))
+
+' *** MAIN ***
+winners = dim(3)
+for i = 1 to 2000
+	winner = run_race(dummy)
+	winners[winner] = winners[winner] + 1
+	'print("Race Finished. Horse {horses[winner].name()} won!")
+next
+print(winners)
+print(get_odds(winners))
+'print("Race started")
+'winner = run_race(print_horses)
+'print("Race Finished. Horse {horses[winner].name()} won!")
+' *** END ****
+
+function get_odds(results)
+	odds = array()
+	total = 2000
+	for i = 0 to len(results)-1
+		if results[i] == 0 then
+			odds.push(100)
+		else
+			odds.push((total/results[i]) * 0.8)
+		end
+	next
+	odds
+end
+
+function name(a)
+	a[0]
+end
+
+function speed(a)
+	a[1]
+end
+
+function dummy(x) 0 end
+
+function print_horses(race)
+	for i = 0 to 20
+		for h = 0 to len(horses) - 1
+			if round(race[h],0) == i then print (" o ", false) else print("  ", false) end
+		next
+		print("")
+	next
+	input("Enter to continue...")
+end
+
+function run_race(print_fn)
+	race = dim(3)
+	while true
+		print_fn(race)
+		for h = 0 to len(horses) - 1
+			race[h] = race[h] + horses[h].speed() * rand()
+			'if race[h] > 20 then finished = true end
+		next
+		m = max(race)
+		if m >= 20 then 
+			race.find(m) 
+			exit
+		end
+	end
+end

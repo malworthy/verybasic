@@ -153,6 +153,26 @@ mod tests {
     }
 
     #[test]
+    fn method_call_native2() {
+        let code = "function get_odds(results)
+        odds = array()
+        total = 2000
+        for i = 0 to len(results)-1
+            print(i)
+            if results[i] == 0 then
+                odds.push(100)
+            else
+                odds.push((total/results[i]) * 0.8)
+            end
+        next
+        odds
+    end
+    get_odds(array(100,200,400))";
+        let result = interpret_test(code);
+        assert_eq!(result, "Array([Number(16.0), Number(8.0), Number(4.0)])");
+    }
+
+    #[test]
     fn method_call_user() {
         let code = "function add(n,x) n+x end : x = 100: x.add(10)";
         let result = interpret_test(code);

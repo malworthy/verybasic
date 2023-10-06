@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use super::{ValueType, Vm};
 
 fn string_compare<'a>(op: &str, a: &str, b: &str) -> bool {
@@ -47,7 +49,7 @@ fn filter_comparison(op: &str, a: &ValueType, b: &ValueType) -> bool {
     }
 }
 
-pub fn filter_multi_comp(params: &Vec<ValueType>, x: &ValueType) -> bool {
+fn filter_multi_comp(params: &Vec<ValueType>, x: &ValueType) -> bool {
     let mut iter = params.iter();
     let mut result = false;
     loop {
@@ -66,6 +68,18 @@ pub fn filter_multi_comp(params: &Vec<ValueType>, x: &ValueType) -> bool {
     result
 }
 
+fn compare(a: &ValueType, b: &ValueType) -> std::cmp::Ordering {
+    let a = match a {
+        ValueType::Number(n) => n,
+        _ => &0.0,
+    };
+    let b = match b {
+        ValueType::Number(n) => n,
+        _ => &0.0,
+    };
+    a.partial_cmp(&b).unwrap()
+}
+
 pub fn array<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let mut array: Vec<ValueType> = Vec::new();
     for value in params {
@@ -79,7 +93,7 @@ pub fn dim<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'
         if num < 1.0 {
             return Err("Parameter 1 of dim(size, [value]) must be a number 1 or greater");
         }
-        num as usize
+        (num + 1.0) as usize
     } else {
         return Err("Parameter 1 of dim(size, [value]) must be a number");
     };
@@ -188,4 +202,53 @@ pub fn slice<'a>(
     } else {
         return Err("Incorrect parameters passed to slice(start, finish)");
     };
+}
+
+pub fn sort<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if let Some(param) = params.first() {
+        if let ValueType::Array(vec) = param {
+            let mut result = vec.clone();
+            result.sort_by(|a, b| compare(a, b));
+            return Ok(ValueType::Array(result));
+        }
+    }
+    Err("Incorrect parameters passed to sort(array)")
+}
+
+pub fn max<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if let Some(param) = params.first() {
+        if let ValueType::Array(vec) = param {
+            let result = vec.iter().max_by(|a, b| compare(a, b));
+            match result {
+                Some(result) => Ok(result.to_owned()),
+                None => Ok(ValueType::Number(0.0)),
+            }
+        } else {
+            Err("max(array) only works on arrays")
+        }
+    } else {
+        Err("Incorrect number parameters passed to max(array)")
+    }
+}
+
+pub fn find<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if let Some(param) = params.first() {
+        if let ValueType::Array(vec) = param {
+            let result = vec.iter().position(|a| {
+                if let Ordering::Equal = compare(a, &params[1]) {
+                    true
+                } else {
+                    false
+                }
+            });
+            match result {
+                Some(result) => Ok(ValueType::Number(result as f64)),
+                None => Ok(ValueType::Number(-1.0)),
+            }
+        } else {
+            Err("max(array) only works on arrays")
+        }
+    } else {
+        Err("Incorrect number parameters passed to max(array)")
+    }
 }

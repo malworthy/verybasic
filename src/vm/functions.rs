@@ -198,29 +198,6 @@ pub fn random<'a>(_params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueTy
     Ok(ValueType::Number(number))
 }
 
-pub fn compare(a: &ValueType, b: &ValueType) -> std::cmp::Ordering {
-    let a = match a {
-        ValueType::Number(n) => n,
-        _ => &0.0,
-    };
-    let b = match b {
-        ValueType::Number(n) => n,
-        _ => &0.0,
-    };
-    a.partial_cmp(&b).unwrap()
-}
-
-pub fn sort<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
-    if let Some(param) = params.first() {
-        if let ValueType::Array(vec) = param {
-            let mut result = vec.clone();
-            result.sort_by(|a, b| compare(a, b));
-            return Ok(ValueType::Array(result));
-        }
-    }
-    Err("Incorrect parameters passed to sort(array)")
-}
-
 pub fn round<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if params.len() < 2 {
         return Err("Incorrect parameters passed to round(num, precision)");

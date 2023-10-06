@@ -4,6 +4,7 @@ mod graphics;
 mod string_functions;
 
 use std::{
+    array,
     collections::HashMap,
     io::{self, Write},
     path::PathBuf,
@@ -199,7 +200,7 @@ impl<'a> Vm<'a> {
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
         &str,
-    ); 37] = [
+    ); 39] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (array_functions::array, "array"),
@@ -231,9 +232,11 @@ impl<'a> Vm<'a> {
         (functions::setting_set, "setting_set"),
         (functions::setting_get, "setting_get"),
         (functions::stack, "stack"),
-        (functions::sort, "sort"),
+        (array_functions::sort, "sort"),
         (array_functions::push, "push"),
         (array_functions::dim, "dim"),
+        (array_functions::max, "max"),
+        (array_functions::find, "find"),
         (functions::sqrt, "sqrt"),
         (functions::date_add, "dateadd"),
         (functions::round, "round"),
@@ -686,7 +689,9 @@ impl<'a> Vm<'a> {
                     pop_mut!(self, p);
 
                     let result = match variable {
-                        VarType::Local(index) => func(&mut self.stack[*index], args),
+                        VarType::Local(index) => {
+                            func(&mut self.stack[frame.frame_pointer + *index], args)
+                        }
                         VarType::Global(index) => {
                             func(self.globals.get_mut(&(*index as u32)).unwrap(), args)
                         }
