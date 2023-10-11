@@ -2,3 +2,4 @@
 stats.txt
 *.vbas.json
 *.vasm
+samples/test.vbas

@@ -380,15 +380,15 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             }),
             4,
         )
-    // } else if match_word(code, "data") {
-    //     (
-    //         TokenType::Data(Token {
-    //             lexeme: String::from("data"),
-    //             line_number,
-    //             precedence: precedence::NONE,
-    //         }),
-    //         4,
-    //     )
+    } else if match_word(code, "fn") {
+        (
+            TokenType::Function(Token {
+                lexeme: String::from("fn"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            2,
+        )
     } else if match_word(code, "then") {
         (
             TokenType::Then(Token {
@@ -627,6 +627,11 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                     lexeme: single_char.to_string(),
                     line_number,
                     precedence: precedence::CALL,
+                }),
+                ";" => TokenType::End(Token {
+                    lexeme: single_char.to_string(),
+                    line_number,
+                    precedence: precedence::NONE,
                 }),
                 _ => TokenType::None,
             },

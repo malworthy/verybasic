@@ -9,13 +9,14 @@ use std::{
     env,
     fs::{read_to_string, File, OpenOptions},
     io::{self, Write},
+    thread,
     time::SystemTime,
 };
 
 use super::Vm;
 use colored::Colorize;
 
-// Parameters: 0(string) = string to print, 1(bool) = print new line if true
+// Parameters: 0(string) = string to print, 1(bool) = print new line if true, 2 = colour, 3=x,4=y
 pub fn print<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if let Some(val) = params.first() {
         let s = val.to_string();
@@ -45,6 +46,36 @@ pub fn print<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType
             "*red" => s.bright_red(),
             _ => s.normal(),
         };
+
+        let x = match params.get(3) {
+            Some(val) => {
+                if let ValueType::Number(x) = val {
+                    Some(*x as u32)
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+        let y = match params.get(4) {
+            Some(val) => {
+                if let ValueType::Number(x) = val {
+                    Some(*x as u32)
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+
+        if let Some(x) = x {
+            if let Some(y) = y {
+                //printf("%c[%d;%df",0x1B,y,x);
+                print!("\x1B[{};{}f", y, x);
+                std::io::stdout().flush().unwrap();
+            }
+        };
+
         if new_line {
             println!("{cs}");
         } else {
@@ -56,6 +87,12 @@ pub fn print<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType
     } else {
         Err("No parameters passed to function")
     }
+}
+
+pub fn clear<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    print!("\x1Bc");
+    std::io::stdout().flush().unwrap();
+    Ok(ValueType::Boolean(true))
 }
 
 pub fn input<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
@@ -219,6 +256,19 @@ pub fn round<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType
     Ok(ValueType::Number(rounded))
 }
 
+pub fn sleep<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 1 {
+        return Err("Incorrect parameters passed to round(num, precision)");
+    }
+    if let ValueType::Number(n) = params[0] {
+        let dur = std::time::Duration::from_millis(n as u64);
+        thread::sleep(dur);
+        Ok(ValueType::Boolean(true))
+    } else {
+        Ok(ValueType::Boolean(false))
+    }
+}
+
 pub fn chr<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     if let Some(param) = params.first() {
         if let ValueType::Number(num) = param {
@@ -232,6 +282,21 @@ pub fn chr<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'
         }
     }
     Ok(ValueType::Str(""))
+}
+
+pub fn asc<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if let Some(param) = params.first() {
+        let ch = match param {
+            ValueType::Str(s) => s.chars().nth(0),
+            ValueType::String(s) => s.chars().nth(0),
+            _ => None,
+        };
+        if let Some(c) = ch {
+            let result = (c as u8) as f64;
+            return Ok(ValueType::Number(result));
+        }
+    }
+    Ok(ValueType::Number(0.0))
 }
 
 pub fn readlines<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {

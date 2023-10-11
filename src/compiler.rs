@@ -204,7 +204,7 @@ impl Compiler<'_> {
         if let TokenType::RightParan(_) = end_token {
             self.advance();
         } else {
-            dbg!(end_token);
+            //dbg!(end_token);
             self.compile_error("Expected )", token);
         }
     }
@@ -327,7 +327,7 @@ impl Compiler<'_> {
         }
     }
 
-    fn add_variable(&mut self, name: String) -> (VarType, bool) {
+    fn add_variable(&mut self, name: String, line_number: u32) -> (VarType, bool) {
         let index: VarType;
         let mut added = false;
 
@@ -343,6 +343,13 @@ impl Compiler<'_> {
                 index = VarType::Global(i); // global, so we don't use index.
             }
         } else {
+            if let Ok(_) = is_native(name.as_str()) {
+                let message = format!(
+                    "Cannot define a variable with the same name as built in function {name}"
+                );
+                self.compile_error_line(&message, line_number);
+                return (VarType::None, false);
+            }
             self.variables.push(Variable::new(name, self.depth));
 
             if self.depth == 0 {
@@ -441,7 +448,7 @@ impl Compiler<'_> {
         if can_assign && matched_equal {
             // Setting a variable
             self.expression();
-            let (index, added) = self.add_variable(token.lexeme.clone());
+            let (index, added) = self.add_variable(token.lexeme.clone(), token.line_number);
             match index {
                 VarType::Local(index) => {
                     if added {
@@ -454,7 +461,8 @@ impl Compiler<'_> {
                     self.add_instr(OpCode::SetGlobal(index as u32), token.line_number);
                 }
                 _ => {
-                    panic!("Programming Error VarType is None");
+                    return; //compile error
+                            //panic!("Programming Error VarType is None");
                 }
             }
         } else {
@@ -604,6 +612,9 @@ impl Compiler<'_> {
     }
 
     fn compile_error(&mut self, message: &str, token: &Token) {
+        if self.in_error {
+            return;
+        }
         eprintln!(
             "Compile error: {}, line {}",
             message.red(),
@@ -613,11 +624,17 @@ impl Compiler<'_> {
     }
 
     fn compile_error_line(&mut self, message: &str, line_number: u32) {
+        if self.in_error {
+            return;
+        }
         eprintln!("Compile error: {}, line {}", message.red(), line_number);
         self.in_error = true;
     }
 
     fn compile_error_message(&mut self, message: &str) {
+        if self.in_error {
+            return;
+        }
         eprintln!("Compile error: {}", message.red());
         self.in_error = true;
     }
@@ -657,6 +674,10 @@ impl Compiler<'_> {
                 }
             }
         };
+
+        if self.in_error {
+            return;
+        }
 
         while self.token_pointer < self.tokens.len()
             && precedence <= self.get_precedence(&self.tokens[self.token_pointer])
@@ -1133,7 +1154,7 @@ impl Compiler<'_> {
                 _ => self.statement(),
             };
             if self.in_error {
-                break;
+                return;
             }
         }
 

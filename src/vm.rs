@@ -200,7 +200,7 @@ impl<'a> Vm<'a> {
     pub const NATIVES: [(
         fn(Vec<ValueType<'a>>, &mut Vm<'a>) -> Result<ValueType<'a>, &'a str>,
         &str,
-    ); 39] = [
+    ); 43] = [
         (functions::print, "print"),
         (functions::input, "input"),
         (array_functions::array, "array"),
@@ -237,9 +237,13 @@ impl<'a> Vm<'a> {
         (array_functions::dim, "dim"),
         (array_functions::max, "max"),
         (array_functions::find, "find"),
+        (array_functions::shuffle, "shuffle"),
         (functions::sqrt, "sqrt"),
         (functions::date_add, "dateadd"),
         (functions::round, "round"),
+        (functions::clear, "clear"),
+        (functions::asc, "asc"),
+        (functions::sleep, "sleep"),
     ];
 
     pub fn debug_stack(&mut self) {

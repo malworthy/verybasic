@@ -1,3 +1,5 @@
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use std::cmp::Ordering;
 
 use super::{ValueType, Vm};
@@ -145,6 +147,19 @@ pub fn push<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<
         return Ok(ValueType::Array(result));
     }
     Err("Incorrect parameters passed to  push(array, value)")
+}
+
+pub fn shuffle<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 1 {
+        return Err("Incorrect parameters passed to shuffle(array)");
+    }
+    let array = &params[0];
+    if let ValueType::Array(vec) = array {
+        let mut result = vec.clone();
+        result.shuffle(&mut thread_rng());
+        return Ok(ValueType::Array(result));
+    }
+    Err("Incorrect parameters passed to shuffle(array)")
 }
 
 pub fn push_mut<'a>(

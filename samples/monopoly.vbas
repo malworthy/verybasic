@@ -271,8 +271,7 @@ function get_max_borrow(player)
 end
 
 function borrow()
-    max = get_max_borrow(HUMAN)
-    print("You can borrow up to ${max} at 5% interest.")
+    print("You can borrow up to ${get_max_borrow(HUMAN)} at 5% interest.")
     print("Term of the loan is 25 passes of GO.  Interest applied each time you pass GO")
     print("You can make extra payments or pay out the loan at any time")
     amount = val(input("How much to you want to borrow? "))
@@ -286,8 +285,8 @@ function borrow()
 end
 
 function computer_borrow(amount)
-    max = get_max_borrow(COMPUTER)
-    if amount > max then amount = max end
+    max_borrow = get_max_borrow(COMPUTER)
+    if amount > max_borrow then amount = max_borrow end
     if loans[COMPUTER] > 0 then
         exit
     end

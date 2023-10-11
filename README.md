@@ -22,7 +22,7 @@ Other things to note:
 
 - Very Basic is not object orientated, there are no classes, inheritance or interfaces
 - Very Basic does not have closures.  You cannot declare a function within a function.
-- Functions are not first class citizens and you cannot pass function pointers.
+- Functions are first class citizens and can be passed as parameters to functions (via the funtion name).
 - Very Basic is not designed for speed or memory efficiency
 - Very Basic is a dynamically typed language, like Python or Javascript
 
@@ -126,7 +126,18 @@ end
 
 ```
 
-## Methods
+The function keyword can be shortened to `fn`
+
+```
+fn foo(x)
+    if x < 0 then
+        0 exit
+    end if
+    x
+end
+```
+
+## Methods and "dot" calling.
 
 A method is called using the "dot" syntax.
 
@@ -136,7 +147,7 @@ Example:
 array.push(123)
 ```
 
-Method are really just functions, but can mutate the variable you are calling the method on.
+Method are really just functions, but can mutate the variable you are calling the method on. Any function can be called using dot syntax. `"1,2,3".split(",")` is the same as `split("1,2,3",",")`
 
 ## Data types
 
@@ -207,6 +218,19 @@ print("hello, world");
 !#$ print("goodbye")
 ```
 
+## Short-cuts
+
+The following short-cuts are available:
+
+- `function` can be replace with `fn`
+- `end` can be replaced with `;`
+
+```
+fn dbl_num(x) x*2;
+
+if dbl_num(2)==4 then print("doubled");
+```
+
 ## String Interpolation
 
 Very Basic supports string interpolation. Any expression between '{' and '}' will be interpreted and inserted into to the string.  
@@ -233,6 +257,10 @@ Returns a one character string using ascii encoding. Invalid ascii value will re
 returns command line arguments as an array.
 
 NOTE: The first argument will be the full path of vbas.exe, 2nd argument name of the script.
+
+### _clear()_
+
+clears the console
 
 ### _dir(pattern)_
 
@@ -270,6 +298,10 @@ Will return an empty string if the setting doesn't exist.
 ### _setting_set(key, value)_
 
 saves a key/pair value to a config file. config file default name is [name of script].json.
+
+### _sleep(milliseconds)_
+
+pause the program for a specified number of milliseconds
 
 ### _str(value, [format_string])_
 
@@ -310,9 +342,21 @@ creates a new array, optionally populating with elements
 
 creates a new array of a specified size, all elements will default to zero, or optionally to the specified value
 
+### _find(array, item)_
+
+return the index of _item_ in the array. if _item_ is not found it returns -1
+
+### _max(array)_
+
+returns the largest element in the array
+
 ### _push(array, val)_
 
 returns a new array with _val_ added to the end of an array
+
+## _shuffle(array)_
+
+return a new array with all elements ordered at random
 
 ### _sort(array)_
 
@@ -338,6 +382,10 @@ array.filter("<", 5, ">", 10) ' all elements less than 5 or greater than 10
 ```
 
 ## String functions
+
+## _asc(string)_
+
+get ascii value of the first character of a string. Will return 0 if string is empty or parameter is not a string
 
 ### _instr(string1, string2, [start],[compare])_
 
@@ -369,7 +417,7 @@ splits a string based on a delimiter and returns an array of its part. If remove
 
 ### _ucase(string)_
 
-returns the lower case value of a string
+returns the upper case value of a string
 
 ## Date and Time functions
 

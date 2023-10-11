@@ -146,6 +146,22 @@ mod tests {
     }
 
     #[test]
+    fn global_var_same_as_fn_name() {
+        let code = "len = get_bet()
+        
+        function get_bet()
+            h = len(123) 
+            h = asc(ucase(h)) - 65
+            bet = len(333)
+            array(h,bet)
+        end
+    
+    ";
+        let result = interpret_test(code);
+        assert_eq!(result, "Compile Error");
+    }
+
+    #[test]
     fn method_call_native() {
         let code = "\"hello\".len()";
         let result = interpret_test(code);
@@ -713,7 +729,7 @@ mod tests {
     #[test]
     fn token_scans_whole_words() {
         assert_eq!(
-            interpret_test("note = 1234; print(note)"),
+            interpret_test("note = 1234 print(note)"),
             "String(\"1234\")"
         );
     }
@@ -834,11 +850,11 @@ mod tests {
     #[test]
     fn shadowing() {
         assert_eq!(
-            interpret_test("x = 5.5; function test(x) x * 2 end; test(20); "),
+            interpret_test("x = 5.5 function test(x) x * 2 end test(20) "),
             "Number(40.0)"
         );
         assert_eq!(
-            interpret_test("x = 5.5; function test(y) y * 2 end; test(20); "),
+            interpret_test("x = 5.5 function test(y) y * 2 end test(20) "),
             "Number(40.0)"
         );
     }
@@ -847,7 +863,7 @@ mod tests {
     fn locals() {
         assert_eq!(
             interpret_test(
-                "x = 5.5; y = 6.6; function test(x,y,z) a=1 b=2 a+b+x+y+z end; test(3,4,5); "
+                "x = 5.5: y = 6.6: function test(x,y,z) a=1 b=2 a+b+x+y+z end: test(3,4,5): "
             ),
             "Number(15.0)"
         );
@@ -856,18 +872,18 @@ mod tests {
     #[test]
     fn define_function() {
         assert_eq!(
-            interpret_test("function test() print(45) end; test(); print(66);"),
+            interpret_test("function test() print(45) end test() print(66)"),
             "String(\"66\")"
         );
         assert_eq!(interpret_test("function test(a,b,c) print(45) end"), "");
 
         assert_eq!(
-            interpret_test("function test() 45 end; test(); "),
+            interpret_test("function test() 45 end test() "),
             "Number(45.0)"
         );
 
         assert_eq!(
-            interpret_test("function test(x) x * 2 end; test(20); "),
+            interpret_test("function test(x) x * 2 end test(20) "),
             "Number(40.0)"
         );
     }
@@ -912,16 +928,16 @@ mod tests {
             "Number(555.0)"
         );
         assert_eq!(
-            interpret_test("if 1==1 then x=1; x+5 else x=6; x+5 end"),
+            interpret_test("if 1==1 then x=1 x+5 else x=6 x+5 end"),
             "Number(6.0)"
         );
         assert_eq!(
-            interpret_test("if 1==2 then x=1; x+5 else x=6; x+5 end"),
+            interpret_test("if 1==2 then x=1 x+5 else x=6 x+5 end"),
             "Number(11.0)"
         );
 
         assert_eq!(
-            interpret_test("if 1 then x=1; x+5 else x=6; x+5 end"),
+            interpret_test("if 1 then x=1 x+5 else x=6 x+5 end"),
             "Runtime Error"
         );
     }
@@ -929,7 +945,7 @@ mod tests {
     #[test]
     fn while_loop() {
         assert_eq!(
-            interpret_test("x = 0; while x < 10 x=x+1 end x"),
+            interpret_test("x = 0: while x < 10 x=x+1 end x"),
             "Number(10.0)"
         );
     }
@@ -938,7 +954,7 @@ mod tests {
     fn variables() {
         assert_eq!(interpret_test("x = 1000"), "Number(1000.0)");
         assert_eq!(interpret_test("print(x)"), "Compile Error");
-        assert_eq!(interpret_test("x = 1000; x / 100"), "Number(10.0)");
+        assert_eq!(interpret_test("x = 1000: x / 100"), "Number(10.0)");
     }
 
     #[test]
@@ -998,5 +1014,11 @@ mod tests {
         assert_eq!(interpret_test("right(\"hello\", 100)"), "String(\"hello\")");
         assert_eq!(interpret_test("right(\"hello\", -1)"), "Runtime Error");
         assert_eq!(interpret_test("right(\"hello\", 0)"), "String(\"\")");
+    }
+
+    #[test]
+    fn golf_features() {
+        let code = "fn x() 66; if true then x() else 2;";
+        assert_eq!(interpret_test(code), "Number(66.0)");
     }
 }
