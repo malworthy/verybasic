@@ -1,5 +1,3 @@
-horses = readlines("./samples/horsenames.txt")
-print(horses)
-for i = 0 to horses.len()-1
-	append("./samples/horses.txt","{horses[i]},{0.9 + rand() * 0.2}{chr(13)}")
+
+for i = 1 to 5
 next
