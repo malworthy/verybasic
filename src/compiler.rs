@@ -43,6 +43,7 @@ pub enum OpCode {
     Jump(i32),
     Subscript,
     SubscriptSet(VarType),
+    In(u8),
     Return,
 }
 
@@ -97,6 +98,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::Native(index) => format!("{:05} NAT  {}", addr, index),
             OpCode::FuncPlaceholder(_, _) => panic!("ERROR FuncPlaceholder left in"),
             OpCode::InvokePlaceholder(_, _) => panic!("ERROR InvokePlaceholder left in"),
+            OpCode::In(args) => format!("{:05} IN   {}", addr, args),
         };
         addr += 1;
         println!("{}", x);
@@ -209,6 +211,23 @@ impl Compiler<'_> {
         }
     }
 
+    fn in_operator(&mut self, token: &Token) -> bool {
+        dbg!("In the in operator!");
+        self.expression();
+        let mut args: u8 = 1;
+        loop {
+            if let TokenType::Comma(_) = &self.tokens[self.token_pointer] {
+                self.advance();
+                self.expression();
+                args += 1;
+            } else {
+                self.add_instr(OpCode::In(args), token.line_number);
+                break;
+            }
+        }
+        true
+    }
+
     fn subscript(&mut self, token: &Token) -> bool {
         let mut can_set = true;
         // save the variable name
@@ -283,30 +302,6 @@ impl Compiler<'_> {
                     } else {
                         self.add_instr(OpCode::Call(arguments), token.line_number);
                     }
-                    // // check if it's native
-                    // if let Ok(index) = is_native(name.as_str()) {
-                    //     self.add_instr(OpCode::CallNative(index, arguments), token.line_number);
-                    // } else {
-                    //     // get index of fn
-                    //     if let Some(index) = self.functions.iter().position(|x| x.0 == name) {
-                    //         let f = &self.functions[index];
-                    //         if f.1 != arguments as u8 {
-                    //             self.compile_error(
-                    //                 "Wrong number of arguments pass to function",
-                    //                 token,
-                    //             );
-                    //             return false;
-                    //         }
-                    //         self.add_instr(OpCode::Call(f.2, arguments), token.line_number);
-                    //     } else {
-                    //         // '@' means a function call
-                    //         self.add_instr(
-                    //             OpCode::CallSystem(name, arguments, token.line_number),
-                    //             token.line_number,
-                    //         );
-                    //     }
-                    // }
-
                     return true;
                 }
                 TokenType::Comma(_) => {
@@ -579,29 +574,32 @@ impl Compiler<'_> {
             TokenType::LeftParan(t) => self.call(t),
             TokenType::Dot(t) => self.dot(t),
             TokenType::LeftBracket(t) => self.subscript(t),
+            TokenType::In(t) => self.in_operator(t),
             _ => false,
         }
     }
 
     fn get_precedence(&mut self, token: &TokenType) -> u8 {
         match token {
-            TokenType::Plus(t) => t.precedence,
-            TokenType::Minus(t) => t.precedence,
-            TokenType::Times(t) => t.precedence,
-            TokenType::Divide(t) => t.precedence,
-            TokenType::GreaterThan(t) => t.precedence,
-            TokenType::LessThan(t) => t.precedence,
-            TokenType::GreaterThanOrEqual(t) => t.precedence,
-            TokenType::LessThanOrEqual(t) => t.precedence,
-            TokenType::Equality(t) => t.precedence,
-            TokenType::NotEquals(t) => t.precedence,
-            TokenType::LeftParan(t)
+            TokenType::Plus(t)
+            | TokenType::Minus(t)
+            | TokenType::Times(t)
+            | TokenType::Divide(t)
+            | TokenType::GreaterThan(t)
+            | TokenType::LessThan(t)
+            | TokenType::GreaterThanOrEqual(t)
+            | TokenType::LessThanOrEqual(t)
+            | TokenType::Equality(t)
+            | TokenType::NotEquals(t)
+            | TokenType::LeftParan(t)
             | TokenType::And(t)
             | TokenType::Or(t)
             | TokenType::Hat(t)
             | TokenType::Mod(t)
             | TokenType::LeftBracket(t)
+            | TokenType::In(t)
             | TokenType::Dot(t) => t.precedence,
+
             _ => precedence::NONE,
         }
     }
@@ -662,7 +660,6 @@ impl Compiler<'_> {
             }
             TokenType::LeftParan(t) => self.grouping(t),
             TokenType::Identifier(t) => self.variable(t, can_assign),
-            //TokenType::Data(t) => self.data_statement(t),
             _ => {
                 let result = token.get_token();
                 if let Some(t) = result {
@@ -860,6 +857,7 @@ impl Compiler<'_> {
             self.add_instr(OpCode::Jump((loop_start - len) as i32), token.line_number);
             self.instructions[jump_index] =
                 OpCode::JumpIfFalse(self.instructions.len() - jump_index - 1);
+            self.add_instr(OpCode::Pop, token.line_number);
             //
         } else {
             self.compile_error("Invalid use of 'for' statement", token);

@@ -1021,4 +1021,29 @@ mod tests {
         let code = "fn x() 66; if true then x() else 2;";
         assert_eq!(interpret_test(code), "Number(66.0)");
     }
+
+    #[test]
+    fn test_in() {
+        let code = "10 in 1,2,3,4,5,10,11";
+        assert_eq!(interpret_test(code), "Boolean(true)");
+    }
+
+    #[test]
+    fn test_in2() {
+        let code = "10 in 1,2,3,4,5,11";
+        assert_eq!(interpret_test(code), "Boolean(false)");
+    }
+
+    #[test]
+    fn test_in3() {
+        let code = "
+        function test(x)
+            z = 1
+            zz = 2
+            if x in z,zz then 10 else 20;
+        end
+        test(36) + test(1)
+        ";
+        assert_eq!(interpret_test(code), "Number(30.0)");
+    }
 }

@@ -268,7 +268,6 @@ impl<'a> Vm<'a> {
     fn comparison(&mut self, op: &OpCode) -> bool {
         pop!(self, b);
         pop!(self, a);
-
         let result = match a {
             ValueType::Number(a) => {
                 if let ValueType::Number(ref b) = b {
@@ -321,6 +320,51 @@ impl<'a> Vm<'a> {
 
         self.push(result);
         true
+    }
+
+    fn do_comparison(&mut self, a: &ValueType, b: &ValueType) -> Result<bool, bool> {
+        //pop!(self, b);
+        //pop!(self, a);
+
+        let result = match a {
+            ValueType::Number(a) => {
+                if let ValueType::Number(ref b) = b {
+                    Ok(a == b)
+                } else {
+                    self.runtime_error("type mismatch");
+                    return Err(false);
+                }
+            }
+            ValueType::Str(a) => match b {
+                ValueType::Str(b) => Ok(a == b), // ValueType::Boolean(a == b),
+                ValueType::String(b) => Ok(a == &b.as_str()), //ValueType::Boolean(a == b),
+                _ => {
+                    self.runtime_error("You cannot compare a string to a non-string");
+                    return Err(false);
+                }
+            },
+            ValueType::String(a) => match b {
+                ValueType::Str(b) => Ok(b == &a.as_str()), //ValueType::Boolean(a == b),
+                ValueType::String(b) => Ok(a == b),        //ValueType::Boolean(a == b),
+                _ => {
+                    self.runtime_error("You cannot compare a string to a non-string.");
+                    return Err(false);
+                }
+            },
+            ValueType::Boolean(a) => match b {
+                ValueType::Boolean(b) => Ok(a == b),
+                _ => {
+                    self.runtime_error("Cannot compare a boolean to a non boolean type.");
+                    return Err(false);
+                }
+            },
+            _ => {
+                self.runtime_error("Type not valid for 'in'");
+                return Err(false);
+            }
+        };
+
+        result
     }
 
     fn binary(&mut self, op: &OpCode) -> bool {
@@ -662,6 +706,33 @@ impl<'a> Vm<'a> {
                         return false;
                     }
                 }
+                OpCode::In(argc) => {
+                    let mut result = Ok(false);
+                    let a = self.stack[self.stack_pointer - *argc as usize - 1].clone();
+                    dbg!(argc);
+                    dbg!(frame.frame_pointer);
+                    dbg!(&a);
+                    for i in 0..*argc {
+                        //pop!(self, b);
+                        let b = &self.stack[self.stack_pointer - i as usize - 1];
+                        result = self.do_comparison(&a, &b.clone());
+                        //dbg!(result);
+                        if let Ok(result) = result {
+                            if result {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    self.stack_pointer -= *argc as usize + 1;
+                    //pop!(self, _v);
+                    if let Ok(result) = result {
+                        self.push(ValueType::Boolean(result));
+                    } else {
+                        return false;
+                    }
+                }
                 OpCode::CallNative(index, argc) => {
                     let mut args: Vec<ValueType> = Vec::new();
 
@@ -795,7 +866,9 @@ impl<'a> Vm<'a> {
                     self.return_value = Some(v.clone());
                 }
                 OpCode::Pop2 => {
+                    dbg!(&self.stack[0..self.stack_pointer]);
                     pop!(self, _v);
+                    dbg!(&self.stack[0..self.stack_pointer]);
                 }
                 OpCode::GetLocal(i) => {
                     self.push(self.stack[i + frame.frame_pointer].clone());
@@ -951,6 +1024,8 @@ impl<'a> Vm<'a> {
             //dbg!(&instr);
             //dbg!(&self.stack[0..self.stack_pointer]);
         }
+        dbg!(self.stack_pointer);
+        assert!(self.stack_pointer == 0);
 
         true
     }

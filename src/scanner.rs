@@ -62,7 +62,7 @@ pub enum TokenType {
 
     ElseIf(Token),
     Eol(Token),
-    //Data(Token),
+    In(Token),
     Eof,
 }
 
@@ -106,7 +106,7 @@ impl TokenType {
             | TokenType::Step(t)
             | TokenType::Next(t)
             | TokenType::ElseIf(t)
-            //| TokenType::Data(t)
+            | TokenType::In(t)
             | TokenType::Bool(t) => Some(t),
             _ => None,
         }
@@ -512,6 +512,15 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                 lexeme: String::from("or"),
                 line_number,
                 precedence: precedence::OR,
+            }),
+            2,
+        )
+    } else if match_word(code, "in") {
+        (
+            TokenType::In(Token {
+                lexeme: String::from("in"),
+                line_number,
+                precedence: precedence::COMPARISON,
             }),
             2,
         )

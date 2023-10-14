@@ -1,7 +1,7 @@
 print("running...")
 start = seconds()
 print(fib(40)) 
-print(seconds() - start);
+print(seconds() - start)
 
 function fib(n) 
     if n < 2 then n exit end
@@ -16,3 +16,4 @@ end
 ' 26 seconds 27/8/2023
 ' 21 seconds 1/9/2023
 ' 23 seconds 1/10/2023
+' 20 seconds using invoke - 14/10/2023

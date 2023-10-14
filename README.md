@@ -181,6 +181,8 @@ x.push(15) ' adds an element to the end of the array
 
 ## Operators
 
+Standard operators:
+
 ```
 ==
 +
@@ -197,6 +199,16 @@ and
 or
 ^ (to the power of)
 mod (remainder)
+```
+
+### Addional operators
+
+_in [expression],[expresssion],..._
+
+Example:
+
+```
+if x in 1,2,3 then print("x is 1 2 or 3");
 ```
 
 ## Comments
