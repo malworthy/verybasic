@@ -1046,4 +1046,52 @@ mod tests {
         ";
         assert_eq!(interpret_test(code), "Number(30.0)");
     }
+
+    #[test]
+    fn test_in4() {
+        let code = "10 in true,\"hello\",10";
+        assert_eq!(interpret_test(code), "Boolean(true)");
+    }
+
+    #[test]
+    fn match_test1() {
+        let code = "
+        a = 45
+        x = match a
+          when 10 then 20
+          when 20 then 30
+          when 40 then 50
+          when 45 then 
+            z = 10
+            y = 20
+            (z+y)*2
+          else 66
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(60.0)");
+    }
+
+    #[test]
+    fn match_test2() {
+        let code = "
+       match 2
+          when 10 then 20
+          when 1 then 11
+          when 2 then 22
+          else 60
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(22.0)");
+    }
+
+    #[test]
+    fn match_test3() {
+        let code = "
+       1 + match 7
+          when 2 then 22
+          else 60
+        end +1
+        ";
+        assert_eq!(interpret_test(code), "Number(62.0)");
+    }
 }

@@ -1,3 +1,11 @@
-
-for i = 1 to 5
-next
+a = 45
+x = match a
+    when 10 then 20
+    when 20 then 30
+    when 40 then 50
+    when 45 then 
+    z = 10
+    y = 20
+    (z+y)*2
+    else 66
+end

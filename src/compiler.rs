@@ -36,6 +36,7 @@ pub enum OpCode {
     InvokePlaceholder(String, u32),
     Pop,
     Pop2,
+    Push,
     SetLocal(usize),
     DefineLocal(usize),
     GetLocal(usize),
@@ -44,6 +45,7 @@ pub enum OpCode {
     Subscript,
     SubscriptSet(VarType),
     In(u8),
+    Match,
     Return,
 }
 
@@ -87,6 +89,8 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::Or => format!("{:05} OR", addr),
             OpCode::Pop => format!("{:05} POP", addr),
             OpCode::Pop2 => format!("{:05} POP2", addr),
+            OpCode::Push => format!("{:05} PUSH", addr),
+            OpCode::Match => format!("{:05} MAT ", addr),
             OpCode::Return => format!("{:05} RET", addr),
             OpCode::SetGlobal(name) => format!("{:05} SETG {}", addr, name),
             OpCode::SetLocal(index) => format!("{:05} SET  {}", addr, index),
@@ -598,6 +602,7 @@ impl Compiler<'_> {
             | TokenType::Mod(t)
             | TokenType::LeftBracket(t)
             | TokenType::In(t)
+            | TokenType::Match(t)
             | TokenType::Dot(t) => t.precedence,
 
             _ => precedence::NONE,
@@ -660,6 +665,9 @@ impl Compiler<'_> {
             }
             TokenType::LeftParan(t) => self.grouping(t),
             TokenType::Identifier(t) => self.variable(t, can_assign),
+            TokenType::Match(t) => {
+                self.pattern_match(t);
+            }
             _ => {
                 let result = token.get_token();
                 if let Some(t) = result {
@@ -695,6 +703,75 @@ impl Compiler<'_> {
     fn expression_statement(&mut self) {
         self.expression();
         self.add_instr(OpCode::Pop, 0);
+    }
+
+    fn pattern_match(&mut self, token: &Token) -> bool {
+        let mut jump_indexes: Vec<usize> = Vec::new();
+
+        //self.begin_scope();
+        self.expression();
+        //self.add_instr(OpCode::Match, token.line_number);
+
+        // save the value we are comparing to in stack slot 0 - by using a nameless variables
+        // self.variables
+        //     .push(Variable::new(String::from(""), self.depth));
+        // self.add_instr(OpCode::DefineLocal(0), token.line_number);
+        // self.add_instr(OpCode::Pop2, token.line_number);
+
+        loop {
+            self.skip_eol();
+            let next_token = &self.tokens[self.token_pointer];
+            dbg!(next_token);
+            match next_token {
+                TokenType::When(t) => {
+                    self.advance();
+                    // TODO: Here we check for optional pattern match type
+                    //self.add_instr(OpCode::GetLocal(0), token.line_number);
+                    self.expression();
+                    self.add_instr(OpCode::Match, t.line_number);
+                    let jif_index = self.add_instr(OpCode::JumpIfFalse(0), t.line_number);
+                    self.add_instr(OpCode::Pop2, t.line_number); // get rid of the value we are comparing against
+                    if let TokenType::Then(_) = &self.tokens[self.token_pointer] {
+                        self.advance();
+                        self.begin_scope();
+                        self.block();
+                        self.end_scope();
+                    } else {
+                        self.compile_error("'then' missing in match", t);
+                        return false;
+                    }
+
+                    jump_indexes.push(self.add_instr(OpCode::Jump(0), t.line_number));
+                    self.instructions[jif_index] =
+                        OpCode::JumpIfFalse(self.instructions.len() - jif_index - 1);
+                }
+                TokenType::Else(t) => {
+                    self.add_instr(OpCode::Pop2, t.line_number); // get rid of the value we are comparing against
+                    self.advance();
+                    self.begin_scope();
+                    self.block();
+                    self.end_scope();
+                }
+                TokenType::End(t) => {
+                    self.advance();
+                    for i in jump_indexes {
+                        self.instructions[i] =
+                            OpCode::Jump((self.instructions.len() - i - 1) as i32);
+                    }
+                    //self.add_instr(OpCode::Pop2, t.line_number);
+                    //self.end_scope();
+                    self.add_instr(OpCode::Push, t.line_number);
+                    //self.add_instr(OpCode::Return, t.line_number);
+                    break;
+                }
+                _ => {
+                    self.compile_error("Invalid syntax in match", token);
+                    return false;
+                }
+            }
+        }
+
+        true
     }
 
     fn if_statement(&mut self, if_token: &Token) {
@@ -1000,6 +1077,7 @@ impl Compiler<'_> {
                     TokenType::Else(_)
                     | TokenType::ElseIf(_)
                     | TokenType::End(_)
+                    | TokenType::When(_)
                     | TokenType::Eof => break,
                     _ => {
                         self.statement();

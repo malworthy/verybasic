@@ -266,6 +266,7 @@ impl<'a> Vm<'a> {
     }
 
     fn comparison(&mut self, op: &OpCode) -> bool {
+        dbg!(&self.stack[0..self.stack_pointer]);
         pop!(self, b);
         pop!(self, a);
         let result = match a {
@@ -323,40 +324,27 @@ impl<'a> Vm<'a> {
     }
 
     fn do_comparison(&mut self, a: &ValueType, b: &ValueType) -> Result<bool, bool> {
-        //pop!(self, b);
-        //pop!(self, a);
-
         let result = match a {
             ValueType::Number(a) => {
                 if let ValueType::Number(ref b) = b {
                     Ok(a == b)
                 } else {
-                    self.runtime_error("type mismatch");
-                    return Err(false);
+                    Ok(false)
                 }
             }
             ValueType::Str(a) => match b {
                 ValueType::Str(b) => Ok(a == b), // ValueType::Boolean(a == b),
                 ValueType::String(b) => Ok(a == &b.as_str()), //ValueType::Boolean(a == b),
-                _ => {
-                    self.runtime_error("You cannot compare a string to a non-string");
-                    return Err(false);
-                }
+                _ => Ok(false),
             },
             ValueType::String(a) => match b {
                 ValueType::Str(b) => Ok(b == &a.as_str()), //ValueType::Boolean(a == b),
                 ValueType::String(b) => Ok(a == b),        //ValueType::Boolean(a == b),
-                _ => {
-                    self.runtime_error("You cannot compare a string to a non-string.");
-                    return Err(false);
-                }
+                _ => Ok(false),
             },
             ValueType::Boolean(a) => match b {
                 ValueType::Boolean(b) => Ok(a == b),
-                _ => {
-                    self.runtime_error("Cannot compare a boolean to a non boolean type.");
-                    return Err(false);
-                }
+                _ => Ok(false),
             },
             _ => {
                 self.runtime_error("Type not valid for 'in'");
@@ -614,6 +602,7 @@ impl<'a> Vm<'a> {
             match instr {
                 OpCode::ConstantNum(num) => {
                     self.push(ValueType::Number(*num));
+                    dbg!(self.stack_pointer);
                 }
                 OpCode::ConstantBool(val) => {
                     self.push(ValueType::Boolean(*val));
@@ -869,6 +858,29 @@ impl<'a> Vm<'a> {
                     dbg!(&self.stack[0..self.stack_pointer]);
                     pop!(self, _v);
                     dbg!(&self.stack[0..self.stack_pointer]);
+                }
+                OpCode::Match => {
+                    dbg!(&self.stack[0..self.stack_pointer]);
+                    pop!(self, b);
+                    let a = &self.stack[self.stack_pointer - 1];
+                    dbg!(&a);
+                    dbg!(&b);
+                    let result = self.do_comparison(&a.clone(), &b.clone());
+                    dbg!(&result);
+                    match result {
+                        Ok(result) => self.push(ValueType::Boolean(result)),
+                        Err(e) => return false,
+                    };
+                }
+                OpCode::Push => {
+                    dbg!(&self.stack[0..self.stack_pointer]);
+                    match &self.return_value {
+                        Some(val) => self.push(val.clone()),
+                        None => {
+                            self.runtime_error("Match arm didn't return a value!");
+                            return false;
+                        }
+                    }
                 }
                 OpCode::GetLocal(i) => {
                     self.push(self.stack[i + frame.frame_pointer].clone());
