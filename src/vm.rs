@@ -323,7 +323,7 @@ impl<'a> Vm<'a> {
         true
     }
 
-    fn do_comparison(&mut self, a: &ValueType, b: &ValueType) -> Result<bool, bool> {
+    fn do_comparison(a: &ValueType, b: &ValueType) -> Result<bool, &'a str> {
         let result = match a {
             ValueType::Number(a) => {
                 if let ValueType::Number(ref b) = b {
@@ -347,8 +347,8 @@ impl<'a> Vm<'a> {
                 _ => Ok(false),
             },
             _ => {
-                self.runtime_error("Type not valid for 'in'");
-                return Err(false);
+                //self.runtime_error("Type not valid for 'in'");
+                return Err("Type not valid for 'in'");
             }
         };
 
@@ -697,21 +697,24 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::In(argc) => {
                     let mut result = Ok(false);
-                    let a = self.stack[self.stack_pointer - *argc as usize - 1].clone();
+                    let a = &self.stack[self.stack_pointer - *argc as usize - 1];
                     dbg!(argc);
                     dbg!(frame.frame_pointer);
                     dbg!(&a);
                     for i in 0..*argc {
                         //pop!(self, b);
                         let b = &self.stack[self.stack_pointer - i as usize - 1];
-                        result = self.do_comparison(&a, &b.clone());
-                        //dbg!(result);
-                        if let Ok(result) = result {
-                            if result {
-                                break;
+                        result = Self::do_comparison(a, &b);
+                        match result {
+                            Ok(result) => {
+                                if result {
+                                    break;
+                                }
                             }
-                        } else {
-                            break;
+                            Err(msg) => {
+                                self.runtime_error(msg);
+                                return false;
+                            }
                         }
                     }
                     self.stack_pointer -= *argc as usize + 1;
@@ -865,7 +868,7 @@ impl<'a> Vm<'a> {
                     let a = &self.stack[self.stack_pointer - 1];
                     dbg!(&a);
                     dbg!(&b);
-                    let result = self.do_comparison(&a.clone(), &b.clone());
+                    let result = Self::do_comparison(&a, &b);
                     dbg!(&result);
                     match result {
                         Ok(result) => self.push(ValueType::Boolean(result)),
