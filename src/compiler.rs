@@ -108,7 +108,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
         println!("{}", x);
     }
 }
-
+#[derive(Debug)]
 pub struct Variable {
     depth: u8,
     name: String,
@@ -216,7 +216,7 @@ impl Compiler<'_> {
     }
 
     fn in_operator(&mut self, token: &Token) -> bool {
-        dbg!("In the in operator!");
+        //dbg!("In the in operator!");
         self.expression();
         let mut args: u8 = 1;
         loop {
@@ -420,6 +420,7 @@ impl Compiler<'_> {
         let start = self.variables.iter().position(|x| x.depth > 0).unwrap();
         let index = self.variables.len() - start - 1;
         self.add_instr(OpCode::DefineLocal(index), token.line_number);
+        self.add_instr(OpCode::Pop2, token.line_number);
 
         index
     }
@@ -721,7 +722,7 @@ impl Compiler<'_> {
         loop {
             self.skip_eol();
             let next_token = &self.tokens[self.token_pointer];
-            dbg!(next_token);
+            //dbg!(next_token);
             match next_token {
                 TokenType::When(t) => {
                     self.advance();
@@ -934,7 +935,7 @@ impl Compiler<'_> {
             self.add_instr(OpCode::Jump((loop_start - len) as i32), token.line_number);
             self.instructions[jump_index] =
                 OpCode::JumpIfFalse(self.instructions.len() - jump_index - 1);
-            self.add_instr(OpCode::Pop, token.line_number);
+            //self.add_instr(OpCode::Pop, token.line_number);
             //
         } else {
             self.compile_error("Invalid use of 'for' statement", token);
@@ -961,6 +962,7 @@ impl Compiler<'_> {
     }
 
     fn end_scope(&mut self) {
+        //dbg!(&self.variables);
         if let Some(index) = self.variables.iter().position(|x| x.depth == self.depth) {
             let vars_to_pop = self.variables.len() - index;
             self.variables.truncate(index);

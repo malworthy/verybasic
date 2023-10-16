@@ -426,6 +426,19 @@ mod tests {
     }
 
     #[test]
+    fn for_loop_in_fn() {
+        let code = "function main()
+                winners = dim(10)
+                for i = 1 to 2
+                    winner = 5
+                next
+                len(winners)
+            end
+            main()";
+        assert_eq!(interpret_test(code), "Number(10.0)");
+    }
+
+    #[test]
     fn array_in_array() {
         let code = "
             a = array(array(5,10), array(6,11), array(7,12))
@@ -827,8 +840,19 @@ mod tests {
     fn or() {
         assert_eq!(interpret_test("1==1 or 2==2"), "Boolean(true)");
         assert_eq!(interpret_test("1==1 or 1==2"), "Boolean(true)");
+    }
 
-        //
+    #[test]
+    fn return_from_top_level_code() {
+        let code = "
+            if true then
+                x = 1
+                y = 2
+                666
+                exit
+            end
+            44";
+        assert_eq!(interpret_test(code), "Number(666.0)");
     }
 
     #[test]
