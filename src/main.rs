@@ -41,7 +41,7 @@ fn main() {
             process::exit(1);
         }
     } else {
-        println!("{}", "Very Basic Version 0.1".yellow());
+        println!("{}", "Very Basic Version 0.2".yellow());
         loop {
             let mut line = String::new();
             io::stdin()

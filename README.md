@@ -149,6 +149,31 @@ array.push(123)
 
 Method are really just functions, but can mutate the variable you are calling the method on. Any function can be called using dot syntax. `"1,2,3".split(",")` is the same as `split("1,2,3",",")`
 
+## Pattern Matching
+
+match [expression]
+when [operator] [Expression] then [statements]
+when [Expression[,Expression,...]] then [statements]
+when [Expression] to [Expression] then [statements]
+...
+else [expression]
+end
+
+Example:
+
+```
+x = match i
+    when 0 then  1      ' match single value
+    when 2 to 3 then  2 ' match range
+    when 4,5,6 then 7   ' match multiples
+    when <=6 then  5    ' match using operators
+    when < 8 then  6
+    when >=5 then  4
+    when > 3 then  3
+    else  7             ' must supply else
+end
+```
+
 ## Data types
 
 There are 4 datatypes. String, Number, Boolean and Array.
