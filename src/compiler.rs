@@ -3,6 +3,31 @@ use crate::Vm;
 use colored::Colorize;
 
 #[derive(Debug)]
+pub enum Operator {
+    GreaterThan,
+    GreaterThanEq,
+    LessThan,
+    LessThanEq,
+    Equal,
+    NotEqual,
+    Between,
+}
+
+impl Operator {
+    pub fn to_opcode(&self) -> OpCode {
+        match self {
+            Operator::GreaterThan => OpCode::GreaterThan,
+            Operator::GreaterThanEq => OpCode::GreaterThanEq,
+            Operator::LessThan => OpCode::LessThan,
+            Operator::LessThanEq => OpCode::LessThanEq,
+            Operator::Equal => OpCode::Equal,
+            Operator::NotEqual => OpCode::NotEqual,
+            _ => panic!("don't use to_opcode() when value is 'between'!"),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum OpCode {
     ConstantNum(f64),
     ConstantStr(String),
@@ -45,7 +70,7 @@ pub enum OpCode {
     Subscript,
     SubscriptSet(VarType),
     In(u8),
-    Match,
+    Match(Operator),
     Return,
 }
 
@@ -90,7 +115,7 @@ pub fn print_instr(instructions: Vec<OpCode>) {
             OpCode::Pop => format!("{:05} POP", addr),
             OpCode::Pop2 => format!("{:05} POP2", addr),
             OpCode::Push => format!("{:05} PUSH", addr),
-            OpCode::Match => format!("{:05} MAT ", addr),
+            OpCode::Match(op) => format!("{:05} MAT {:?}", addr, op),
             OpCode::Return => format!("{:05} RET", addr),
             OpCode::SetGlobal(name) => format!("{:05} SETG {}", addr, name),
             OpCode::SetLocal(index) => format!("{:05} SET  {}", addr, index),
@@ -709,15 +734,7 @@ impl Compiler<'_> {
     fn pattern_match(&mut self, token: &Token) -> bool {
         let mut jump_indexes: Vec<usize> = Vec::new();
 
-        //self.begin_scope();
         self.expression();
-        //self.add_instr(OpCode::Match, token.line_number);
-
-        // save the value we are comparing to in stack slot 0 - by using a nameless variables
-        // self.variables
-        //     .push(Variable::new(String::from(""), self.depth));
-        // self.add_instr(OpCode::DefineLocal(0), token.line_number);
-        // self.add_instr(OpCode::Pop2, token.line_number);
 
         loop {
             self.skip_eol();
@@ -728,8 +745,50 @@ impl Compiler<'_> {
                     self.advance();
                     // TODO: Here we check for optional pattern match type
                     //self.add_instr(OpCode::GetLocal(0), token.line_number);
+                    //dbg!(&self.tokens[self.token_pointer]);
+                    let op = match &self.tokens[self.token_pointer] {
+                        TokenType::GreaterThan(_) => {
+                            self.advance();
+                            Operator::GreaterThan
+                        }
+                        TokenType::GreaterThanOrEqual(_) => {
+                            self.advance();
+                            Operator::GreaterThanEq
+                        }
+                        TokenType::LessThan(_) => {
+                            self.advance();
+                            Operator::LessThan
+                        }
+                        TokenType::LessThanOrEqual(_) => {
+                            self.advance();
+                            Operator::LessThanEq
+                        }
+                        TokenType::NotEquals(_) | TokenType::Not(_) => {
+                            self.advance();
+                            Operator::NotEqual
+                        }
+                        _ => Operator::Equal,
+                    };
+
                     self.expression();
-                    self.add_instr(OpCode::Match, t.line_number);
+                    //dbg!(&self.tokens[self.token_pointer]);
+                    // Check for 'to'
+                    match &self.tokens[self.token_pointer] {
+                        TokenType::To(_) => {
+                            if let Operator::Equal = op {
+                            } else {
+                                self.compile_error("Unexpected 'to' in match", t);
+                                return false;
+                            };
+                            self.advance();
+                            self.expression();
+                            self.add_instr(OpCode::Match(Operator::Between), t.line_number);
+                        }
+                        _ => {
+                            self.add_instr(OpCode::Match(op), t.line_number);
+                        }
+                    };
+
                     let jif_index = self.add_instr(OpCode::JumpIfFalse(0), t.line_number);
                     self.add_instr(OpCode::Pop2, t.line_number); // get rid of the value we are comparing against
                     if let TokenType::Then(_) = &self.tokens[self.token_pointer] {

@@ -1118,4 +1118,73 @@ mod tests {
         ";
         assert_eq!(interpret_test(code), "Number(62.0)");
     }
+
+    #[test]
+    fn match_test4() {
+        let code = "
+        match 10*10
+          when >200 then 1
+          when >=100 then 2
+          when >50 then 3
+          else 4
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(2.0)");
+    }
+
+    #[test]
+    fn match_test5() {
+        let code = "
+        match 10*10
+          when not 100 then 1
+          when <>100 then 2
+          when >50 then 3
+          else 4
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(3.0)");
+    }
+
+    #[test]
+    fn match_test6() {
+        let code = "
+        match 50
+          when 1 to 10 then 1
+          when 11 to 49 then 2
+          when 50 to 60 then 3
+          when 60 to 70 then 4
+          else 5
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(3.0)");
+    }
+
+    #[test]
+    fn match_test7() {
+        let code = "x = 0
+        for i = 0 to 10
+            x=x+match i
+                when 0 then  1
+                when 2 to 3 then  2
+                when <=6 then  5
+                when < 8 then  6
+                when >=5 then  4
+                when > 3 then  3
+                else  7
+            end
+        next
+        x";
+        assert_eq!(interpret_test(code), "Number(43.0)");
+    }
+
+    #[test]
+    fn match_test8() {
+        let code = "
+            match 7
+                when 1,2,3 then 44
+                when 4,5,6,7 then 55
+                else 66
+            end";
+        assert_eq!(interpret_test(code), "Number(55.0)");
+    }
 }

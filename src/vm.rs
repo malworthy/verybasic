@@ -10,7 +10,7 @@ use std::{
     process::Command,
 };
 
-use crate::compiler::{OpCode, VarType};
+use crate::compiler::{OpCode, Operator, VarType};
 use colored::Colorize;
 
 #[derive(Debug, Clone)]
@@ -272,6 +272,12 @@ impl<'a> Vm<'a> {
 
         self.push(result);
         true
+    }
+
+    fn between(a: &ValueType, b: &ValueType, c: &ValueType) -> ValueType<'a> {
+        let b_comp = Self::do_comparison(&OpCode::GreaterThanEq, a, b);
+        let c_comp = Self::do_comparison(&OpCode::LessThanEq, a, c);
+        Self::do_comparison(&OpCode::And, &b_comp, &c_comp)
     }
 
     fn do_comparison(op: &OpCode, a: &ValueType, b: &ValueType) -> ValueType<'a> {
@@ -836,13 +842,25 @@ impl<'a> Vm<'a> {
                     pop!(self, _v);
                     //dbg!(&self.stack[0..self.stack_pointer]);
                 }
-                OpCode::Match => {
+                OpCode::Match(op) => {
                     //dbg!(&self.stack[0..self.stack_pointer]);
-                    pop!(self, b);
-                    let a = &self.stack[self.stack_pointer - 1];
-                    //dbg!(&a);
-                    //dbg!(&b);
-                    let result = Self::do_comparison(&OpCode::Equal, &a, &b);
+                    let result = if let Operator::Between = op {
+                        pop!(self, c);
+                        pop!(self, b);
+                        let a = &self.stack[self.stack_pointer - 1];
+                        Self::between(a, b, c)
+                    } else {
+                        pop!(self, b);
+                        let a = &self.stack[self.stack_pointer - 1];
+
+                        Self::do_comparison(&op.to_opcode(), &a, &b)
+                    };
+                    // pop!(self, b);
+                    // let a = &self.stack[self.stack_pointer - 1];
+                    // //dbg!(&a);
+                    // //dbg!(&b);
+
+                    // let result = Self::do_comparison(&op.to_opcode(), &a, &b);
                     self.push(result);
                 }
                 OpCode::Push => {
