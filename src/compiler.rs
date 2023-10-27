@@ -11,6 +11,7 @@ pub enum Operator {
     Equal,
     NotEqual,
     Between,
+    In(u8),
 }
 
 impl Operator {
@@ -783,6 +784,25 @@ impl Compiler<'_> {
                             self.advance();
                             self.expression();
                             self.add_instr(OpCode::Match(Operator::Between), t.line_number);
+                        }
+                        TokenType::Comma(_) => {
+                            // in
+                            self.advance();
+                            self.expression();
+                            let mut args: u8 = 2;
+                            loop {
+                                if let TokenType::Comma(_) = &self.tokens[self.token_pointer] {
+                                    self.advance();
+                                    self.expression();
+                                    args += 1;
+                                } else {
+                                    self.add_instr(
+                                        OpCode::Match(Operator::In(args)),
+                                        token.line_number,
+                                    );
+                                    break;
+                                }
+                            }
                         }
                         _ => {
                             self.add_instr(OpCode::Match(op), t.line_number);

@@ -844,23 +844,39 @@ impl<'a> Vm<'a> {
                 }
                 OpCode::Match(op) => {
                     //dbg!(&self.stack[0..self.stack_pointer]);
-                    let result = if let Operator::Between = op {
-                        pop!(self, c);
-                        pop!(self, b);
-                        let a = &self.stack[self.stack_pointer - 1];
-                        Self::between(a, b, c)
-                    } else {
-                        pop!(self, b);
-                        let a = &self.stack[self.stack_pointer - 1];
 
-                        Self::do_comparison(&op.to_opcode(), &a, &b)
+                    let result = match op {
+                        Operator::Between => {
+                            pop!(self, c);
+                            pop!(self, b);
+                            let a = &self.stack[self.stack_pointer - 1];
+                            Self::between(a, b, c)
+                        }
+                        Operator::In(argc) => {
+                            let mut in_result = ValueType::Boolean(false);
+                            let a = &self.stack[self.stack_pointer - *argc as usize - 1];
+                            //dbg!(argc);
+                            //dbg!(frame.frame_pointer);
+                            //dbg!(&a);
+                            for i in 0..*argc {
+                                let b = &self.stack[self.stack_pointer - i as usize - 1];
+                                in_result = Self::do_comparison(&OpCode::Equal, a, &b);
+                                if let ValueType::Boolean(result) = in_result {
+                                    if result {
+                                        break;
+                                    }
+                                }
+                            }
+                            self.stack_pointer -= *argc as usize;
+                            in_result
+                        }
+                        _ => {
+                            pop!(self, b);
+                            let a = &self.stack[self.stack_pointer - 1];
+
+                            Self::do_comparison(&op.to_opcode(), &a, &b)
+                        }
                     };
-                    // pop!(self, b);
-                    // let a = &self.stack[self.stack_pointer - 1];
-                    // //dbg!(&a);
-                    // //dbg!(&b);
-
-                    // let result = Self::do_comparison(&op.to_opcode(), &a, &b);
                     self.push(result);
                 }
                 OpCode::Push => {
