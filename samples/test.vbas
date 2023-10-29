@@ -1,17 +1,10 @@
-x = 0
-for i = 0 to 10
-    x=x+match i
-        when 0 then print("{i} is zero") 1
-        when 2 to 3 then print("{i} is between 2 and 3") 2
-        when <=6 then print("{i} is <= 6") 5
-        when < 8 then print("{i} is < 8") 6
-        when >=5 then print("{i} is >= 5") 4
-        when > 3 then print("{i} is greater than 3") 3
-        else print("{i} met no conditions") 7
+while false
+    print(1)
+    match 5
+        when 1 then 10
+        when 2 then 20
+        when 3 then 30
+        else 0
     end
-    print(x)
-next
-print(x)
-
-
-
+end
+55

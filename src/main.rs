@@ -1187,4 +1187,20 @@ mod tests {
             end";
         assert_eq!(interpret_test(code), "Number(55.0)");
     }
+
+    #[test]
+    fn match_test9() {
+        let code = "
+        while false
+            print(1)
+            match 5
+                when 1 then 10
+                when 2 then 20
+                when 3 then 30
+                else 0
+            end
+        end
+        55";
+        assert_eq!(interpret_test(code), "Number(55.0)");
+    }
 }

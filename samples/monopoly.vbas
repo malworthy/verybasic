@@ -430,13 +430,19 @@ function game_loop()
         print("")
         inp = input("t = Trade, h = Buy a house, b = borrow money, [Enter] = Roll again > ")
         print("")
-        if inp == "t" then
-            trade()
-        elseif inp == "h" then
-            buy_house_human()
-        elseif inp == "b" then
-            borrow()
+        match inp
+            when "t" then trade()
+            when "h" then buy_house_human()
+            when "b" then borrow()
+            else 0
         end
+        ' if inp == "t" then
+        '     trade()
+        ' elseif inp == "h" then
+        '     buy_house_human()
+        ' elseif inp == "b" then
+        '     borrow()
+        ' end
     end
 end
 

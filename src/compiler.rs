@@ -899,7 +899,9 @@ impl Compiler<'_> {
     }
 
     fn while_statement(&mut self, while_token: &Token) {
-        let loop_start: i32 = (self.instructions.len() - 1).try_into().unwrap();
+        //let loop_start: i32 = (self.instructions.len() - 1).try_into().unwrap();
+
+        let loop_start = (self.instructions.len() as i32) - 1;
         if !self.advance() {
             return;
         }
@@ -912,7 +914,7 @@ impl Compiler<'_> {
         }
         self.end_scope();
 
-        let len: i32 = self.instructions.len().try_into().unwrap();
+        let len = self.instructions.len() as i32;
         self.add_instr(
             OpCode::Jump((loop_start - len).try_into().unwrap()),
             while_token.line_number,
@@ -923,6 +925,7 @@ impl Compiler<'_> {
         if let TokenType::End(_) = token {
             self.advance();
         } else {
+            dbg!(token);
             self.compile_error("while without end", while_token)
         }
     }

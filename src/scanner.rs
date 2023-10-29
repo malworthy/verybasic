@@ -383,7 +383,7 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
             TokenType::Match(Token {
                 lexeme: String::from("match"),
                 line_number,
-                precedence: precedence::CALL, // TODO: this is a guess, change to what makes sense
+                precedence: precedence::NONE, // TODO: this is a guess, change to what makes sense
             }),
             5,
         )
