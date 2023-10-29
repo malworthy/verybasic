@@ -63,6 +63,8 @@ pub enum TokenType {
     ElseIf(Token),
     Eol(Token),
     In(Token),
+    Match(Token),
+    When(Token),
     Eof,
 }
 
@@ -107,6 +109,8 @@ impl TokenType {
             | TokenType::Next(t)
             | TokenType::ElseIf(t)
             | TokenType::In(t)
+            | TokenType::Match(t)
+            | TokenType::When(t)
             | TokenType::Bool(t) => Some(t),
             _ => None,
         }
@@ -116,7 +120,10 @@ impl TokenType {
 fn continue_line(token_type: Option<&TokenType>) -> bool {
     match token_type {
         Some(token_type) => match token_type {
-            TokenType::LeftParan(_) | TokenType::RightParan(_) | TokenType::Comma(_) => true,
+            TokenType::LeftParan(_)
+            | TokenType::RightParan(_)
+            | TokenType::Comma(_)
+            | TokenType::Plus(_) => true,
             _ => false,
         },
         _ => false,
@@ -370,6 +377,24 @@ fn make_keyword(code: &str, line_number: u32) -> (TokenType, usize) {
                 precedence: precedence::NONE,
             }),
             5,
+        )
+    } else if match_word(code, "match") {
+        (
+            TokenType::Match(Token {
+                lexeme: String::from("match"),
+                line_number,
+                precedence: precedence::CALL, // TODO: this is a guess, change to what makes sense
+            }),
+            5,
+        )
+    } else if match_word(code, "when") {
+        (
+            TokenType::When(Token {
+                lexeme: String::from("when"),
+                line_number,
+                precedence: precedence::NONE,
+            }),
+            4,
         )
     } else if match_word(code, "exit") {
         (

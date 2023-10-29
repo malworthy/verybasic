@@ -41,7 +41,7 @@ fn main() {
             process::exit(1);
         }
     } else {
-        println!("{}", "Very Basic Version 0.1".yellow());
+        println!("{}", "Very Basic Version 0.2".yellow());
         loop {
             let mut line = String::new();
             io::stdin()
@@ -422,6 +422,19 @@ mod tests {
             i
         ";
 
+        assert_eq!(interpret_test(code), "Number(10.0)");
+    }
+
+    #[test]
+    fn for_loop_in_fn() {
+        let code = "function main()
+                winners = dim(10)
+                for i = 1 to 2
+                    winner = 5
+                next
+                len(winners)
+            end
+            main()";
         assert_eq!(interpret_test(code), "Number(10.0)");
     }
 
@@ -827,8 +840,19 @@ mod tests {
     fn or() {
         assert_eq!(interpret_test("1==1 or 2==2"), "Boolean(true)");
         assert_eq!(interpret_test("1==1 or 1==2"), "Boolean(true)");
+    }
 
-        //
+    #[test]
+    fn return_from_top_level_code() {
+        let code = "
+            if true then
+                x = 1
+                y = 2
+                666
+                exit
+            end
+            44";
+        assert_eq!(interpret_test(code), "Number(666.0)");
     }
 
     #[test]
@@ -1045,5 +1069,122 @@ mod tests {
         test(36) + test(1)
         ";
         assert_eq!(interpret_test(code), "Number(30.0)");
+    }
+
+    #[test]
+    fn test_in4() {
+        let code = "10 in true,\"hello\",10";
+        assert_eq!(interpret_test(code), "Boolean(true)");
+    }
+
+    #[test]
+    fn match_test1() {
+        let code = "
+        a = 45
+        x = match a
+          when 10 then 20
+          when 20 then 30
+          when 40 then 50
+          when 45 then 
+            z = 10
+            y = 20
+            (z+y)*2
+          else 66
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(60.0)");
+    }
+
+    #[test]
+    fn match_test2() {
+        let code = "
+       match 2
+          when 10 then 20
+          when 1 then 11
+          when 2 then 22
+          else 60
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(22.0)");
+    }
+
+    #[test]
+    fn match_test3() {
+        let code = "
+       1 + match 7
+          when 2 then 22
+          else 60
+        end +1
+        ";
+        assert_eq!(interpret_test(code), "Number(62.0)");
+    }
+
+    #[test]
+    fn match_test4() {
+        let code = "
+        match 10*10
+          when >200 then 1
+          when >=100 then 2
+          when >50 then 3
+          else 4
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(2.0)");
+    }
+
+    #[test]
+    fn match_test5() {
+        let code = "
+        match 10*10
+          when not 100 then 1
+          when <>100 then 2
+          when >50 then 3
+          else 4
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(3.0)");
+    }
+
+    #[test]
+    fn match_test6() {
+        let code = "
+        match 50
+          when 1 to 10 then 1
+          when 11 to 49 then 2
+          when 50 to 60 then 3
+          when 60 to 70 then 4
+          else 5
+        end
+        ";
+        assert_eq!(interpret_test(code), "Number(3.0)");
+    }
+
+    #[test]
+    fn match_test7() {
+        let code = "x = 0
+        for i = 0 to 10
+            x=x+match i
+                when 0 then  1
+                when 2 to 3 then  2
+                when <=6 then  5
+                when < 8 then  6
+                when >=5 then  4
+                when > 3 then  3
+                else  7
+            end
+        next
+        x";
+        assert_eq!(interpret_test(code), "Number(43.0)");
+    }
+
+    #[test]
+    fn match_test8() {
+        let code = "
+            match 7
+                when 1,2,3 then 44
+                when 4,5,6,7 then 55
+                else 66
+            end";
+        assert_eq!(interpret_test(code), "Number(55.0)");
     }
 }

@@ -1,24 +1,9 @@
-
-horses = array(
-	array("one",1.0),
-	array("two",1.1),
-	array("three",0.9),
-	array("four",0.95),
-	array("five",0.96),
-	array("six",0.94),
-	array("seven",0.93),
-	array("eight",1.05),
-	array("nine",0.97),
-	array("ten",0.91)
-	)
-
-horses = load_horses(10)
-
 ' *** MAIN ***
+
 tab = 0
 you = 1000
-
-while true
+horses = load_horses(10)
+while true	
 	race_result = main()
 	you = you - race_result[0]
 	you = you + race_result[1]
@@ -26,12 +11,12 @@ while true
 	tab = tab + race_result[0]
 	tab = tab - race_result[1]
 
-	print("You {you,"c2"}, TAB {tab,"c2"}")
+	print("You ${you,"N2"}, TAB ${tab,"N2"}")
 	q = input("Press Enter for another race, q to quit")
 	if q == "q" then
 		exit
 	end
-	
+	horses = load_horses(10)
 end
 ' *** END ****
 
@@ -48,21 +33,23 @@ end
 function main()
 	winnings = 0
 	winners = dim(len(horses))
+	print("Calculating odds.  Please wait...")
 	for i = 1 to 2000
-		winner = run_race(dummy)
+		winner = run_race(dummy,0)
 		winners[winner] = winners[winner] + 1
 	next
+	print(len(winners))
 	odds = get_odds(winners)
 	print_odds(odds)
 	inp = get_bet()
 	horse_bet = inp[0]
 	amount_bet = inp[1]
 	clear()
-	winner = run_race(print_horses)
+	winner = run_race(print_horses, horse_bet)
 	print("Race Finished. Horse {horses[winner].name()} won!")
 	if horse_bet == winner then
 		winnings = odds[horse_bet] * amount_bet
-		print("you win! you get ${winnings,"c2"}")
+		print("you win! you get ${winnings,"N2"}")
 	end
 
 	array(amount_bet, winnings)
@@ -72,7 +59,7 @@ function print_odds(odds)
 	clear()
 	for i = 0 to len(horses)-1
 		print("{chr(65+i)}  {horses[i].name()}", false, "default", 1,1 +i)
-		print("${odds[i],"6.2"}", false, "default", 20,1+i)
+		print("${odds[i],"6.2"}", false, "default", 30,1+i)
 	next
 	print("")	
 end
@@ -105,13 +92,17 @@ function speed(a)
 	val(a[1])
 end
 
-function dummy(x) 0 end
+function dummy(x,y) 0 end
 
-function print_horses(race)
+function print_horses(race, horse_bet)
 	print("",false,"normal",1,1)
 	for i = 0 to 20
 		for h = 0 to len(horses) - 1
-			if round(race[h],0) == i then print (" {chr(65+h)} ", false) else print("   ", false) end
+			color = match h 
+				when horse_bet then "yellow" 
+				else "default" 
+			end
+			if round(race[h],0) == i then print (" {chr(65+h)} ", false, color) else print("   ", false) end
 		next
 		print("")
 	next
@@ -119,10 +110,10 @@ function print_horses(race)
 	'input("Enter to continue...")
 end
 
-function run_race(print_fn)
+function run_race(print_fn, horse_bet)
 	race = dim(len(horses))
 	while true
-		print_fn(race)
+		print_fn(race, horse_bet)
 		for h = 0 to len(horses) - 1
 			race[h] = race[h] + horses[h].speed() * rand()
 			'if race[h] > 20 then finished = true end
