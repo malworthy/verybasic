@@ -1,1 +1,2 @@
+'Arithmatic Numbers
 for i=1to 9999t=0:c=0for r=1 to i if i mod r<1 then t=t+r:c=c+1;next if t/c mod 1==0 then print(i);next

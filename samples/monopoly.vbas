@@ -436,13 +436,6 @@ function game_loop()
             when "b" then borrow()
             else 0
         end
-        ' if inp == "t" then
-        '     trade()
-        ' elseif inp == "h" then
-        '     buy_house_human()
-        ' elseif inp == "b" then
-        '     borrow()
-        ' end
     end
 end
 

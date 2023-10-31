@@ -394,6 +394,20 @@ impl<'a> Vm<'a> {
                     return false;
                 }
             }
+            ValueType::Number(a) => {
+                if let ValueType::Number(b) = b {
+                    let a = *a as i64;
+                    let b = *b as i64;
+                    match op {
+                        OpCode::And => ValueType::Number((a & b) as f64),
+                        OpCode::Or => ValueType::Number((a | b) as f64),
+                        _ => panic!("And/Or opcode expected"),
+                    }
+                } else {
+                    self.runtime_error("type mismatch");
+                    return false;
+                }
+            }
             _ => {
                 self.runtime_error("type mismatch");
                 return false;
