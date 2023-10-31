@@ -207,6 +207,20 @@ pub fn instr<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType
     }
 }
 
+pub fn replace<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
+    if params.len() < 3 {
+        return Err(
+            "Incorrect number of parameters passed to function replace(string, search, replace)",
+        );
+    }
+    let str = params[0].to_string();
+    let search = params[1].to_string();
+    let rep = params[2].to_string();
+
+    let result = str.replace(&search, rep.as_str());
+    Ok(ValueType::String(result))
+}
+
 pub fn split<'a>(params: Vec<ValueType<'a>>, _: &mut Vm<'a>) -> Result<ValueType<'a>, &'a str> {
     let mut params_iter = params.iter();
     let string = params_iter.next();

@@ -1203,4 +1203,10 @@ mod tests {
         55";
         assert_eq!(interpret_test(code), "Number(55.0)");
     }
+    
+    #[test]
+    fn replace_fn() {
+        let code = "replace(\"old\",\"old\",\"new\")";
+        assert_eq!(interpret_test(code), "String(\"new\")");
+    }
 }
