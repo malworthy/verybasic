@@ -448,6 +448,10 @@ e.g mid("hello",3) returns "llo", mid("hello",3, 2) return "lo"
 
 returns the right most characters of a string
 
+### _replace(string, search, replace)_
+
+replace part of a string
+
 ### _split(string, delimiter, [remove_empty = false])_
 
 splits a string based on a delimiter and returns an array of its part. If remove_empty is true then any empty elements are removed from the array.
